@@ -1,6 +1,8 @@
-# 📝 FastAPI + Vue3 Blog
+# 📝MikkoBlog 
+## 相关技术 FastAPI + Vue3 Blog
 
 一个基于 **FastAPI + Vue3 + MySQL** 的现代化个人博客系统，支持 **Markdown 编辑、全文检索、图片上传、后台管理**，既能做个人作品集展示，也适合实际部署使用。
+前后端是分开的
 
 ---
 

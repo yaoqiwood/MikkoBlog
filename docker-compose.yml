@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mikko_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: mikko_blog
+      MYSQL_USER: mikko
+      MYSQL_PASSWORD: mikko_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    command:
+      [
+        "--default-authentication-plugin=mysql_native_password",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+      ]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-hdb", "-uroot", "-proot_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: mikko_backend
+    environment:
+      - MIKKO_CONFIG=/app/config/config.yaml
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+volumes:
+  db_data:
