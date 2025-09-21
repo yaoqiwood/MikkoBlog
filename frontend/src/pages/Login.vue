@@ -1,160 +1,115 @@
-<script setup>
-import { ref } from 'vue'
-import axios from 'axios'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-const email = ref('admin@example.com')
-const password = ref('admin123')
-const error = ref('')
-const loading = ref(false)
-
-async function login() {
-  try {
-    loading.value = true
-    error.value = ''
-    const body = new URLSearchParams()
-    body.append('username', email.value)
-    body.append('password', password.value)
-    body.append('grant_type', '')
-    const { data } = await axios.post('http://localhost:8000/api/auth/token', body, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    })
-    localStorage.setItem('token', data.access_token)
-    router.push('/admin/users')
-  } catch (e) {
-    error.value = '登录失败，请检查邮箱和密码'
-  } finally {
-    loading.value = false
-  }
-}
-</script>
-
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
-    <div class="w-full max-w-6xl">
-      <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-        <div class="flex min-h-[600px]">
+  <div class="page-container login-container">
+    <div class="login-wrapper">
+      <div class="login-card">
+        <div class="login-content">
           <!-- Left Side - Brand/Icon Section -->
-          <div class="flex-1 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center p-12">
-            <div class="text-center text-white">
+          <div class="brand-section">
+            <div class="brand-content">
               <!-- Main Icon -->
-              <div class="inline-flex items-center justify-center w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl mb-8">
-                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                </svg>
-              </div>
-              
-              <!-- Brand Text -->
-              <h1 class="text-4xl font-bold mb-4">MikkoBlog</h1>
-              <p class="text-xl text-blue-100 mb-8">管理员登录</p>
-              
-              <!-- Decorative Elements -->
-              <div class="space-y-4">
-                <div class="flex items-center justify-center space-x-2">
-                  <div class="w-2 h-2 bg-white/60 rounded-full"></div>
-                  <div class="w-2 h-2 bg-white rounded-full"></div>
-                  <div class="w-2 h-2 bg-white/60 rounded-full"></div>
+              <div class="main-icon">
+                <div class="icon-circle">
+                  <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
+                  </svg>
                 </div>
-                <p class="text-blue-200 text-sm">安全 · 高效 · 专业</p>
+              </div>
+
+              <!-- Brand Text -->
+              <h1 class="brand-title">MikkoBlog</h1>
+              <p class="brand-subtitle">管理员登录</p>
+
+              <!-- Decorative Elements -->
+              <div class="decorative-section">
+                <div class="dots-container">
+                  <div class="dot dot-fade" />
+                  <div class="dot dot-full" />
+                  <div class="dot dot-fade" />
+                </div>
+                <p class="decorative-text">安全 · 高效 · 专业</p>
               </div>
             </div>
           </div>
 
           <!-- Right Side - Login Form -->
-          <div class="flex-1 flex items-center justify-center p-12">
-            <div class="w-full max-w-md">
-              <div class="text-center mb-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">欢迎回来</h2>
-                <p class="text-gray-600">请登录您的管理员账户</p>
+          <div class="form-section">
+            <div class="form-wrapper">
+              <div class="form-header">
+                <h2 class="form-title">欢迎回来</h2>
+                <p class="form-subtitle">请登录您的管理员账户</p>
               </div>
 
-              <form @submit.prevent="login" class="space-y-6">
-                <!-- Email Field -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">邮箱地址</label>
-                  <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
-                      </svg>
-                    </div>
-                    <input 
-                      v-model="email" 
-                      type="email"
-                      class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white" 
-                      placeholder="admin@example.com"
-                      required
-                    />
-                  </div>
-                </div>
+              <Form :model="loginModel" :rules="loginRules" @submit.prevent="login">
+                <!-- Email or Username Field -->
+                <FormItem v-if="loginType === 'email'" label="邮箱地址" prop="email">
+                  <Input
+                    v-model="loginModel.email"
+                    type="email"
+                    size="large"
+                    placeholder="admin@example.com"
+                    prefix="ios-mail"
+                  />
+                </FormItem>
+                <FormItem v-else label="用户名" prop="username">
+                  <Input
+                    v-model="loginModel.username"
+                    type="text"
+                    size="large"
+                    placeholder="admin"
+                    prefix="ios-person"
+                  />
+                </FormItem>
 
                 <!-- Password Field -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
-                  <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                      </svg>
-                    </div>
-                    <input 
-                      v-model="password" 
-                      type="password"
-                      class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white" 
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                </div>
+                <FormItem label="密码" prop="password">
+                  <Input
+                    v-model="loginModel.password"
+                    type="password"
+                    size="large"
+                    placeholder="••••••••"
+                    prefix="ios-lock"
+                  />
+                </FormItem>
 
                 <!-- Error Message -->
-                <div v-if="error" class="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <div class="flex">
-                    <div class="flex-shrink-0">
-                      <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                    </div>
-                    <div class="ml-3">
-                      <p class="text-sm text-red-800">{{ error }}</p>
-                    </div>
-                  </div>
-                </div>
+                <Alert v-if="error" type="error" show-icon>
+                  {{ error }}
+                </Alert>
 
                 <!-- Login Button -->
-                <button 
-                  :disabled="loading" 
-                  class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 focus:ring-4 focus:ring-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <span v-if="!loading" class="flex items-center justify-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                    </svg>
-                    登录
-                  </span>
-                  <span v-else class="flex items-center justify-center">
-                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    登录中...
-                  </span>
-                </button>
-              </form>
+                <FormItem>
+                  <Button
+                    type="primary"
+                    size="large"
+                    :loading="loading"
+                    html-type="submit"
+                    long
+                    icon="ios-log-in"
+                  >
+                    {{ loading ? '登录中...' : '登录' }}
+                  </Button>
+                </FormItem>
+              </Form>
+              <!-- 切换登录方式 -->
+              <div class="login-type-switch" style="text-align: center; margin-bottom: 12px">
+                <Button type="text" size="small" @click="toggleLoginType">
+                  切换为{{ loginType === 'email' ? '用户名' : '邮箱' }}登录
+                </Button>
+              </div>
 
               <!-- Footer -->
-              <div class="mt-8 text-center">
-                <router-link to="/" class="text-sm text-gray-500 hover:text-blue-600 transition-colors duration-200">
-                  ← 返回首页
-                </router-link>
+              <div class="form-footer">
+                <router-link :to="homePath" class="back-link"> ← 返回首页 </router-link>
               </div>
 
               <!-- Additional Info -->
-              <div class="mt-6 text-center">
-                <p class="text-xs text-gray-500">
-                  默认管理员账号：admin@example.com / admin123
-                </p>
+              <div class="form-info">
+                <p class="info-text">默认管理员账号：admin@example.com / admin123</p>
               </div>
             </div>
           </div>
@@ -163,3 +118,257 @@ async function login() {
     </div>
   </div>
 </template>
+<script setup>
+import { authApi } from '@/utils/apiService';
+import { getRoutePath, routerUtils, ROUTES } from '@/utils/routeManager';
+import { Message } from 'view-ui-plus';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+const loginType = ref('email'); // 'email' or 'username'
+const loginModel = ref({
+  email: 'admin@example.com',
+  username: 'admin',
+  password: 'admin123',
+});
+const error = ref('');
+const loading = ref(false);
+
+// 路由路径常量
+const homePath = getRoutePath(ROUTES.HOME);
+
+const loginRules = {
+  email: [
+    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
+  ],
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, message: '用户名长度不能少于3位', trigger: 'blur' },
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
+  ],
+};
+
+function toggleLoginType() {
+  loginType.value = loginType.value === 'email' ? 'username' : 'email';
+}
+
+async function login() {
+  try {
+    loading.value = true;
+    error.value = '';
+
+    // 根据登录类型使用不同的用户名字段
+    const username =
+      loginType.value === 'email' ? loginModel.value.email : loginModel.value.username;
+
+    // 使用新的API工具进行登录
+    const data = await authApi.login(username, loginModel.value.password);
+
+    localStorage.setItem('token', data.access_token);
+    Message.success('登录成功！');
+    routerUtils.navigateTo(router, ROUTES.ADMIN_DASHBOARD);
+  } catch {
+    error.value = '登录失败，请检查用户名/邮箱和密码';
+    Message.error('登录失败，请检查用户名/邮箱和密码');
+  } finally {
+    loading.value = false;
+  }
+}
+</script>
+
+<style scoped>
+.login-container {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 50%, #e0e7ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 75rem;
+}
+
+.login-card {
+  background: white;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid #f3f4f6;
+  overflow: hidden;
+}
+
+.login-content {
+  display: flex;
+  min-height: 600px;
+}
+
+.brand-section {
+  flex: 1;
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.brand-content {
+  text-align: center;
+  color: white;
+}
+
+.main-icon {
+  margin-bottom: 2rem;
+}
+
+.icon-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 6rem;
+  height: 6rem;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 1.5rem;
+}
+
+.icon-svg {
+  width: 3rem;
+  height: 3rem;
+  color: white;
+}
+
+.brand-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.brand-subtitle {
+  font-size: 1.25rem;
+  color: #dbeafe;
+  margin-bottom: 2rem;
+}
+
+.decorative-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dots-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.dot-fade {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.dot-full {
+  background: white;
+}
+
+.decorative-text {
+  color: #bfdbfe;
+  font-size: 0.875rem;
+}
+
+.form-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.form-wrapper {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.form-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.form-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.form-subtitle {
+  color: #6b7280;
+}
+
+.form-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.back-link {
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #2563eb;
+}
+
+.form-info {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.info-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .login-content {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .brand-section {
+    padding: 2rem;
+  }
+
+  .form-section {
+    padding: 2rem;
+  }
+
+  .brand-title {
+    font-size: 2rem;
+  }
+
+  .brand-subtitle {
+    font-size: 1rem;
+  }
+}
+</style>

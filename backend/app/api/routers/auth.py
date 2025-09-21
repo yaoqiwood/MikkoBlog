@@ -10,46 +10,60 @@ from app.core.security import create_access_token, decode_token, verify_password
 from app.db.session import get_db
 from app.models.user import User
 
-
+# 创建一个FastAPI路由器，前缀为/auth，标签为auth
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# 定义OAuth2密码认证方式，token获取地址为/api/auth/token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
-
+# 登录接口，接收表单数据，返回access token
 @router.post("/token")
-def login_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> dict:
+def login_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+) -> dict:
+    # 查询数据库，查找邮箱为form_data.username的用户
     statement = select(User).where(User.email == form_data.username)
     user = db.exec(statement).first()
+    # 如果用户不存在或密码校验失败，抛出401异常
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
+    # 创建JWT token，包含用户id、邮箱和是否为管理员的信息
     token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "is_admin": user.is_admin},
         secret_key=settings.jwt_secret,
         algorithm=settings.jwt_algorithm,
         expires_minutes=settings.jwt_expires_minutes,
     )
+    # 返回token和token类型
     return {"access_token": token, "token_type": "bearer"}
 
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+# 获取当前用户，依赖于oauth2_scheme和数据库会话
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> User:
+    # 解码token，获取payload
     payload = decode_token(token, secret_key=settings.jwt_secret, algorithm=settings.jwt_algorithm)
     if payload is None:
+        # token无效，抛出401异常
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    # 从payload中获取用户id
     user_id: Optional[int] = int(payload.get("sub")) if payload.get("sub") else None
     if user_id is None:
+        # token中没有用户id，抛出401异常
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    # 根据用户id从数据库获取用户
     user = db.get(User, user_id)
     if not user:
+        # 用户不存在，抛出401异常
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
 
-
+# 获取当前管理员用户，依赖于get_current_user
 def get_current_admin(user: User = Depends(get_current_user)) -> User:
+    # 如果用户不是管理员，抛出403异常
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return user
-
-
-
-
