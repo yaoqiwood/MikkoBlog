@@ -28,7 +28,7 @@ const API_CONFIG = {
     // 用户管理
     USERS: {
       LIST: '/admin/users',
-      CREATE: '/admin/users',
+      CREATE: '/admin/users/add',
       UPDATE: '/admin/users',
       DELETE: '/admin/users',
       DETAIL: '/admin/users',
@@ -43,9 +43,14 @@ const API_CONFIG = {
       DETAIL: '/posts/',
     },
 
+    // 文件上传
+    UPLOAD: {
+      IMAGE: '/upload/image',
+    },
+
     // 健康检查
     HEALTH: {
-      CHECK: '/health',
+      CHECK: '/healthz',
     },
   },
 };
@@ -116,6 +121,19 @@ export function getPostUrl(action, id = null) {
     url += `${id}`;
   }
   return url;
+}
+
+/**
+ * 获取文件上传相关的URL
+ * @param {string} action - 上传操作类型
+ * @returns {string} 上传接口URL
+ */
+export function getUploadUrl(action) {
+  const endpoint = API_CONFIG.ENDPOINTS.UPLOAD[action.toUpperCase()];
+  if (!endpoint) {
+    throw new Error(`Invalid upload action: ${action}`);
+  }
+  return getApiUrl(endpoint);
 }
 
 /**

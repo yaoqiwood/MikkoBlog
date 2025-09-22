@@ -35,6 +35,16 @@ const router = createRouter({
           component: () => import('@/pages/admin/PostManagement.vue'),
         },
         {
+          path: 'posts/new',
+          name: 'admin-posts-new',
+          component: () => import('@/pages/admin/PostEditor.vue'),
+        },
+        {
+          path: 'posts/edit/:id',
+          name: 'admin-posts-edit',
+          component: () => import('@/pages/admin/PostEditor.vue'),
+        },
+        {
           path: 'settings',
           name: 'admin-settings',
           component: () => import('@/pages/admin/Settings.vue'),

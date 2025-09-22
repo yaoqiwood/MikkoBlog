@@ -3,7 +3,6 @@
     <div class="page-header">
       <h1 class="page-title">用户管理</h1>
       <div class="page-actions">
-        <Button type="primary" icon="ios-refresh" @click="fetchUsers">刷新</Button>
         <Button type="success" icon="ios-person-add" @click="showAddUser = true">添加用户</Button>
       </div>
     </div>
@@ -51,8 +50,8 @@
                 clearable
                 style="width: 120px"
               >
-                <Option :value="true">是</Option>
-                <Option :value="false">否</Option>
+                <Option value="true">是</Option>
+                <Option value="false">否</Option>
               </Select>
             </FormItem>
 
@@ -63,46 +62,54 @@
                 clearable
                 style="width: 120px"
               >
-                <Option :value="true">活跃</Option>
-                <Option :value="false">禁用</Option>
+                <Option value="true">活跃</Option>
+                <Option value="false">禁用</Option>
               </Select>
             </FormItem>
 
-            <FormItem label="创建时间">
-              <div class="date-range-container">
-                <div class="date-range">
-                  <DatePicker
-                    v-model="searchForm.start_date"
-                    type="date"
-                    placeholder="开始时间"
-                    clearable
-                    style="width: 140px"
-                    @on-change="validateDateRange"
-                  />
-                  <span class="date-separator">至</span>
-                  <DatePicker
-                    v-model="searchForm.end_date"
-                    type="date"
-                    placeholder="结束时间"
-                    clearable
-                    style="width: 140px"
-                    @on-change="validateDateRange"
-                  />
-                </div>
+            <div class="date-range-field">
+              <div class="field-label">创建时间</div>
+              <div class="date-range">
+                <DatePicker
+                  v-model="searchForm.start_date"
+                  type="date"
+                  placeholder="开始时间"
+                  clearable
+                  style="width: 140px"
+                  @on-change="validateDateRange"
+                />
+                <span class="date-separator">至</span>
+                <DatePicker
+                  v-model="searchForm.end_date"
+                  type="date"
+                  placeholder="结束时间"
+                  clearable
+                  style="width: 140px"
+                  @on-change="validateDateRange"
+                />
               </div>
-            </FormItem>
+            </div>
           </Form>
 
           <div class="search-actions">
-            <Button type="primary" icon="ios-search" @click="handleSearch"> 搜索 </Button>
-            <Button icon="ios-refresh" @click="handleReset" style="margin-left: 8px"> 重置 </Button>
+            <Button type="primary" icon="ios-search" :loading="searching" @click="handleSearch">
+              搜索
+            </Button>
+            <Button
+              icon="ios-refresh"
+              :loading="searching"
+              @click="handleReset"
+              style="margin-left: 8px"
+            >
+              重置
+            </Button>
           </div>
         </div>
       </div>
 
       <div ref="tableContainer" class="table-container">
         <Table
-          v-if="isTableReady || filteredUsers.length > 0"
+          v-if="isTableReady && filteredUsers.length > 0"
           :columns="columns"
           :data="filteredUsers"
           stripe
@@ -111,6 +118,10 @@
           :height="tableHeight"
           :max-height="tableMaxHeight"
         />
+        <div v-else-if="isTableReady && filteredUsers.length === 0" class="no-data-placeholder">
+          <Icon type="ios-information-circle" size="48" color="#c5c8ce" />
+          <p>暂无数据</p>
+        </div>
         <div v-else class="table-placeholder">
           <Spin size="large" />
           <p>正在加载用户数据...</p>
@@ -187,6 +198,7 @@
 <script setup>
 import { userApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
+import { startLoading, stopLoading } from '@/utils/loadingManager';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
 import { Message, Tag } from 'view-ui-plus';
 import { nextTick, onMounted, ref } from 'vue';
@@ -199,14 +211,15 @@ const users = ref([]);
 const filteredUsers = ref([]);
 const adding = ref(false);
 const updating = ref(false);
+const searching = ref(false);
 const error = ref('');
 
 // 搜索表单
 const searchForm = ref({
   email: '',
   full_name: '',
-  is_admin: null,
-  is_active: null,
+  is_admin: '',
+  is_active: '',
   start_date: null,
   end_date: null,
 });
@@ -281,7 +294,7 @@ const columns = ref([
   {
     title: '创建时间',
     key: 'created_at',
-    minWidth: 150,
+    minWidth: 180,
     render: (h, params) => {
       return h('span', {}, formatDate(params.row.created_at));
     },
@@ -432,8 +445,16 @@ async function fetchUsers() {
 async function addUser() {
   try {
     adding.value = true;
-    // 这里应该调用API添加用户
-    // await userApi.createUser(newUser.value);
+    // 调用API创建用户
+    const userData = {
+      email: newUser.value.email,
+      full_name: newUser.value.full_name,
+      password: newUser.value.password,
+    };
+
+    console.log('创建用户数据:', userData);
+    const result = await userApi.createUser(userData);
+    console.log('用户创建成功:', result);
 
     Message.success('用户添加成功');
     showAddUser.value = false;
@@ -457,8 +478,19 @@ function editUser(user) {
 async function updateUser() {
   try {
     updating.value = true;
-    // 这里应该调用API更新用户
-    // await userApi.updateUser(editingUser.value.id, editingUser.value);
+    // 调用API更新用户
+    const userData = {
+      email: editingUser.value.email,
+      full_name: editingUser.value.full_name,
+      is_admin: editingUser.value.is_admin,
+      is_active: editingUser.value.is_active,
+    };
+
+    console.log('更新用户数据:', userData);
+    console.log('用户ID:', editingUser.value.id);
+
+    const result = await userApi.updateUser(editingUser.value.id, userData);
+    console.log('用户更新成功:', result);
 
     Message.success('用户更新成功');
     showEditUser.value = false;
@@ -518,13 +550,15 @@ function applySearchFilter() {
   }
 
   // 管理员状态过滤
-  if (searchForm.value.is_admin !== null) {
-    filtered = filtered.filter(user => user.is_admin === searchForm.value.is_admin);
+  if (searchForm.value.is_admin !== null && searchForm.value.is_admin !== '') {
+    const isAdminValue = searchForm.value.is_admin === 'true';
+    filtered = filtered.filter(user => user.is_admin === isAdminValue);
   }
 
   // 用户状态过滤
-  if (searchForm.value.is_active !== null) {
-    filtered = filtered.filter(user => user.is_active === searchForm.value.is_active);
+  if (searchForm.value.is_active !== null && searchForm.value.is_active !== '') {
+    const isActiveValue = searchForm.value.is_active === 'true';
+    filtered = filtered.filter(user => user.is_active === isActiveValue);
   }
 
   // 创建时间范围过滤
@@ -557,25 +591,53 @@ function applySearchFilter() {
 }
 
 // 处理搜索
-function handleSearch() {
-  console.log('执行搜索，搜索条件:', searchForm.value);
-  applySearchFilter();
-  Message.info(`搜索完成，找到 ${filteredUsers.value.length} 个用户`);
+async function handleSearch() {
+  try {
+    searching.value = true;
+    startLoading(); // 启动全局loading
+    console.log('执行搜索，搜索条件:', searchForm.value);
+
+    // 模拟搜索延迟，让用户看到loading效果
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    applySearchFilter();
+    Message.info(`搜索完成，找到 ${filteredUsers.value.length} 个用户`);
+  } catch (error) {
+    console.error('搜索失败:', error);
+    Message.error('搜索失败，请稍后重试');
+  } finally {
+    searching.value = false;
+    stopLoading(); // 停止全局loading
+  }
 }
 
 // 重置搜索条件
-function handleReset() {
-  searchForm.value = {
-    email: '',
-    full_name: '',
-    is_admin: null,
-    is_active: null,
-    start_date: null,
-    end_date: null,
-  };
-  currentPage.value = 1;
-  applySearchFilter();
-  Message.info('搜索条件已重置');
+async function handleReset() {
+  try {
+    searching.value = true;
+    startLoading(); // 启动全局loading
+
+    // 模拟重置延迟
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    searchForm.value = {
+      email: '',
+      full_name: '',
+      is_admin: '',
+      is_active: '',
+      start_date: null,
+      end_date: null,
+    };
+    currentPage.value = 1;
+    applySearchFilter();
+    Message.info('搜索条件已重置');
+  } catch (error) {
+    console.error('重置失败:', error);
+    Message.error('重置失败，请稍后重试');
+  } finally {
+    searching.value = false;
+    stopLoading(); // 停止全局loading
+  }
 }
 
 // 验证日期范围
@@ -693,6 +755,30 @@ onMounted(() => {
   font-weight: 500;
   color: #515a6e;
   margin-bottom: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  height: 22px;
+  display: flex;
+  align-items: center;
+}
+
+.date-range-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 0;
+}
+
+.field-label {
+  font-weight: 500;
+  color: #515a6e;
+  margin-bottom: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  padding-bottom: 10px;
 }
 
 .date-range-container {
@@ -737,6 +823,7 @@ onMounted(() => {
   width: 100%;
   min-height: 400px;
   overflow: hidden;
+  max-width: 100%;
 }
 
 .table-placeholder {
@@ -746,6 +833,9 @@ onMounted(() => {
   justify-content: center;
   height: 400px;
   color: #999;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 .table-placeholder p {
@@ -753,15 +843,35 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.ivu-table-wrapper {
-  overflow-x: auto;
-  overflow-y: hidden;
+.no-data-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: #999;
+  overflow: hidden;
   width: 100%;
+  max-width: 100%;
+}
+
+.no-data-placeholder p {
+  margin-top: 16px;
+  font-size: 16px;
+  color: #c5c8ce;
+}
+
+.ivu-table-wrapper {
+  overflow-x: hidden !important;
+  overflow-y: hidden;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .ivu-table {
   width: 100% !important;
-  min-width: 100%;
+  min-width: 100% !important;
+  max-width: 100% !important;
   table-layout: fixed;
 }
 
@@ -774,23 +884,26 @@ onMounted(() => {
   padding: 8px 12px;
 }
 
-/* 强制隐藏可能的滚动条闪烁 */
+/* 强制隐藏所有滚动条 */
 .ivu-table-wrapper::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  display: none !important;
 }
 
-.ivu-table-wrapper::-webkit-scrollbar-track {
-  background: #f1f1f1;
+.ivu-table-wrapper {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
-.ivu-table-wrapper::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+/* 确保表格不会超出容器宽度 */
+.ivu-table-wrapper .ivu-table {
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
-.ivu-table-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+/* 确保表格容器不会产生滚动 */
+.table-container .ivu-table-wrapper {
+  overflow: hidden !important;
+  max-width: 100% !important;
 }
 
 /* 响应式设计 */
@@ -829,6 +942,10 @@ onMounted(() => {
   .search-form .ivu-select,
   .search-form .ivu-date-picker {
     width: 100% !important;
+  }
+
+  .date-range-field {
+    align-items: stretch;
   }
 
   .date-range-container {

@@ -3,7 +3,7 @@
  * 封装具体的业务接口调用
  */
 
-import { getAuthUrl, getHealthUrl, getPostUrl, getUserUrl } from './apiConfig';
+import { getAuthUrl, getHealthUrl, getPostUrl, getUploadUrl, getUserUrl } from './apiConfig';
 import { del, get, post, postForm, put } from './httpClient';
 
 /**
@@ -161,6 +161,24 @@ export const postApi = {
 };
 
 /**
+ * 文件上传API
+ */
+export const uploadApi = {
+  /**
+   * 上传图片
+   * @param {FormData} formData - 图片文件数据
+   * @returns {Promise} 上传结果
+   */
+  async uploadImage(formData) {
+    return post(getUploadUrl('IMAGE'), formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+};
+
+/**
  * 系统相关API
  */
 export const systemApi = {
@@ -178,5 +196,6 @@ export default {
   auth: authApi,
   user: userApi,
   post: postApi,
+  upload: uploadApi,
   system: systemApi,
 };
