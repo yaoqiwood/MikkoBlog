@@ -5,6 +5,7 @@
 
 import axios from 'axios';
 import { getApiConfig } from './apiConfig';
+import { authCookie } from './cookieUtils';
 
 // 创建axios实例
 const httpClient = axios.create({
@@ -19,7 +20,7 @@ const httpClient = axios.create({
 httpClient.interceptors.request.use(
   config => {
     // 添加认证token
-    const token = localStorage.getItem('token');
+    const token = authCookie.getAuth().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -55,7 +56,7 @@ httpClient.interceptors.response.use(
 
     // 处理401未授权错误
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      authCookie.clearAuth();
       // 可以在这里触发登录页面跳转
       window.location.href = '/login';
     }

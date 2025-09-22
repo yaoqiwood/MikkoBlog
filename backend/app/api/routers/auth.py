@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.core.security import create_access_token, decode_token, verify_password
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import User, UserRead
 
 # 创建一个FastAPI路由器，前缀为/auth，标签为auth
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -43,7 +43,7 @@ def login_access_token(
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-) -> User:
+) -> UserRead:
     # 解码token，获取payload
     payload = decode_token(token, secret_key=settings.jwt_secret, algorithm=settings.jwt_algorithm)
     if payload is None:
@@ -56,13 +56,16 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
     # 根据用户id从数据库获取用户
     user = db.get(User, user_id)
+
     if not user:
         # 用户不存在，抛出401异常
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    return user
+
+    # 使用 UserRead 模型，自动排除 hashed_password 字段
+    return UserRead.from_orm(user)
 
 # 获取当前管理员用户，依赖于get_current_user
-def get_current_admin(user: User = Depends(get_current_user)) -> User:
+def get_current_admin(user: UserRead = Depends(get_current_user)) -> UserRead:
     # 如果用户不是管理员，抛出403异常
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")

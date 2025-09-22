@@ -103,6 +103,7 @@
 </template>
 
 <script setup>
+import { authCookie } from '@/utils/cookieUtils';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, ref } from 'vue';
@@ -141,9 +142,8 @@ function toggleSidebar() {
 // 退出登录
 async function logout() {
   try {
-    // 清除本地存储
-    localStorage.removeItem('token');
-    localStorage.removeItem('userInfo');
+    // 清除cookie
+    authCookie.clearAuth();
 
     Message.success('已安全退出登录');
 
@@ -157,12 +157,18 @@ async function logout() {
 
 // 检查登录状态
 function checkAuth() {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  const auth = authCookie.getAuth();
+  if (!auth.token) {
     Message.warning('请先登录');
     routerUtils.navigateTo(router, ROUTES.LOGIN);
     return false;
   }
+
+  // 更新用户信息
+  if (auth.userInfo) {
+    userInfo.value = auth.userInfo;
+  }
+
   return true;
 }
 

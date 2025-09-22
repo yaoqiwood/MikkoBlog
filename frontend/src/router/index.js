@@ -2,6 +2,7 @@ import AdminLayout from '@/pages/admin/AdminLayout.vue';
 import Dashboard from '@/pages/admin/Dashboard.vue';
 import UserManagement from '@/pages/admin/UserManagement.vue';
 import AdminUsers from '@/pages/AdminUsers.vue';
+import CookieTest from '@/pages/CookieTest.vue';
 import FullscreenTest from '@/pages/FullscreenTest.vue';
 import Home from '@/pages/Home.vue';
 import Login from '@/pages/Login.vue';
@@ -17,6 +18,7 @@ const router = createRouter({
     { path: '/', redirect: '/login' },
     { path: '/login', name: 'login', component: Login },
     { path: '/home', name: 'home', component: Home },
+    { path: '/cookie-test', name: 'cookie-test', component: CookieTest },
 
     // 后台管理嵌套路由
     {

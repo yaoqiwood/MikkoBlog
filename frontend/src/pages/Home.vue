@@ -61,6 +61,7 @@ onMounted(fetchPosts);
           >
           <router-link to="/404-demo" class="text-blue-600">404 演示</router-link>
           <router-link to="/fullscreen-test" class="text-blue-600">全屏测试</router-link>
+          <router-link to="/cookie-test" class="text-blue-600">Cookie测试</router-link>
         </div>
       </div>
 

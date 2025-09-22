@@ -42,6 +42,11 @@
               <div class="form-header">
                 <h2 class="form-title">欢迎回来</h2>
                 <p class="form-subtitle">请登录您的管理员账户</p>
+                <!-- 检查登录状态提示 -->
+                <div v-if="checkingAuth" class="auth-checking">
+                  <Icon type="ios-loading" class="loading-icon" />
+                  <span>正在检查登录状态...</span>
+                </div>
               </div>
 
               <Form :model="loginModel" :rules="loginRules" @submit.prevent="login">
@@ -120,9 +125,10 @@
 </template>
 <script setup>
 import { authApi } from '@/utils/apiService';
+import { authCookie } from '@/utils/cookieUtils';
 import { getRoutePath, routerUtils, ROUTES } from '@/utils/routeManager';
 import { Message } from 'view-ui-plus';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -134,6 +140,7 @@ const loginModel = ref({
 });
 const error = ref('');
 const loading = ref(false);
+const checkingAuth = ref(false);
 
 // 路由路径常量
 const homePath = getRoutePath(ROUTES.HOME);
@@ -157,6 +164,45 @@ function toggleLoginType() {
   loginType.value = loginType.value === 'email' ? 'username' : 'email';
 }
 
+// 检查登录状态
+function checkLoginStatus() {
+  // 检查cookie中的token
+  const token = authCookie.getAuth().token;
+
+  if (token) {
+    // 验证token是否有效
+    validateToken(token);
+  }
+}
+
+// 验证token有效性
+async function validateToken(token) {
+  checkingAuth.value = true;
+  try {
+    // 调用API验证token有效性
+    const response = await authApi.getMe();
+    if (response) {
+      Message.info('检测到已登录状态，正在跳转...');
+      // 延迟一下让用户看到提示信息
+      setTimeout(() => {
+        routerUtils.navigateTo(router, ROUTES.ADMIN_DASHBOARD);
+      }, 1000);
+    }
+  } catch (error) {
+    console.error('Token验证失败:', error);
+    // 如果token无效，清除cookie
+    authCookie.clearAuth();
+    Message.warning('登录状态已过期，请重新登录');
+  } finally {
+    checkingAuth.value = false;
+  }
+}
+
+// 页面加载时检查登录状态
+onMounted(() => {
+  checkLoginStatus();
+});
+
 async function login() {
   try {
     loading.value = true;
@@ -169,7 +215,12 @@ async function login() {
     // 使用新的API工具进行登录
     const data = await authApi.login(username, loginModel.value.password);
 
-    localStorage.setItem('token', data.access_token);
+    // 将token保存到cookie
+    authCookie.setAuth(data.access_token, {
+      email: username,
+      is_admin: true,
+    });
+
     Message.success('登录成功！');
     routerUtils.navigateTo(router, ROUTES.ADMIN_DASHBOARD);
   } catch {
@@ -320,6 +371,33 @@ async function login() {
 
 .form-subtitle {
   color: #6b7280;
+}
+
+.auth-checking {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 0.5rem;
+  color: #0369a1;
+  font-size: 0.875rem;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .form-footer {
