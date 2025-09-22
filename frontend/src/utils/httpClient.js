@@ -6,6 +6,7 @@
 import axios from 'axios';
 import { getApiConfig } from './apiConfig';
 import { authCookie } from './cookieUtils';
+import { startLoading, stopLoading } from './loadingManager';
 
 // 创建axios实例
 const httpClient = axios.create({
@@ -25,8 +26,17 @@ httpClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 添加请求时间戳
-    config.metadata = { startTime: new Date() };
+    // 添加请求时间戳和唯一ID
+    const requestId = `${config.method?.toUpperCase()}_${config.url}_${Date.now()}`;
+    config.metadata = {
+      startTime: new Date(),
+      requestId: requestId,
+    };
+
+    // 开始全局loading（除非明确禁用）
+    if (config.showLoading !== false) {
+      startLoading(requestId);
+    }
 
     console.log(`🚀 [${config.method?.toUpperCase()}] ${config.url}`, config.data || config.params);
     return config;
@@ -41,6 +51,12 @@ httpClient.interceptors.request.use(
 httpClient.interceptors.response.use(
   response => {
     const duration = new Date() - response.config.metadata.startTime;
+
+    // 结束全局loading
+    if (response.config.showLoading !== false) {
+      stopLoading(response.config.metadata.requestId);
+    }
+
     console.log(
       `✅ [${response.config.method?.toUpperCase()}] ${response.config.url} - ${duration}ms`,
       response.data
@@ -49,6 +65,12 @@ httpClient.interceptors.response.use(
   },
   error => {
     const duration = error.config?.metadata ? new Date() - error.config.metadata.startTime : 0;
+
+    // 结束全局loading（即使请求失败）
+    if (error.config?.showLoading !== false) {
+      stopLoading(error.config?.metadata?.requestId);
+    }
+
     console.error(
       `❌ [${error.config?.method?.toUpperCase()}] ${error.config?.url} - ${duration}ms`,
       error.response?.data || error.message

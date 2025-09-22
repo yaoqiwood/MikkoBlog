@@ -22,6 +22,7 @@ const API_CONFIG = {
       REFRESH: '/auth/refresh',
       LOGOUT: '/auth/logout',
       PROFILE: '/auth/profile',
+      ME: '/auth/me',
     },
 
     // 用户管理

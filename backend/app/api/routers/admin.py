@@ -13,7 +13,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def list_users(_: UserRead = Depends(get_current_admin), db: Session = Depends(get_db)) -> list[UserRead]:
     """需要管理员权限的用户列表接口"""
     users = db.exec(select(User)).all()
-    return [UserRead.from_orm(user) for user in users]
+    return [UserRead.model_validate(user) for user in users]
 
 
 @router.get("/users-public")

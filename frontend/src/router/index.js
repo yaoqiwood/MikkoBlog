@@ -1,10 +1,10 @@
 import AdminLayout from '@/pages/admin/AdminLayout.vue';
 import Dashboard from '@/pages/admin/Dashboard.vue';
 import UserManagement from '@/pages/admin/UserManagement.vue';
-import AdminUsers from '@/pages/AdminUsers.vue';
 import CookieTest from '@/pages/CookieTest.vue';
 import FullscreenTest from '@/pages/FullscreenTest.vue';
 import Home from '@/pages/Home.vue';
+import LoadingTest from '@/pages/LoadingTest.vue';
 import Login from '@/pages/Login.vue';
 import NotFound from '@/pages/NotFound.vue';
 import NotFoundDemo from '@/pages/NotFoundDemo.vue';
@@ -19,6 +19,7 @@ const router = createRouter({
     { path: '/login', name: 'login', component: Login },
     { path: '/home', name: 'home', component: Home },
     { path: '/cookie-test', name: 'cookie-test', component: CookieTest },
+    { path: '/loading-test', name: 'loading-test', component: LoadingTest },
 
     // 后台管理嵌套路由
     {
@@ -44,7 +45,6 @@ const router = createRouter({
     },
 
     // 旧的路由（保持兼容性）
-    { path: '/admin/users-old', name: 'admin-users-old', component: AdminUsers },
     { path: '/test-viewui', name: 'test-viewui', component: TestViewUI },
     { path: '/test-404', name: 'test-404', component: Test404 },
     { path: '/404-demo', name: 'not-found-demo', component: NotFoundDemo },

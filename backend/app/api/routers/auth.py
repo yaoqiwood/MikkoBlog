@@ -62,7 +62,7 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     # 使用 UserRead 模型，自动排除 hashed_password 字段
-    return UserRead.from_orm(user)
+    return UserRead.model_validate(user)
 
 # 获取当前管理员用户，依赖于get_current_user
 def get_current_admin(user: UserRead = Depends(get_current_user)) -> UserRead:
@@ -70,3 +70,10 @@ def get_current_admin(user: UserRead = Depends(get_current_user)) -> UserRead:
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return user
+
+
+# 获取当前用户信息的接口
+@router.get("/me")
+def get_me(current_user: UserRead = Depends(get_current_user)) -> UserRead:
+    """获取当前用户信息"""
+    return current_user

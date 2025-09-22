@@ -94,6 +94,36 @@
         </div>
       </div>
 
+      <!-- 标签页区域 -->
+      <div class="admin-tabs" v-if="tabs.length > 0">
+        <div class="tabs-container">
+          <div
+            v-for="tab in tabs"
+            :key="tab.path"
+            class="tab-item"
+            :class="{
+              active: activeTab === tab.path,
+              'tab-draggable': tab.path !== '/admin/dashboard',
+              'tab-dragging': draggedTab && draggedTab.path === tab.path,
+            }"
+            :draggable="tab.path !== '/admin/dashboard'"
+            @click="switchTab(tab.path)"
+            @dragstart="handleDragStart($event, tab)"
+            @dragover="handleDragOver"
+            @drop="handleDrop($event, tab)"
+            @dragend="handleDragEnd"
+          >
+            <span class="tab-title">{{ tab.title }}</span>
+            <Icon
+              v-if="tab.closable"
+              type="ios-close"
+              class="tab-close"
+              @click.stop="removeTab(tab.path)"
+            />
+          </div>
+        </div>
+      </div>
+
       <!-- 页面内容 -->
       <div class="admin-content">
         <router-view />
@@ -106,7 +136,7 @@
 import { authCookie } from '@/utils/cookieUtils';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
 import { Message } from 'view-ui-plus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -118,6 +148,11 @@ const userInfo = ref({
   email: 'admin@example.com',
   is_admin: true,
 });
+
+// 标签页相关
+const tabs = ref([]);
+const activeTab = ref('');
+const draggedTab = ref(null);
 
 // 页面标题映射
 const pageTitles = {
@@ -133,6 +168,140 @@ const pageTitles = {
 const currentPageTitle = computed(() => {
   return pageTitles[route.path] || '后台管理';
 });
+
+// 标签页管理函数
+function addTab(path) {
+  const title = pageTitles[path] || '未知页面';
+  const existingTab = tabs.value.find(tab => tab.path === path);
+
+  if (!existingTab) {
+    tabs.value.push({
+      path,
+      title,
+      closable: path !== '/admin/dashboard', // dashboard不可关闭
+    });
+    saveTabsToStorage();
+  }
+
+  activeTab.value = path;
+}
+
+// 保存标签到localStorage
+function saveTabsToStorage() {
+  localStorage.setItem('admin-tabs', JSON.stringify(tabs.value));
+  localStorage.setItem('admin-active-tab', activeTab.value);
+}
+
+// 从localStorage加载标签
+function loadTabsFromStorage() {
+  try {
+    const savedTabs = localStorage.getItem('admin-tabs');
+    const savedActiveTab = localStorage.getItem('admin-active-tab');
+
+    if (savedTabs) {
+      const parsedTabs = JSON.parse(savedTabs);
+      // 确保dashboard标签存在且在最前面
+      const dashboardTab = parsedTabs.find(tab => tab.path === '/admin/dashboard');
+      if (!dashboardTab) {
+        parsedTabs.unshift({
+          path: '/admin/dashboard',
+          title: '仪表盘',
+          closable: false,
+        });
+      } else {
+        // 确保dashboard在最前面
+        const otherTabs = parsedTabs.filter(tab => tab.path !== '/admin/dashboard');
+        tabs.value = [dashboardTab, ...otherTabs];
+        return;
+      }
+      tabs.value = parsedTabs;
+    }
+
+    if (savedActiveTab) {
+      activeTab.value = savedActiveTab;
+    }
+  } catch (error) {
+    console.error('加载标签失败:', error);
+    // 如果加载失败，至少确保dashboard标签存在
+    tabs.value = [
+      {
+        path: '/admin/dashboard',
+        title: '仪表盘',
+        closable: false,
+      },
+    ];
+  }
+}
+
+// 拖拽相关函数
+function handleDragStart(event, tab) {
+  if (tab.path === '/admin/dashboard') return; // dashboard不可拖拽
+  draggedTab.value = tab;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/html', event.target.outerHTML);
+}
+
+function handleDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+
+function handleDrop(event, targetTab) {
+  event.preventDefault();
+
+  if (
+    !draggedTab.value ||
+    draggedTab.value.path === '/admin/dashboard' ||
+    targetTab.path === '/admin/dashboard'
+  ) {
+    return;
+  }
+
+  const draggedIndex = tabs.value.findIndex(tab => tab.path === draggedTab.value.path);
+  const targetIndex = tabs.value.findIndex(tab => tab.path === targetTab.path);
+
+  if (draggedIndex !== targetIndex) {
+    // 移动标签
+    const draggedTabData = tabs.value[draggedIndex];
+    tabs.value.splice(draggedIndex, 1);
+    tabs.value.splice(targetIndex, 0, draggedTabData);
+    saveTabsToStorage();
+  }
+
+  draggedTab.value = null;
+}
+
+function handleDragEnd() {
+  draggedTab.value = null;
+}
+
+function removeTab(path) {
+  if (path === '/admin/dashboard') return; // dashboard不可关闭
+
+  const index = tabs.value.findIndex(tab => tab.path === path);
+  if (index > -1) {
+    tabs.value.splice(index, 1);
+    saveTabsToStorage();
+
+    // 如果关闭的是当前活跃标签，切换到其他标签
+    if (activeTab.value === path) {
+      if (tabs.value.length > 0) {
+        const newActiveTab = tabs.value[tabs.value.length - 1];
+        activeTab.value = newActiveTab.path;
+        router.push(newActiveTab.path);
+      } else {
+        // 如果没有标签了，跳转到dashboard
+        router.push('/admin/dashboard');
+      }
+    }
+  }
+}
+
+function switchTab(path) {
+  activeTab.value = path;
+  saveTabsToStorage();
+  router.push(path);
+}
 
 // 切换侧边栏
 function toggleSidebar() {
@@ -172,15 +341,37 @@ function checkAuth() {
   return true;
 }
 
+// 初始化标志
+const isInitialized = ref(false);
+
+// 监听路由变化
+watch(
+  () => route.path,
+  newPath => {
+    if (newPath.startsWith('/admin') && isInitialized.value) {
+      addTab(newPath);
+    }
+  }
+);
+
 onMounted(() => {
   // 检查登录状态
   if (!checkAuth()) {
     return;
   }
 
+  // 加载保存的标签
+  loadTabsFromStorage();
+
+  // 标记为已初始化
+  isInitialized.value = true;
+
   // 如果直接访问 /admin，重定向到仪表盘
   if (route.path === '/admin') {
     router.replace('/admin/dashboard');
+  } else {
+    // 添加当前页面标签
+    addTab(route.path);
   }
 });
 </script>
@@ -328,6 +519,95 @@ onMounted(() => {
   padding: 0 1rem;
 }
 
+/* 标签页样式 */
+.admin-tabs {
+  background: white;
+  border-bottom: 1px solid #e8eaec;
+  padding: 0 1.5rem;
+}
+
+.tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f7fafc;
+  border: 1px solid #e8eaec;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 80px;
+  max-width: 200px;
+  max-height: 35px;
+}
+
+.tab-item:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.tab-item.active {
+  background: white;
+  border-color: #667eea;
+  border-bottom-color: white;
+  color: #667eea;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+
+.tab-draggable {
+  cursor: move;
+}
+
+.tab-draggable:hover {
+  cursor: move;
+}
+
+/*
+  拖拽歪斜的效果就是在拖拽标签时，标签会有一个轻微的旋转和透明度变化。
+  具体实现代码如下，就是 .tab-dragging 这个 class 的样式。
+  这个 class 会在拖拽中的标签上动态添加。
+*/
+.tab-dragging {
+  opacity: 0.5;
+  transform: rotate(5deg); /* 拖拽时标签歪斜5度 */
+}
+
+.tab-title {
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  font-size: 0.75rem;
+  color: #a0aec0;
+  cursor: pointer;
+  padding: 0.125rem;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.tab-close:hover {
+  color: #e53e3e;
+  background: #fed7d7;
+}
+
 /* 页面内容 */
 .admin-content {
   flex: 1;
@@ -366,6 +646,21 @@ onMounted(() => {
 
   .admin-content {
     padding: 1rem;
+  }
+
+  .admin-tabs {
+    padding: 0 10px;
+  }
+
+  .tab-item {
+    min-width: 60px;
+    max-width: 120px;
+    padding: 0.375rem 0.75rem;
+    max-height: 35px;
+  }
+
+  .tab-title {
+    font-size: 0.8rem;
   }
 
   .header-right {

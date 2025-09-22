@@ -3,8 +3,8 @@
  * 封装具体的业务接口调用
  */
 
-import { get, post, postForm, put, del } from './httpClient';
-import { getAuthUrl, getUserUrl, getPostUrl, getHealthUrl } from './apiConfig';
+import { getAuthUrl, getHealthUrl, getPostUrl, getUserUrl } from './apiConfig';
+import { del, get, post, postForm, put } from './httpClient';
 
 /**
  * 认证相关API
@@ -47,6 +47,14 @@ export const authApi = {
    */
   async getProfile() {
     return get(getAuthUrl('PROFILE'));
+  },
+
+  /**
+   * 获取当前用户信息（用于验证token有效性）
+   * @returns {Promise} 当前用户信息
+   */
+  async getMe() {
+    return get(getAuthUrl('ME'));
   },
 };
 
