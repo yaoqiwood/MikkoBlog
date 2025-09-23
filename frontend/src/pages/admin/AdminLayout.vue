@@ -47,6 +47,15 @@
               <span v-show="!sidebarCollapsed">文章管理</span>
             </router-link>
             <router-link
+              to="/admin/comments"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/comments' }"
+              :title="sidebarCollapsed ? '评论管理' : ''"
+            >
+              <Icon type="ios-chatbubbles" />
+              <span v-show="!sidebarCollapsed">评论管理</span>
+            </router-link>
+            <router-link
               to="/admin/settings"
               class="menu-item"
               :class="{ active: $route.path === '/admin/settings' }"
@@ -169,6 +178,7 @@ const draggedTab = ref(null);
 const pageTitles = {
   '/admin/dashboard': '仪表盘',
   '/admin/users': '用户管理',
+  '/admin/comments': '评论管理',
   '/admin/posts': '文章管理',
   '/admin/settings': '系统设置',
   '/admin/test-viewui': '组件测试',

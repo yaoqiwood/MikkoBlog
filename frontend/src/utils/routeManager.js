@@ -13,6 +13,7 @@ const ROUTE_CONFIG = {
   ADMIN: {
     DASHBOARD: '/admin/dashboard',
     USERS: '/admin/users',
+    COMMENTS: '/admin/comments',
     POSTS: '/admin/posts',
     POSTS_NEW: '/admin/posts/new',
     POSTS_EDIT: '/admin/posts/edit',
@@ -176,6 +177,7 @@ export const ROUTES = {
   LOGIN: 'LOGIN',
   ADMIN_DASHBOARD: 'ADMIN.DASHBOARD',
   ADMIN_USERS: 'ADMIN.USERS',
+  ADMIN_COMMENTS: 'ADMIN.COMMENTS',
   ADMIN_POSTS: 'ADMIN.POSTS',
   ADMIN_POSTS_NEW: 'ADMIN.POSTS_NEW',
   ADMIN_POSTS_EDIT: 'ADMIN.POSTS_EDIT',

@@ -9,6 +9,7 @@ from app.api.routers.posts import router as posts_router
 from app.api.routers.auth import router as auth_router
 from app.api.routers.admin import router as admin_router
 from app.api.routers.upload import router as upload_router
+from app.api.routers.comments import router as comments_router
 
 
 def create_app() -> FastAPI:
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api")
     app.include_router(admin_router, prefix="/api")
     app.include_router(upload_router, prefix="/api")
+    app.include_router(comments_router, prefix="/api")
 
     # 静态文件服务
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

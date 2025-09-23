@@ -3,7 +3,14 @@
  * 封装具体的业务接口调用
  */
 
-import { getAuthUrl, getHealthUrl, getPostUrl, getUploadUrl, getUserUrl } from './apiConfig';
+import {
+  getAuthUrl,
+  getCommentUrl,
+  getHealthUrl,
+  getPostUrl,
+  getUploadUrl,
+  getUserUrl,
+} from './apiConfig';
 import { del, get, patch, post, postForm, put } from './httpClient';
 
 /**
@@ -188,6 +195,85 @@ export const uploadApi = {
 };
 
 /**
+ * 评论管理API
+ */
+export const commentApi = {
+  /**
+   * 获取评论列表
+   * @param {object} params - 查询参数
+   * @returns {Promise} 评论列表
+   */
+  async getComments(params = {}) {
+    return get(getCommentUrl('LIST'), params);
+  },
+
+  /**
+   * 获取评论详情
+   * @param {string|number} id - 评论ID
+   * @returns {Promise} 评论详情
+   */
+  async getCommentById(id) {
+    return get(getCommentUrl('DETAIL', id));
+  },
+
+  /**
+   * 创建评论
+   * @param {object} commentData - 评论数据
+   * @returns {Promise} 创建结果
+   */
+  async createComment(commentData) {
+    return post(getCommentUrl('CREATE'), commentData);
+  },
+
+  /**
+   * 更新评论
+   * @param {string|number} id - 评论ID
+   * @param {object} commentData - 评论数据
+   * @returns {Promise} 更新结果
+   */
+  async updateComment(id, commentData) {
+    return put(getCommentUrl('UPDATE', id), commentData);
+  },
+
+  /**
+   * 删除评论（软删除）
+   * @param {string|number} id - 评论ID
+   * @returns {Promise} 删除结果
+   */
+  async deleteComment(id) {
+    return del(getCommentUrl('DELETE', id));
+  },
+
+  /**
+   * 切换评论审核状态
+   * @param {string|number} id - 评论ID
+   * @returns {Promise} 切换结果
+   */
+  async toggleApproval(id) {
+    return patch(getCommentUrl('TOGGLE_APPROVAL', id));
+  },
+
+  /**
+   * 切换评论可见性
+   * @param {string|number} id - 评论ID
+   * @returns {Promise} 切换结果
+   */
+  async toggleVisibility(id) {
+    return patch(getCommentUrl('TOGGLE_VISIBILITY', id));
+  },
+
+  /**
+   * 获取指定文章的评论列表
+   * @param {string|number} postId - 文章ID
+   * @param {object} params - 查询参数
+   * @returns {Promise} 文章评论列表
+   */
+  async getPostComments(postId, params = {}) {
+    return get(getCommentUrl('POST_COMMENTS', postId), params);
+  },
+};
+
+/**
  * 系统相关API
  */
 export const systemApi = {
@@ -205,6 +291,7 @@ export default {
   auth: authApi,
   user: userApi,
   post: postApi,
+  comment: commentApi,
   upload: uploadApi,
   system: systemApi,
 };

@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
 
 
 class PostBase(SQLModel):
@@ -15,9 +15,14 @@ class PostBase(SQLModel):
 
 
 class Post(PostBase, table=True):
+    __tablename__ = "post"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    # 关联关系
+    comments: List["Comment"] = Relationship(back_populates="post")
 
 
 class PostCreate(PostBase):

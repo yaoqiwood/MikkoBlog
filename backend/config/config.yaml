@@ -4,7 +4,7 @@ server:
 
 database:
   # Connect to local MySQL instance from Docker container
-  url: mysql+pymysql://mikko:StrongPass123!@host.docker.internal:3306/mikkoBlog
+  url: mysql+pymysql://mikko:StrongPass123!@localhost:3306/mikkoBlog
 
 cors:
   allow_origins:

@@ -44,6 +44,18 @@ const API_CONFIG = {
       TOGGLE_VISIBILITY: '/posts/',
     },
 
+    // 评论管理
+    COMMENTS: {
+      LIST: '/comments/',
+      CREATE: '/comments/',
+      UPDATE: '/comments/',
+      DELETE: '/comments/',
+      DETAIL: '/comments/',
+      TOGGLE_APPROVAL: '/comments/',
+      TOGGLE_VISIBILITY: '/comments/',
+      POST_COMMENTS: '/comments/post/',
+    },
+
     // 文件上传
     UPLOAD: {
       IMAGE: '/upload/image',
@@ -137,6 +149,29 @@ export function getUploadUrl(action) {
     throw new Error(`Invalid upload action: ${action}`);
   }
   return getApiUrl(endpoint);
+}
+
+/**
+ * 获取评论管理相关的URL
+ * @param {string} action - 评论操作类型
+ * @param {string|number} id - 评论ID（可选）
+ * @returns {string} 评论接口URL
+ */
+export function getCommentUrl(action, id = null) {
+  const endpoint = API_CONFIG.ENDPOINTS.COMMENTS[action.toUpperCase()];
+  if (!endpoint) {
+    throw new Error(`Invalid comment action: ${action}`);
+  }
+
+  let url = getApiUrl(endpoint);
+  if (id && ['UPDATE', 'DELETE', 'DETAIL'].includes(action.toUpperCase())) {
+    url += `${id}`;
+  } else if (id && ['TOGGLE_APPROVAL', 'TOGGLE_VISIBILITY'].includes(action.toUpperCase())) {
+    url += `${id}/${action.toLowerCase().replace('toggle_', 'toggle-')}`;
+  } else if (id && action.toUpperCase() === 'POST_COMMENTS') {
+    url += `${id}`;
+  }
+  return url;
 }
 
 /**

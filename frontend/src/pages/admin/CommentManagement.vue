@@ -1,9 +1,9 @@
 <template>
-  <div class="user-management">
+  <div class="comment-management">
     <div class="page-header">
-      <h1 class="page-title">用户管理</h1>
+      <h1 class="page-title">评论管理</h1>
       <div class="page-actions">
-        <Button type="success" icon="ios-person-add" @click="showAddUser = true">添加用户</Button>
+        <Button type="primary" icon="ios-refresh" @click="fetchComments">刷新</Button>
       </div>
     </div>
 
@@ -12,12 +12,12 @@
       {{ error }}
     </Alert>
 
-    <!-- 用户列表 -->
+    <!-- 评论列表 -->
     <Card>
       <template #title>
         <div class="card-title">
-          <Icon type="ios-people" />
-          用户列表
+          <Icon type="ios-chatbubbles" />
+          评论列表
         </div>
       </template>
 
@@ -25,45 +25,45 @@
       <div class="search-section">
         <div class="search-form-container">
           <Form :model="searchForm" inline class="search-form">
+            <FormItem label="评论者">
+              <Input
+                v-model="searchForm.author_name"
+                placeholder="请输入评论者姓名"
+                clearable
+                style="width: 150px"
+              />
+            </FormItem>
+
             <FormItem label="邮箱">
               <Input
-                v-model="searchForm.email"
+                v-model="searchForm.author_email"
                 placeholder="请输入邮箱地址"
                 clearable
                 style="width: 200px"
               />
             </FormItem>
 
-            <FormItem label="姓名">
-              <Input
-                v-model="searchForm.full_name"
-                placeholder="请输入姓名"
-                clearable
-                style="width: 150px"
-              />
-            </FormItem>
-
-            <FormItem label="管理员">
+            <FormItem label="审核状态">
               <Select
-                v-model="searchForm.is_admin"
-                placeholder="选择管理员状态"
+                v-model="searchForm.is_approved"
+                placeholder="选择审核状态"
                 clearable
                 style="width: 120px"
               >
-                <Option value="true">是</Option>
-                <Option value="false">否</Option>
+                <Option value="true">已审核</Option>
+                <Option value="false">待审核</Option>
               </Select>
             </FormItem>
 
-            <FormItem label="状态">
+            <FormItem label="可见性">
               <Select
-                v-model="searchForm.is_active"
-                placeholder="选择用户状态"
+                v-model="searchForm.is_visible"
+                placeholder="选择可见性"
                 clearable
                 style="width: 120px"
               >
-                <Option value="true">活跃</Option>
-                <Option value="false">禁用</Option>
+                <Option value="true">可见</Option>
+                <Option value="false">隐藏</Option>
               </Select>
             </FormItem>
 
@@ -109,22 +109,22 @@
 
       <div ref="tableContainer" class="table-container">
         <Table
-          v-if="isTableReady && filteredUsers.length > 0"
+          v-if="isTableReady && filteredComments.length > 0"
           :columns="columns"
-          :data="filteredUsers"
+          :data="filteredComments"
           stripe
           border
           :width="tableWidth"
           :height="tableHeight"
           :max-height="tableMaxHeight"
         />
-        <div v-else-if="isTableReady && filteredUsers.length === 0" class="no-data-placeholder">
+        <div v-else-if="isTableReady && filteredComments.length === 0" class="no-data-placeholder">
           <Icon type="ios-information-circle" size="48" color="#c5c8ce" />
           <p>暂无数据</p>
         </div>
         <div v-else class="table-placeholder">
           <Spin size="large" />
-          <p>正在加载用户数据...</p>
+          <p>正在加载评论数据...</p>
         </div>
       </div>
 
@@ -144,82 +144,83 @@
       </div>
     </Card>
 
-    <!-- 添加用户模态框 -->
-    <Modal v-model="showAddUser" title="添加用户" :mask-closable="false">
-      <Form ref="addUserForm" :model="newUser" :rules="userRules" label-position="top">
-        <FormItem label="邮箱地址" prop="email">
-          <Input v-model="newUser.email" placeholder="请输入邮箱地址" />
+    <!-- 编辑评论模态框 -->
+    <Modal v-model="showEditComment" title="编辑评论" :mask-closable="false" width="800">
+      <Form
+        ref="editCommentForm"
+        :model="editingComment"
+        :rules="commentRules"
+        label-position="top"
+      >
+        <FormItem label="评论者姓名" prop="author_name">
+          <Input v-model="editingComment.author_name" placeholder="请输入评论者姓名" />
         </FormItem>
-        <FormItem label="姓名" prop="full_name">
-          <Input v-model="newUser.full_name" placeholder="请输入姓名" />
+        <FormItem label="评论者邮箱" prop="author_email">
+          <Input v-model="editingComment.author_email" placeholder="请输入评论者邮箱" />
         </FormItem>
-        <FormItem label="密码" prop="password">
-          <Input v-model="newUser.password" type="password" placeholder="请输入密码" />
+        <FormItem label="评论者网站">
+          <Input v-model="editingComment.author_website" placeholder="请输入评论者网站" />
         </FormItem>
-        <FormItem label="管理员权限">
-          <Switch v-model="newUser.is_admin" />
+        <FormItem label="评论内容" prop="content">
+          <Input
+            v-model="editingComment.content"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入评论内容"
+          />
         </FormItem>
-        <FormItem label="激活状态">
-          <Switch v-model="newUser.is_active" />
+        <FormItem label="IP地址">
+          <Input v-model="editingComment.ip_address" placeholder="IP地址" readonly />
         </FormItem>
+        <FormItem label="地域信息">
+          <Input v-model="editingComment.location" placeholder="地域信息" readonly />
+        </FormItem>
+        <Row :gutter="20">
+          <Col span="8">
+            <FormItem label="审核状态">
+              <Switch v-model="editingComment.is_approved" />
+            </FormItem>
+          </Col>
+          <Col span="8">
+            <FormItem label="可见性">
+              <Switch v-model="editingComment.is_visible" />
+            </FormItem>
+          </Col>
+        </Row>
       </Form>
 
       <template #footer>
-        <Button @click="showAddUser = false">取消</Button>
-        <Button type="primary" @click="addUser" :loading="adding">确定</Button>
-      </template>
-    </Modal>
-
-    <!-- 编辑用户模态框 -->
-    <Modal v-model="showEditUser" title="编辑用户" :mask-closable="false">
-      <Form ref="editUserForm" :model="editingUser" :rules="editUserRules" label-position="top">
-        <FormItem label="邮箱地址" prop="email">
-          <Input v-model="editingUser.email" placeholder="请输入邮箱地址" />
-        </FormItem>
-        <FormItem label="姓名" prop="full_name">
-          <Input v-model="editingUser.full_name" placeholder="请输入姓名" />
-        </FormItem>
-        <FormItem label="管理员权限">
-          <Switch v-model="editingUser.is_admin" />
-        </FormItem>
-        <FormItem label="激活状态">
-          <Switch v-model="editingUser.is_active" />
-        </FormItem>
-      </Form>
-
-      <template #footer>
-        <Button @click="showEditUser = false">取消</Button>
-        <Button type="primary" @click="updateUser" :loading="updating">确定</Button>
+        <Button @click="showEditComment = false">取消</Button>
+        <Button type="primary" @click="updateComment" :loading="updating">确定</Button>
       </template>
     </Modal>
   </div>
 </template>
 
 <script setup>
-import { userApi } from '@/utils/apiService';
+import { commentApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { startLoading, stopLoading } from '@/utils/loadingManager';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
-import { Message, Tag } from 'view-ui-plus';
+import { Message, Modal, Tag } from 'view-ui-plus';
 import { nextTick, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
 // 数据状态
-const users = ref([]);
-const filteredUsers = ref([]);
-const adding = ref(false);
+const comments = ref([]);
+const filteredComments = ref([]);
 const updating = ref(false);
 const searching = ref(false);
 const error = ref('');
 
 // 搜索表单
 const searchForm = ref({
-  email: '',
-  full_name: '',
-  is_admin: '',
-  is_active: '',
+  author_name: '',
+  author_email: '',
+  is_approved: '',
+  is_visible: '',
   start_date: null,
   end_date: null,
 });
@@ -249,46 +250,83 @@ const columns = ref([
     },
   },
   {
+    title: '评论者',
+    key: 'author_name',
+    minWidth: 120,
+  },
+  {
     title: '邮箱',
-    key: 'email',
+    key: 'author_email',
+    minWidth: 180,
+    render: (h, params) => {
+      return h('span', {}, params.row.author_email || '-');
+    },
+  },
+  {
+    title: '评论内容',
+    key: 'content',
     minWidth: 200,
+    render: (h, params) => {
+      const content = params.row.content;
+      const truncatedContent = content.length > 50 ? content.substring(0, 50) + '...' : content;
+      return h(
+        'div',
+        {
+          style:
+            'max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
+          title: content,
+        },
+        truncatedContent
+      );
+    },
   },
   {
-    title: '姓名',
-    key: 'full_name',
-    minWidth: 150,
+    title: 'IP地址',
+    key: 'ip_address',
+    width: 120,
+    render: (h, params) => {
+      return h('span', {}, params.row.ip_address || '-');
+    },
   },
   {
-    title: '管理员',
-    key: 'is_admin',
+    title: '地域',
+    key: 'location',
+    width: 100,
+    render: (h, params) => {
+      return h('span', {}, params.row.location || '-');
+    },
+  },
+  {
+    title: '审核状态',
+    key: 'is_approved',
     width: 100,
     render: (h, params) => {
       return h(
         Tag,
         {
-          color: params.row.is_admin ? 'success' : 'default',
+          color: params.row.is_approved ? 'success' : 'warning',
         },
         {
           default() {
-            return params.row.is_admin ? '是' : '否';
+            return params.row.is_approved ? '已审核' : '待审核';
           },
         }
       );
     },
   },
   {
-    title: '状态',
-    key: 'is_active',
+    title: '可见性',
+    key: 'is_visible',
     width: 100,
     render: (h, params) => {
       return h(
         Tag,
         {
-          color: params.row.is_active ? 'success' : 'error',
+          color: params.row.is_visible ? 'success' : 'default',
         },
         {
           default() {
-            return params.row.is_active ? '活跃' : '禁用';
+            return params.row.is_visible ? '可见' : '隐藏';
           },
         }
       );
@@ -304,12 +342,12 @@ const columns = ref([
   },
   {
     title: '操作',
-    width: 150,
+    width: 200,
     render: (h, params) => {
       return h(
         'div',
         {
-          style: 'display: flex; justify-content: center; align-items: center;',
+          style: 'display: flex; justify-content: center; align-items: center; gap: 8px;',
         },
         [
           h(
@@ -319,7 +357,7 @@ const columns = ref([
               size: 'small',
               icon: 'ios-create',
               style: 'background: #fff; color: #333; border: 1px solid #d9d9d9; min-width: 54px;',
-              onClick: () => editUser(params.row),
+              onClick: () => editComment(params.row),
             },
             {
               default() {
@@ -332,10 +370,40 @@ const columns = ref([
             {
               type: 'default',
               size: 'small',
+              icon: params.row.is_approved ? 'ios-checkmark' : 'ios-close',
+              style: `background: #fff; color: ${params.row.is_approved ? '#52c41a' : '#faad14'}; border: 1px solid ${params.row.is_approved ? '#52c41a' : '#faad14'}; min-width: 54px;`,
+              onClick: () => toggleApproval(params.row),
+            },
+            {
+              default() {
+                return params.row.is_approved ? '取消审核' : '审核通过';
+              },
+            }
+          ),
+          h(
+            'Button',
+            {
+              type: 'default',
+              size: 'small',
+              icon: params.row.is_visible ? 'ios-eye' : 'ios-eye-off',
+              style: `background: #fff; color: ${params.row.is_visible ? '#1890ff' : '#999'}; border: 1px solid ${params.row.is_visible ? '#1890ff' : '#999'}; min-width: 54px;`,
+              onClick: () => toggleVisibility(params.row),
+            },
+            {
+              default() {
+                return params.row.is_visible ? '隐藏' : '显示';
+              },
+            }
+          ),
+          h(
+            'Button',
+            {
+              type: 'default',
+              size: 'small',
               icon: 'ios-trash',
               style:
-                'background: #fff; color: #e74c3c; border: 1px solid #e74c3c; margin-left: 12px; min-width: 54px;',
-              onClick: () => deleteUser(params.row),
+                'background: #fff; color: #e74c3c; border: 1px solid #e74c3c; min-width: 54px;',
+              onClick: () => deleteComment(params.row),
             },
             {
               default() {
@@ -350,93 +418,64 @@ const columns = ref([
 ]);
 
 // 模态框状态
-const showAddUser = ref(false);
-const showEditUser = ref(false);
+const showEditComment = ref(false);
 
 // 表单数据
-const newUser = ref({
-  email: '',
-  full_name: '',
-  password: '',
-  is_admin: false,
-  is_active: true,
-});
-
-const editingUser = ref({
+const editingComment = ref({
   id: null,
-  email: '',
-  full_name: '',
-  is_admin: false,
-  is_active: true,
+  author_name: '',
+  author_email: '',
+  author_website: '',
+  content: '',
+  ip_address: '',
+  location: '',
+  is_approved: false,
+  is_visible: true,
 });
 
 // 表单验证规则
-const userRules = {
-  email: [
-    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
-  ],
-  full_name: [
-    { required: true, message: '请输入姓名', trigger: 'blur' },
+const commentRules = {
+  author_name: [
+    { required: true, message: '请输入评论者姓名', trigger: 'blur' },
     { min: 2, message: '姓名长度不能少于2位', trigger: 'blur' },
   ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
+  author_email: [{ type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }],
+  content: [
+    { required: true, message: '请输入评论内容', trigger: 'blur' },
+    { min: 5, message: '评论内容长度不能少于5位', trigger: 'blur' },
   ],
 };
 
-const editUserRules = {
-  email: [
-    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
-  ],
-  full_name: [
-    { required: true, message: '请输入姓名', trigger: 'blur' },
-    { min: 2, message: '姓名长度不能少于2位', trigger: 'blur' },
-  ],
-};
-
-// 获取用户列表
-async function fetchUsers() {
+// 获取评论列表
+async function fetchComments() {
   try {
     error.value = '';
     isTableReady.value = false;
 
-    console.log('开始获取用户数据...');
+    console.log('开始获取评论数据...');
     console.log('当前认证状态:', authCookie.isAuthenticated());
     console.log('当前token:', authCookie.getAuth().token);
 
-    // 使用真实API获取用户列表（全局loading会自动显示）
-    const data = await userApi.getUsers();
-    console.log('获取到的用户数据:', data);
+    const data = await commentApi.getComments();
+    console.log('获取到的评论数据:', data);
     console.log('数据类型:', typeof data);
     console.log('数据长度:', data?.length);
 
-    // 先设置数据
-    users.value = data;
-
-    // 应用搜索过滤
+    comments.value = data;
     applySearchFilter();
 
-    // 等待DOM更新
     await nextTick();
-
-    // 标记表格准备就绪
     isTableReady.value = true;
 
-    console.log('users.value 设置后:', users.value);
-    console.log('filteredUsers.value 设置后:', filteredUsers.value);
-
-    // Message.success(`成功获取 ${data.length} 个用户`); // 注释掉测试提示
+    console.log('comments.value 设置后:', comments.value);
+    console.log('filteredComments.value 设置后:', filteredComments.value);
   } catch (err) {
-    console.error('获取用户列表失败:', err);
+    console.error('获取评论列表失败:', err);
     console.error('错误详情:', err.response?.data);
     console.error('错误状态码:', err.response?.status);
-    error.value = '获取用户列表失败，请检查权限或重新登录';
-    Message.error('获取用户列表失败，请检查权限或重新登录');
+    error.value = '获取评论列表失败，请检查权限或重新登录';
+    Message.error('获取评论列表失败，请检查权限或重新登录');
 
-    // 如果是401错误，清除认证信息并跳转到登录页
     if (err.response?.status === 401) {
       authCookie.clearAuth();
       routerUtils.navigateTo(router, ROUTES.LOGIN);
@@ -444,151 +483,189 @@ async function fetchUsers() {
   }
 }
 
-// 添加用户
-async function addUser() {
-  try {
-    adding.value = true;
-    // 调用API创建用户
-    const userData = {
-      email: newUser.value.email,
-      full_name: newUser.value.full_name,
-      password: newUser.value.password,
-    };
-
-    console.log('创建用户数据:', userData);
-    const result = await userApi.createUser(userData);
-    console.log('用户创建成功:', result);
-
-    Message.success('用户添加成功');
-    showAddUser.value = false;
-    resetNewUser();
-    await fetchUsers();
-  } catch (error) {
-    console.error('添加用户失败:', error);
-    Message.error('添加用户失败');
-  } finally {
-    adding.value = false;
-  }
+// 编辑评论
+function editComment(comment) {
+  editingComment.value = { ...comment };
+  showEditComment.value = true;
 }
 
-// 编辑用户
-function editUser(user) {
-  editingUser.value = { ...user };
-  showEditUser.value = true;
-}
-
-// 更新用户
-async function updateUser() {
+// 更新评论
+async function updateComment() {
   try {
     updating.value = true;
-    // 调用API更新用户
-    const userData = {
-      email: editingUser.value.email,
-      full_name: editingUser.value.full_name,
-      is_admin: editingUser.value.is_admin,
-      is_active: editingUser.value.is_active,
+    const commentData = {
+      author_name: editingComment.value.author_name,
+      author_email: editingComment.value.author_email,
+      author_website: editingComment.value.author_website,
+      content: editingComment.value.content,
+      is_approved: editingComment.value.is_approved,
+      is_visible: editingComment.value.is_visible,
     };
 
-    console.log('更新用户数据:', userData);
-    console.log('用户ID:', editingUser.value.id);
+    console.log('更新评论数据:', commentData);
+    console.log('评论ID:', editingComment.value.id);
 
-    const result = await userApi.updateUser(editingUser.value.id, userData);
-    console.log('用户更新成功:', result);
+    const result = await commentApi.updateComment(editingComment.value.id, commentData);
+    console.log('评论更新成功:', result);
 
-    Message.success('用户更新成功');
-    showEditUser.value = false;
-    await fetchUsers();
+    Message.success('评论更新成功');
+    showEditComment.value = false;
+    await fetchComments();
   } catch (error) {
-    console.error('更新用户失败:', error);
-    Message.error('更新用户失败');
+    console.error('更新评论失败:', error);
+    Message.error('更新评论失败');
   } finally {
     updating.value = false;
   }
 }
 
-// 删除用户
-async function deleteUser(user) {
+// 切换审核状态
+async function toggleApproval(comment) {
   try {
-    // 这里应该调用API删除用户
-    // await userApi.deleteUser(user.id);
-    console.log('删除用户:', user.id);
+    console.log('切换评论审核状态:', comment.id);
+    console.log('当前状态:', comment.is_approved);
 
-    Message.success('用户删除成功');
-    await fetchUsers();
+    await commentApi.toggleApproval(comment.id);
+    Message.success(comment.is_approved ? '已取消审核' : '审核通过');
+    await fetchComments();
   } catch (error) {
-    console.error('删除用户失败:', error);
-    Message.error('删除用户失败');
+    console.error('切换审核状态失败:', error);
+    console.error('错误详情:', error.response?.data);
+    console.error('错误状态码:', error.response?.status);
+
+    if (error.response?.status === 401) {
+      Message.error('权限不足，请重新登录');
+      authCookie.clearAuth();
+      routerUtils.navigateTo(router, ROUTES.LOGIN);
+    } else if (error.response?.status === 404) {
+      Message.error('评论不存在');
+    } else {
+      Message.error('操作失败，请稍后重试');
+    }
   }
 }
 
-// 重置新用户表单
-function resetNewUser() {
-  newUser.value = {
-    email: '',
-    full_name: '',
-    password: '',
-    is_admin: false,
-    is_active: true,
-  };
+// 切换可见性
+async function toggleVisibility(comment) {
+  try {
+    console.log('切换评论可见性:', comment.id);
+    console.log('当前状态:', comment.is_visible);
+
+    await commentApi.toggleVisibility(comment.id);
+    Message.success(comment.is_visible ? '已隐藏评论' : '已显示评论');
+    await fetchComments();
+  } catch (error) {
+    console.error('切换可见性失败:', error);
+    console.error('错误详情:', error.response?.data);
+    console.error('错误状态码:', error.response?.status);
+
+    if (error.response?.status === 401) {
+      Message.error('权限不足，请重新登录');
+      authCookie.clearAuth();
+      routerUtils.navigateTo(router, ROUTES.LOGIN);
+    } else if (error.response?.status === 404) {
+      Message.error('评论不存在');
+    } else {
+      Message.error('操作失败，请稍后重试');
+    }
+  }
+}
+
+// 删除评论（软删除）
+async function deleteComment(comment) {
+  try {
+    Modal.confirm({
+      title: '确认删除',
+      content: `确定要删除评论吗？删除后评论将被标记为已删除状态。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      type: 'warning',
+      onOk: async () => {
+        try {
+          console.log('软删除评论:', comment.id);
+          await commentApi.deleteComment(comment.id);
+
+          Message.success('评论已删除');
+          await fetchComments();
+        } catch (error) {
+          console.error('删除评论失败:', error);
+          console.error('错误详情:', error.response?.data);
+          console.error('错误状态码:', error.response?.status);
+
+          if (error.response?.status === 401) {
+            Message.error('权限不足，请重新登录');
+            authCookie.clearAuth();
+            routerUtils.navigateTo(router, ROUTES.LOGIN);
+          } else if (error.response?.status === 404) {
+            Message.error('评论不存在');
+          } else {
+            Message.error('评论删除失败，请稍后重试');
+          }
+        }
+      },
+      onCancel: () => {
+        console.log('用户取消了删除操作');
+      },
+    });
+  } catch (error) {
+    console.error('显示确认对话框失败:', error);
+    Message.error('操作失败，请稍后重试');
+  }
 }
 
 // 应用搜索过滤
 function applySearchFilter() {
-  let filtered = [...users.value];
+  let filtered = [...comments.value];
+
+  // 评论者姓名搜索（模糊匹配）
+  if (searchForm.value.author_name) {
+    filtered = filtered.filter(comment =>
+      comment.author_name.toLowerCase().includes(searchForm.value.author_name.toLowerCase())
+    );
+  }
 
   // 邮箱搜索（模糊匹配）
-  if (searchForm.value.email) {
-    filtered = filtered.filter(user =>
-      user.email.toLowerCase().includes(searchForm.value.email.toLowerCase())
-    );
-  }
-
-  // 姓名搜索（模糊匹配）
-  if (searchForm.value.full_name) {
+  if (searchForm.value.author_email) {
     filtered = filtered.filter(
-      user =>
-        user.full_name &&
-        user.full_name.toLowerCase().includes(searchForm.value.full_name.toLowerCase())
+      comment =>
+        comment.author_email &&
+        comment.author_email.toLowerCase().includes(searchForm.value.author_email.toLowerCase())
     );
   }
 
-  // 管理员状态过滤
-  if (searchForm.value.is_admin !== null && searchForm.value.is_admin !== '') {
-    const isAdminValue = searchForm.value.is_admin === 'true';
-    filtered = filtered.filter(user => user.is_admin === isAdminValue);
+  // 审核状态过滤
+  if (searchForm.value.is_approved !== null && searchForm.value.is_approved !== '') {
+    const isApprovedValue = searchForm.value.is_approved === 'true';
+    filtered = filtered.filter(comment => comment.is_approved === isApprovedValue);
   }
 
-  // 用户状态过滤
-  if (searchForm.value.is_active !== null && searchForm.value.is_active !== '') {
-    const isActiveValue = searchForm.value.is_active === 'true';
-    filtered = filtered.filter(user => user.is_active === isActiveValue);
+  // 可见性过滤
+  if (searchForm.value.is_visible !== null && searchForm.value.is_visible !== '') {
+    const isVisibleValue = searchForm.value.is_visible === 'true';
+    filtered = filtered.filter(comment => comment.is_visible === isVisibleValue);
   }
 
   // 创建时间范围过滤
   if (searchForm.value.start_date || searchForm.value.end_date) {
-    filtered = filtered.filter(user => {
-      const userDate = new Date(user.created_at);
+    filtered = filtered.filter(comment => {
+      const commentDate = new Date(comment.created_at);
       const startDate = searchForm.value.start_date ? new Date(searchForm.value.start_date) : null;
       const endDate = searchForm.value.end_date ? new Date(searchForm.value.end_date) : null;
 
       if (startDate && endDate) {
-        // 两个日期都有，检查是否在范围内
-        return userDate >= startDate && userDate <= endDate;
+        return commentDate >= startDate && commentDate <= endDate;
       } else if (startDate) {
-        // 只有开始日期
-        return userDate >= startDate;
+        return commentDate >= startDate;
       } else if (endDate) {
-        // 只有结束日期
-        return userDate <= endDate;
+        return commentDate <= endDate;
       }
       return true;
     });
   }
 
-  filteredUsers.value = filtered;
-  console.log(`搜索过滤完成，从 ${users.value.length} 个用户中筛选出 ${filtered.length} 个`);
+  filteredComments.value = filtered;
+  console.log(`搜索过滤完成，从 ${comments.value.length} 条评论中筛选出 ${filtered.length} 条`);
 
-  // 重置到第一页并应用分页
   currentPage.value = 1;
   applyPagination();
 }
@@ -597,20 +674,21 @@ function applySearchFilter() {
 async function handleSearch() {
   try {
     searching.value = true;
-    startLoading(); // 启动全局loading
+    startLoading();
     console.log('执行搜索，搜索条件:', searchForm.value);
 
-    // 模拟搜索延迟，让用户看到loading效果
-    // await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => {
+      setTimeout(resolve, 500);
+    });
 
     applySearchFilter();
-    Message.info(`搜索完成，找到 ${filteredUsers.value.length} 个用户`);
+    Message.info(`搜索完成，找到 ${filteredComments.value.length} 条评论`);
   } catch (error) {
     console.error('搜索失败:', error);
     Message.error('搜索失败，请稍后重试');
   } finally {
     searching.value = false;
-    stopLoading(); // 停止全局loading
+    stopLoading();
   }
 }
 
@@ -618,16 +696,17 @@ async function handleSearch() {
 async function handleReset() {
   try {
     searching.value = true;
-    startLoading(); // 启动全局loading
+    startLoading();
 
-    // 模拟重置延迟
-    // await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => {
+      setTimeout(resolve, 300);
+    });
 
     searchForm.value = {
-      email: '',
-      full_name: '',
-      is_admin: '',
-      is_active: '',
+      author_name: '',
+      author_email: '',
+      is_approved: '',
+      is_visible: '',
       start_date: null,
       end_date: null,
     };
@@ -639,7 +718,7 @@ async function handleReset() {
     Message.error('重置失败，请稍后重试');
   } finally {
     searching.value = false;
-    stopLoading(); // 停止全局loading
+    stopLoading();
   }
 }
 
@@ -671,12 +750,10 @@ function handlePageSizeChange(pageSize) {
 
 // 应用分页
 function applyPagination() {
-  // 这里应该根据实际需求处理分页逻辑
-  // 目前是前端分页，实际项目中应该是后端分页
-  total.value = filteredUsers.value.length;
-
+  total.value = filteredComments.value.length;
   console.log(`分页: 第${currentPage.value}页，每页${pageSize.value}条，共${total.value}条`);
 }
+
 function formatDate(dateString) {
   if (!dateString) return '-';
   const date = new Date(dateString);
@@ -690,13 +767,12 @@ function formatDate(dateString) {
 }
 
 onMounted(() => {
-  fetchUsers();
+  fetchComments();
 });
 </script>
 
 <style scoped>
-.user-management {
-  /* max-width: 1200px; */
+.comment-management {
   margin: 0 auto;
 }
 
@@ -784,11 +860,6 @@ onMounted(() => {
   padding-bottom: 10px;
 }
 
-.date-range-container {
-  display: flex;
-  flex-direction: column;
-}
-
 .date-range {
   display: flex;
   align-items: center;
@@ -814,7 +885,7 @@ onMounted(() => {
 }
 
 /* 表格容器样式 - 防止横向滚动条闪烁 */
-.user-management {
+.comment-management {
   overflow-x: hidden;
 }
 
@@ -949,10 +1020,6 @@ onMounted(() => {
 
   .date-range-field {
     align-items: stretch;
-  }
-
-  .date-range-container {
-    flex-direction: column;
   }
 
   .date-range {

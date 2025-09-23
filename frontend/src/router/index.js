@@ -1,4 +1,5 @@
 import AdminLayout from '@/pages/admin/AdminLayout.vue';
+import CommentManagement from '@/pages/admin/CommentManagement.vue';
 import Dashboard from '@/pages/admin/Dashboard.vue';
 import UserManagement from '@/pages/admin/UserManagement.vue';
 import CookieTest from '@/pages/CookieTest.vue';
@@ -29,6 +30,7 @@ const router = createRouter({
         { path: '', redirect: '/admin/dashboard' },
         { path: 'dashboard', name: 'admin-dashboard', component: Dashboard },
         { path: 'users', name: 'admin-users', component: UserManagement },
+        { path: 'comments', name: 'admin-comments', component: CommentManagement },
         {
           path: 'posts',
           name: 'admin-posts',
