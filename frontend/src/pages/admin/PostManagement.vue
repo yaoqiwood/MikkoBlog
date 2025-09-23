@@ -25,25 +25,25 @@
       <div class="search-section">
         <div class="search-form-container">
           <Form :model="searchForm" inline class="search-form">
-            <FormItem label="标题">
+            <FormItem label="标题" class="search-form-item">
               <Input
                 v-model="searchForm.title"
                 placeholder="请输入文章标题"
                 clearable
-                style="width: 200px"
+                style="width: 180px"
               />
             </FormItem>
 
-            <FormItem label="内容">
+            <FormItem label="内容" class="search-form-item">
               <Input
                 v-model="searchForm.content"
                 placeholder="请输入文章内容关键词"
                 clearable
-                style="width: 200px"
+                style="width: 180px"
               />
             </FormItem>
 
-            <FormItem label="发布状态">
+            <FormItem label="发布状态" class="search-form-item">
               <Select
                 v-model="searchForm.is_published"
                 placeholder="选择发布状态"
@@ -63,7 +63,7 @@
                   type="date"
                   placeholder="开始时间"
                   clearable
-                  style="width: 140px"
+                  style="width: 120px"
                   @on-change="validateDateRange"
                 />
                 <span class="date-separator">至</span>
@@ -72,7 +72,7 @@
                   type="date"
                   placeholder="结束时间"
                   clearable
-                  style="width: 140px"
+                  style="width: 120px"
                   @on-change="validateDateRange"
                 />
               </div>
@@ -139,7 +139,7 @@ import { postApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { startLoading, stopLoading } from '@/utils/loadingManager';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
-import { Message, Tag } from 'view-ui-plus';
+import { Message, Modal, Tag } from 'view-ui-plus';
 import { nextTick, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -179,9 +179,12 @@ const isTableReady = ref(false);
 // 表格列配置
 const columns = ref([
   {
-    title: 'ID',
-    key: 'id',
+    title: '序号',
+    key: 'index',
     width: 80,
+    render: (h, params) => {
+      return h('span', {}, (currentPage.value - 1) * pageSize.value + params.index + 1);
+    },
   },
   {
     title: '标题',
@@ -244,13 +247,31 @@ const columns = ref([
     },
   },
   {
+    title: '可见性',
+    key: 'is_visible',
+    width: 100,
+    render: (h, params) => {
+      return h(
+        Tag,
+        {
+          color: params.row.is_visible ? 'success' : 'warning',
+        },
+        {
+          default() {
+            return params.row.is_visible ? '展示' : '隐藏';
+          },
+        }
+      );
+    },
+  },
+  {
     title: '操作',
-    width: 150,
+    width: 200,
     render: (h, params) => {
       return h(
         'div',
         {
-          style: 'display: flex; justify-content: center; align-items: center;',
+          style: 'display: flex; justify-content: center; align-items: center; gap: 8px;',
         },
         [
           h(
@@ -259,7 +280,7 @@ const columns = ref([
               type: 'default',
               size: 'small',
               icon: 'ios-create',
-              style: 'background: #fff; color: #333; border: 1px solid #d9d9d9; min-width: 54px;',
+              style: 'background: #fff; color: #333; border: 1px solid #d9d9d9; min-width: 50px;',
               onClick: () => editPost(params.row),
             },
             {
@@ -273,9 +294,24 @@ const columns = ref([
             {
               type: 'default',
               size: 'small',
+              icon: params.row.is_visible ? 'ios-eye-disabled' : 'ios-eye',
+              style: `background: #fff; color: ${params.row.is_visible ? '#f56c6c' : '#67c23a'}; border: 1px solid ${params.row.is_visible ? '#f56c6c' : '#67c23a'}; min-width: 50px;`,
+              onClick: () => toggleVisibility(params.row),
+            },
+            {
+              default() {
+                return params.row.is_visible ? '隐藏' : '显示';
+              },
+            }
+          ),
+          h(
+            'Button',
+            {
+              type: 'default',
+              size: 'small',
               icon: 'ios-trash',
               style:
-                'background: #fff; color: #e74c3c; border: 1px solid #e74c3c; margin-left: 12px; min-width: 54px;',
+                'background: #fff; color: #e74c3c; border: 1px solid #e74c3c; min-width: 50px;',
               onClick: () => deletePost(params.row),
             },
             {
@@ -351,17 +387,61 @@ function editPost(post) {
 
 // 更新文章
 
-// 删除文章
+// 删除文章（软删除）
 async function deletePost(post) {
   try {
-    // 调用API删除文章
-    console.log('删除文章:', post.id);
-    await postApi.deletePost(post.id);
+    // 显示确认对话框
+    Modal.confirm({
+      title: '确认删除',
+      content: `确定要删除文章"${post.title}"吗？删除后文章将被标记为已删除状态。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      type: 'warning',
+      onOk: async () => {
+        try {
+          // 调用API软删除文章
+          console.log('软删除文章:', post.id);
+          await postApi.deletePost(post.id);
 
-    Message.success('文章删除成功');
+          Message.success('文章已删除');
+          await fetchPosts();
+        } catch (error) {
+          console.error('删除文章失败:', error);
+          console.error('错误详情:', error.response?.data);
+          console.error('错误状态码:', error.response?.status);
+
+          // 根据错误类型显示不同的提示
+          if (error.response?.status === 401) {
+            Message.error('权限不足，请重新登录');
+            authCookie.clearAuth();
+            routerUtils.navigateTo(router, ROUTES.LOGIN);
+          } else if (error.response?.status === 404) {
+            Message.error('文章不存在');
+          } else {
+            Message.error('文章删除失败，请稍后重试');
+          }
+        }
+      },
+      onCancel: () => {
+        console.log('用户取消了删除操作');
+      },
+    });
+  } catch (error) {
+    console.error('显示确认对话框失败:', error);
+    Message.error('操作失败，请稍后重试');
+  }
+}
+
+// 切换文章可见性
+async function toggleVisibility(post) {
+  try {
+    console.log('切换文章可见性:', post.id, '当前状态:', post.is_visible);
+    await postApi.toggleVisibility(post.id);
+
+    Message.success(post.is_visible ? '文章已隐藏' : '文章已显示');
     await fetchPosts();
   } catch (error) {
-    console.error('删除文章失败:', error);
+    console.error('切换可见性失败:', error);
     console.error('错误详情:', error.response?.data);
     console.error('错误状态码:', error.response?.status);
 
@@ -373,7 +453,7 @@ async function deletePost(post) {
     } else if (error.response?.status === 404) {
       Message.error('文章不存在');
     } else {
-      Message.error('文章删除失败，请稍后重试');
+      Message.error('切换可见性失败，请稍后重试');
     }
   }
 }
@@ -582,14 +662,24 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .search-form {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-end;
-  gap: 0.75rem;
+  gap: 16px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.search-form-item {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  margin-right: 0;
 }
 
 .search-form .ivu-form-item {
@@ -607,6 +697,7 @@ onMounted(() => {
   height: 22px;
   display: flex;
   align-items: center;
+  white-space: nowrap;
 }
 
 .date-range-field {
@@ -614,6 +705,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: flex-start;
   margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .field-label {
@@ -626,29 +718,27 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding-bottom: 10px;
-}
-
-.date-range-container {
-  display: flex;
-  flex-direction: column;
+  white-space: nowrap;
 }
 
 .date-range {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .date-separator {
   color: #999;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .search-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 1rem;
+  margin-left: 16px;
+  flex-shrink: 0;
 }
 
 .pagination-container {
@@ -754,6 +844,73 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
+@media (max-width: 1440px) {
+  .search-form {
+    gap: 12px;
+  }
+
+  .search-form-item .ivu-input,
+  .search-form-item .ivu-select {
+    width: 160px !important;
+  }
+
+  .date-range .ivu-date-picker {
+    width: 110px !important;
+  }
+}
+
+@media (max-width: 1280px) {
+  .search-form {
+    gap: 10px;
+  }
+
+  .search-form-item .ivu-input,
+  .search-form-item .ivu-select {
+    width: 140px !important;
+  }
+
+  .date-range .ivu-date-picker {
+    width: 100px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .search-form-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-form {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .search-form-item {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .search-form-item .ivu-input,
+  .search-form-item .ivu-select {
+    width: 100% !important;
+  }
+
+  .date-range-field {
+    flex: 1;
+    min-width: 250px;
+  }
+
+  .date-range .ivu-date-picker {
+    width: 120px !important;
+  }
+
+  .search-actions {
+    justify-content: center;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .page-header {
     flex-direction: column;

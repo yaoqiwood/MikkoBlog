@@ -4,7 +4,7 @@
  */
 
 import { getAuthUrl, getHealthUrl, getPostUrl, getUploadUrl, getUserUrl } from './apiConfig';
-import { del, get, post, postForm, put } from './httpClient';
+import { del, get, patch, post, postForm, put } from './httpClient';
 
 /**
  * 认证相关API
@@ -151,12 +151,21 @@ export const postApi = {
   },
 
   /**
-   * 删除文章
+   * 删除文章（软删除）
    * @param {string|number} id - 文章ID
    * @returns {Promise} 删除结果
    */
   async deletePost(id) {
     return del(getPostUrl('DELETE', id));
+  },
+
+  /**
+   * 切换文章可见性
+   * @param {string|number} id - 文章ID
+   * @returns {Promise} 切换结果
+   */
+  async toggleVisibility(id) {
+    return patch(getPostUrl('TOGGLE_VISIBILITY', id));
   },
 };
 

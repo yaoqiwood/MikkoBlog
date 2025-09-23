@@ -41,6 +41,7 @@ const API_CONFIG = {
       UPDATE: '/posts/',
       DELETE: '/posts/',
       DETAIL: '/posts/',
+      TOGGLE_VISIBILITY: '/posts/',
     },
 
     // 文件上传
@@ -119,6 +120,8 @@ export function getPostUrl(action, id = null) {
   let url = getApiUrl(endpoint);
   if (id && ['UPDATE', 'DELETE', 'DETAIL'].includes(action.toUpperCase())) {
     url += `${id}`;
+  } else if (id && action.toUpperCase() === 'TOGGLE_VISIBILITY') {
+    url += `${id}/toggle-visibility`;
   }
   return url;
 }

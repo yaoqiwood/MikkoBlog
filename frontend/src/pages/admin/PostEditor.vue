@@ -25,30 +25,48 @@
       </template>
 
       <Form ref="postForm" :model="postData" :rules="postRules" label-position="top">
+        <!-- 文章内容区域 -->
+        <div class="content-section">
+          <div class="editor-container">
+            <label class="editor-label">Markdown 内容</label>
+            <MarkdownEditor
+              v-model="postData.content"
+              height="calc(100vh - 400px)"
+              placeholder="请输入文章内容..."
+              @upload-image="handleImageUpload"
+            />
+          </div>
+        </div>
+
+        <!-- 分隔线 -->
+        <Divider />
+
         <!-- 基本信息区域 -->
         <div class="basic-info-section">
-          <Row :gutter="16">
+          <Row :gutter="20">
             <Col :span="8">
-              <FormItem label="文章标题" prop="title">
-                <Input v-model="postData.title" placeholder="请输入文章标题" />
+              <FormItem label="文章标题" prop="title" class="form-item-equal-height">
+                <Input v-model="postData.title" placeholder="请输入文章标题" size="large" />
               </FormItem>
             </Col>
             <Col :span="8">
-              <FormItem label="文章摘要">
+              <FormItem label="文章摘要" class="form-item-equal-height">
                 <Input
                   v-model="postData.summary"
                   type="textarea"
-                  :rows="2"
+                  :rows="3"
                   placeholder="请输入文章摘要（可选）"
+                  size="large"
                 />
               </FormItem>
             </Col>
             <Col :span="8">
-              <FormItem label="封面图片">
+              <FormItem label="封面图片" class="form-item-equal-height">
                 <div class="image-upload-container">
                   <Input
                     v-model="postData.cover_image_url"
                     placeholder="图片URL"
+                    size="large"
                     style="margin-bottom: 8px"
                   />
                   <Upload
@@ -59,37 +77,24 @@
                     :show-upload-list="false"
                     accept="image/*"
                   >
-                    <Button size="small" icon="ios-cloud-upload">上传图片</Button>
+                    <Button size="large" icon="ios-cloud-upload" type="dashed">上传图片</Button>
                   </Upload>
                 </div>
               </FormItem>
             </Col>
           </Row>
 
-          <Row :gutter="16">
+          <Row :gutter="20">
             <Col :span="24">
-              <div class="publish-status">
-                <Switch v-model="postData.is_published" />
-                <span class="switch-label">{{ postData.is_published ? '已发布' : '草稿' }}</span>
+              <div class="publish-status-container">
+                <div class="publish-status">
+                  <span class="status-label">发布状态</span>
+                  <Switch v-model="postData.is_published" size="large" />
+                  <span class="switch-label">{{ postData.is_published ? '已发布' : '草稿' }}</span>
+                </div>
               </div>
             </Col>
           </Row>
-        </div>
-
-        <!-- 分隔线 -->
-        <Divider />
-
-        <!-- 文章内容区域 -->
-        <div class="content-section">
-          <div class="editor-container">
-            <label class="editor-label">Markdown 内容</label>
-            <MarkdownEditor
-              v-model="postData.content"
-              height="calc(100vh - 300px)"
-              placeholder="请输入文章内容..."
-              @upload-image="handleImageUpload"
-            />
-          </div>
         </div>
       </Form>
     </Card>
@@ -107,6 +112,9 @@ import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter();
 const route = useRoute();
+
+// 表单引用
+const postForm = ref(null);
 
 // 页面状态
 const isEdit = ref(false);
@@ -134,6 +142,17 @@ const postRules = {
   title: [
     { required: true, message: '请输入文章标题', trigger: 'blur' },
     { min: 2, message: '标题长度不能少于2位', trigger: 'blur' },
+    { max: 100, message: '标题长度不能超过100位', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (!value || value.trim() === '') {
+          callback(new Error('标题不能为空'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'blur',
+    },
   ],
   content: [
     { required: true, message: '请输入文章内容', trigger: 'blur' },
@@ -168,7 +187,7 @@ async function handleImageUpload(formData, callback) {
 }
 
 // 处理封面图片上传成功
-function handleImageUploadSuccess(response, file) {
+function handleImageUploadSuccess(response) {
   console.log('封面图片上传成功:', response);
   if (response.success && response.url) {
     const fullUrl = response.url.startsWith('http')
@@ -182,7 +201,7 @@ function handleImageUploadSuccess(response, file) {
 }
 
 // 处理封面图片上传失败
-function handleImageUploadError(error, file) {
+function handleImageUploadError(error) {
   console.error('封面图片上传失败:', error);
   Message.error('封面图片上传失败，请稍后重试');
 }
@@ -190,11 +209,24 @@ function handleImageUploadError(error, file) {
 // 保存文章
 async function savePost() {
   try {
+    // 先进行表单验证
+    const valid = await postForm.value.validate();
+    if (!valid) {
+      Message.error('请检查表单填写是否正确');
+      return;
+    }
+
+    // 额外检查标题是否为空
+    if (!postData.value.title || postData.value.title.trim() === '') {
+      Message.error('必须填入文章标题才能发布或更新文章');
+      return;
+    }
+
     saving.value = true;
     error.value = '';
 
     const data = {
-      title: postData.value.title,
+      title: postData.value.title.trim(),
       content: postData.value.content,
       cover_image_url: postData.value.cover_image_url,
       summary: postData.value.summary,
@@ -325,15 +357,50 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.basic-info-section {
-  flex-shrink: 0;
-  margin-bottom: 16px;
-}
-
 .content-section {
   flex: 1;
   display: flex;
   flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.basic-info-section {
+  flex-shrink: 0;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e8eaec;
+}
+
+.form-item-equal-height {
+  height: 100%;
+}
+
+.form-item-equal-height :deep(.ivu-form-item) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-item-equal-height :deep(.ivu-form-item-content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-item-equal-height :deep(.ivu-input),
+.form-item-equal-height :deep(.ivu-input-wrapper),
+.form-item-equal-height :deep(.ivu-textarea-wrapper) {
+  height: 100%;
+}
+
+.form-item-equal-height :deep(.ivu-input) {
+  height: 40px;
+}
+
+.form-item-equal-height :deep(.ivu-textarea) {
+  height: 100px;
+  resize: none;
 }
 
 .card-title {
@@ -345,18 +412,39 @@ onMounted(() => {
 .image-upload-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+
+.image-upload-container :deep(.ivu-input) {
+  height: 40px;
+}
+
+.publish-status-container {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e8eaec;
 }
 
 .publish-status {
   display: flex;
   align-items: center;
-  padding: 8px 0;
+  gap: 12px;
+}
+
+.status-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #515a6e;
+  min-width: 60px;
 }
 
 .switch-label {
-  margin-left: 8px;
-  color: #666;
   font-size: 14px;
+  font-weight: 500;
+  color: #2d8cf0;
 }
 
 .editor-container {

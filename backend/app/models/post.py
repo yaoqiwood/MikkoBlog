@@ -10,6 +10,8 @@ class PostBase(SQLModel):
     summary: Optional[str] = None
     cover_image_url: Optional[str] = None
     is_published: bool = False
+    is_deleted: bool = False
+    is_visible: bool = True
 
 
 class Post(PostBase, table=True):
@@ -34,6 +36,5 @@ class PostUpdate(SQLModel):
     summary: Optional[str] = None
     cover_image_url: Optional[str] = None
     is_published: Optional[bool] = None
-
-
-
+    is_deleted: Optional[bool] = None
+    is_visible: Optional[bool] = None

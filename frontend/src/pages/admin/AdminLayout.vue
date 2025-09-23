@@ -1,71 +1,83 @@
 <template>
   <div class="admin-layout">
     <!-- 侧边栏 -->
-    <div class="admin-sidebar">
+    <div class="admin-sidebar" :class="{ collapsed: sidebarCollapsed }">
       <div class="sidebar-header">
         <div class="logo">
           <Icon type="ios-apps" size="32" color="#667eea" />
-          <span class="logo-text">MikkoBlog</span>
+          <span class="logo-text" v-show="!sidebarCollapsed">MikkoBlog</span>
         </div>
+        <Button
+          type="text"
+          :icon="sidebarCollapsed ? 'ios-arrow-forward' : 'ios-arrow-back'"
+          @click="toggleSidebar"
+          class="sidebar-toggle-btn"
+        />
       </div>
 
       <div class="sidebar-menu">
         <div class="menu-section">
-          <div class="menu-title">系统管理</div>
+          <div class="menu-title" v-show="!sidebarCollapsed">系统管理</div>
           <div class="menu-items">
             <router-link
               to="/admin/dashboard"
               class="menu-item"
               :class="{ active: $route.path === '/admin/dashboard' }"
+              :title="sidebarCollapsed ? '仪表盘' : ''"
             >
               <Icon type="ios-home" />
-              <span>仪表盘</span>
+              <span v-show="!sidebarCollapsed">仪表盘</span>
             </router-link>
             <router-link
               to="/admin/users"
               class="menu-item"
               :class="{ active: $route.path === '/admin/users' }"
+              :title="sidebarCollapsed ? '用户管理' : ''"
             >
               <Icon type="ios-people" />
-              <span>用户管理</span>
+              <span v-show="!sidebarCollapsed">用户管理</span>
             </router-link>
             <router-link
               to="/admin/posts"
               class="menu-item"
               :class="{ active: $route.path === '/admin/posts' }"
+              :title="sidebarCollapsed ? '文章管理' : ''"
             >
               <Icon type="ios-document" />
-              <span>文章管理</span>
+              <span v-show="!sidebarCollapsed">文章管理</span>
             </router-link>
             <router-link
               to="/admin/settings"
               class="menu-item"
               :class="{ active: $route.path === '/admin/settings' }"
+              :title="sidebarCollapsed ? '系统设置' : ''"
             >
               <Icon type="ios-settings" />
-              <span>系统设置</span>
+              <span v-show="!sidebarCollapsed">系统设置</span>
             </router-link>
           </div>
         </div>
 
         <div class="menu-section">
-          <div class="menu-title">工具</div>
+          <div class="menu-title" v-show="!sidebarCollapsed">工具</div>
           <div class="menu-items">
             <router-link
               to="/admin/test-viewui"
               class="menu-item"
               :class="{ active: $route.path === '/admin/test-viewui' }"
+              :title="sidebarCollapsed ? '组件测试' : ''"
             >
               <Icon type="ios-flask" />
-              <span>组件测试</span>
+              <span v-show="!sidebarCollapsed">组件测试</span>
             </router-link>
             <router-link
               to="/admin/fullscreen-test"
               class="menu-item"
               :class="{ active: $route.path === '/admin/fullscreen-test' }"
+              :title="sidebarCollapsed ? '全屏测试' : ''"
             >
               <Icon type="ios-expand" />
-              <span>全屏测试</span>
+              <span v-show="!sidebarCollapsed">全屏测试</span>
             </router-link>
           </div>
         </div>
@@ -77,7 +89,6 @@
       <!-- 顶部导航栏 -->
       <div class="admin-header">
         <div class="header-left">
-          <Button type="text" icon="ios-menu" @click="toggleSidebar" class="sidebar-toggle" />
           <div class="breadcrumb">
             <span class="breadcrumb-item">{{ currentPageTitle }}</span>
           </div>
@@ -166,11 +177,26 @@ const pageTitles = {
 
 // 当前页面标题
 const currentPageTitle = computed(() => {
+  // 如果是文章编辑页面，显示文章管理
+  if (route.path.startsWith('/admin/posts/new') || route.path.startsWith('/admin/posts/edit/')) {
+    return '文章管理';
+  }
+
   return pageTitles[route.path] || '后台管理';
 });
 
 // 标签页管理函数
 function addTab(path) {
+  // 如果是文章编辑页面，不创建新标签，直接激活文章管理标签
+  if (path.startsWith('/admin/posts/new') || path.startsWith('/admin/posts/edit/')) {
+    // 查找文章管理标签
+    const postsTab = tabs.value.find(tab => tab.path === '/admin/posts');
+    if (postsTab) {
+      activeTab.value = '/admin/posts';
+      return;
+    }
+  }
+
   const title = pageTitles[path] || '未知页面';
   const existingTab = tabs.value.find(tab => tab.path === path);
 
@@ -306,6 +332,8 @@ function switchTab(path) {
 // 切换侧边栏
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
+  // 保存状态到localStorage
+  localStorage.setItem('sidebar-collapsed', sidebarCollapsed.value.toString());
 }
 
 // 退出登录
@@ -360,6 +388,12 @@ onMounted(() => {
     return;
   }
 
+  // 加载侧边栏状态
+  const savedSidebarState = localStorage.getItem('sidebar-collapsed');
+  if (savedSidebarState !== null) {
+    sidebarCollapsed.value = savedSidebarState === 'true';
+  }
+
   // 加载保存的标签
   loadTabsFromStorage();
 
@@ -385,7 +419,7 @@ onMounted(() => {
 
 /* 侧边栏样式 */
 .admin-sidebar {
-  width: 260px;
+  width: 230px;
   background: white;
   border-right: 1px solid #e8eaec;
   display: flex;
@@ -393,9 +427,23 @@ onMounted(() => {
   transition: width 0.3s ease;
 }
 
+.admin-sidebar.collapsed {
+  width: 64px;
+}
+
 .sidebar-header {
   padding: 1.5rem;
   border-bottom: 1px solid #e8eaec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-sidebar.collapsed .sidebar-header {
+  padding: 1rem;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .logo {
@@ -404,10 +452,37 @@ onMounted(() => {
   gap: 0.75rem;
 }
 
+.admin-sidebar.collapsed .logo {
+  gap: 0;
+}
+
 .logo-text {
   font-size: 1.5rem;
   font-weight: bold;
   color: #2d3748;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-toggle-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  background: #f7fafc;
+}
+
+.admin-sidebar.collapsed .sidebar-toggle-btn {
+  width: 28px;
+  height: 28px;
+  margin-top: 0.5rem;
 }
 
 .sidebar-menu {
@@ -427,6 +502,11 @@ onMounted(() => {
   color: #718096;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  transition: opacity 0.3s ease;
+}
+
+.admin-sidebar.collapsed .menu-title {
+  display: none;
 }
 
 .menu-items {
@@ -443,6 +523,37 @@ onMounted(() => {
   text-decoration: none;
   transition: all 0.2s ease;
   border-left: 3px solid transparent;
+  justify-content: flex-start;
+  min-height: 48px;
+}
+
+.admin-sidebar.collapsed .menu-item {
+  justify-content: center;
+  padding: 0.75rem 0.5rem;
+  position: relative;
+  gap: 0;
+}
+
+.admin-sidebar.collapsed .menu-item .ivu-icon {
+  font-size: 18px;
+}
+
+.admin-sidebar.collapsed .menu-item:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #2d3748;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-left: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
 }
 
 .menu-item:hover {

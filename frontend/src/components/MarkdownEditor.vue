@@ -24,9 +24,9 @@
 import Editor from '@toast-ui/editor';
 import '@toast-ui/editor/dist/toastui-editor-viewer.css';
 import '@toast-ui/editor/dist/toastui-editor.css';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
-/* global FormData */
+/* global FormData, requestAnimationFrame */
 
 const props = defineProps({
   modelValue: {
@@ -46,69 +46,109 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'upload-image']);
 
 const editorElement = ref(null);
-const editor = ref(null);
+let editor = null; // 非响应式编辑器实例
 const showPreview = ref(false);
 const splitMode = ref(true);
+const isUpdating = ref(false);
+const wordCount = ref(0); // 改为响应式变量
 
-const wordCount = computed(() => {
-  return editor.value ? editor.value.getMarkdown().length : 0;
-});
+// 更新字数统计
+function updateWordCount() {
+  if (editor) {
+    try {
+      const markdown = editor.getMarkdown();
+      // 计算字数：去除Markdown语法，只计算实际文本内容
+      const textContent = markdown
+        .replace(/```[\s\S]*?```/g, '') // 移除代码块
+        .replace(/`[^`]*`/g, '') // 移除行内代码
+        .replace(/!\[.*?\]\(.*?\)/g, '') // 移除图片
+        .replace(/\[.*?\]\(.*?\)/g, '') // 移除链接
+        .replace(/[#*\-+>|`~]/g, '') // 移除Markdown语法字符
+        .replace(/\s+/g, ' ') // 合并多个空格
+        .trim();
+
+      wordCount.value = textContent.length;
+    } catch (error) {
+      console.warn('更新字数统计时出错:', error);
+      wordCount.value = 0;
+    }
+  }
+}
 
 onMounted(() => {
   initEditor();
 });
 
 onUnmounted(() => {
-  if (editor.value) {
-    editor.value.destroy();
+  try {
+    if (editor) {
+      editor.destroy();
+      editor = null;
+    }
+  } catch (error) {
+    console.warn('销毁编辑器时出错:', error);
   }
 });
 
 function initEditor() {
   if (!editorElement.value) return;
 
-  editor.value = new Editor({
-    el: editorElement.value,
-    height: props.height,
-    initialValue: props.modelValue,
-    placeholder: props.placeholder,
-    previewStyle: splitMode.value ? 'vertical' : 'tab',
-    initialEditType: 'markdown',
-    usageStatistics: false,
-    toolbarItems: [
-      ['heading', 'bold', 'italic', 'strike'],
-      ['hr', 'quote'],
-      ['ul', 'ol', 'task', 'indent', 'outdent'],
-      ['table', 'image', 'link'],
-      ['code', 'codeblock'],
-      ['scrollSync'],
-    ],
-    events: {
-      change: () => {
-        const markdown = editor.value.getMarkdown();
-        emit('update:modelValue', markdown);
+  try {
+    editor = new Editor({
+      el: editorElement.value,
+      height: props.height,
+      initialValue: props.modelValue || '',
+      placeholder: props.placeholder,
+      previewStyle: splitMode.value ? 'vertical' : 'tab',
+      initialEditType: 'markdown',
+      usageStatistics: false,
+      toolbarItems: [
+        ['heading', 'bold', 'italic', 'strike'],
+        ['hr', 'quote'],
+        ['ul', 'ol', 'task', 'indent', 'outdent'],
+        ['table', 'image', 'link'],
+        ['code', 'codeblock'],
+        ['scrollSync'],
+      ],
+      events: {
+        change: () => {
+          try {
+            if (editor && !isUpdating.value) {
+              const markdown = editor.getMarkdown();
+              emit('update:modelValue', markdown);
+              updateWordCount(); // 更新字数统计
+            }
+          } catch (error) {
+            console.warn('获取 Markdown 内容时出错:', error);
+          }
+        },
       },
-    },
-    hooks: {
-      addImageBlobHook: (blob, callback) => {
-        // 处理图片上传
-        handleImageUpload(blob, callback);
+      hooks: {
+        addImageBlobHook: (blob, callback) => {
+          // 处理图片上传
+          handleImageUpload(blob, callback);
+        },
       },
-    },
-  });
+    });
+
+    // 初始化字数统计
+    updateWordCount();
+  } catch (error) {
+    console.error('初始化编辑器失败:', error);
+  }
 }
 
 function togglePreview() {
   showPreview.value = !showPreview.value;
-  if (editor.value) {
-    editor.value.changePreviewStyle(showPreview.value ? 'tab' : 'vertical');
+  if (editor) {
+    editor.changePreviewStyle(showPreview.value ? 'tab' : 'vertical');
   }
 }
 
 function toggleSplit() {
   splitMode.value = !splitMode.value;
-  if (editor.value) {
-    editor.value.changePreviewStyle(splitMode.value ? 'vertical' : 'tab');
+  if (editor) {
+    editor.changePreviewStyle(splitMode.value ? 'vertical' : 'tab');
   }
 }
 
@@ -130,10 +170,35 @@ async function handleImageUpload(blob, callback) {
 watch(
   () => props.modelValue,
   newValue => {
-    if (editor.value && editor.value.getMarkdown() !== newValue) {
-      editor.value.setMarkdown(newValue);
+    if (editor && !isUpdating.value) {
+      try {
+        const currentMarkdown = editor.getMarkdown();
+        if (currentMarkdown !== newValue) {
+          isUpdating.value = true;
+          // 使用 requestAnimationFrame 确保在下一个渲染周期更新
+          requestAnimationFrame(() => {
+            try {
+              if (editor) {
+                const currentMarkdown = editor.getMarkdown();
+                if (currentMarkdown !== newValue) {
+                  editor.setMarkdown(newValue || '');
+                  updateWordCount(); // 更新字数统计
+                }
+              }
+            } catch (error) {
+              console.warn('设置 Markdown 内容时出错:', error);
+            } finally {
+              isUpdating.value = false;
+            }
+          });
+        }
+      } catch (error) {
+        console.warn('获取当前 Markdown 内容时出错:', error);
+        isUpdating.value = false;
+      }
     }
-  }
+  },
+  { flush: 'post' }
 );
 </script>
 

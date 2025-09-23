@@ -241,9 +241,12 @@ const isTableReady = ref(false);
 // 表格列配置
 const columns = ref([
   {
-    title: 'ID',
-    key: 'id',
+    title: '序号',
+    key: 'index',
     width: 80,
+    render: (h, params) => {
+      return h('span', {}, (currentPage.value - 1) * pageSize.value + params.index + 1);
+    },
   },
   {
     title: '邮箱',
