@@ -40,6 +40,18 @@ const API_CONFIG = {
       CATEGORIES: '/system/defaults/categories',
     },
 
+    // 附件管理
+    ATTACHMENTS: {
+      LIST: '/attachments',
+      PUBLIC_LIST: '/attachments/public',
+      DETAIL: '/attachments',
+      UPLOAD: '/attachments/upload',
+      UPDATE: '/attachments',
+      DELETE: '/attachments',
+      RESTORE: '/attachments',
+      STATS: '/attachments/stats/summary',
+    },
+
     // 用户管理
     USERS: {
       LIST: '/admin/users',
@@ -221,6 +233,29 @@ export function getSystemUrl(action, category = null, keyName = null) {
     url += `/${category}`;
   } else if (action.toUpperCase() === 'BY_KEY' && category && keyName) {
     url += `/${category}/${keyName}`;
+  }
+
+  return url;
+}
+
+/**
+ * 获取附件管理相关的URL
+ * @param {string} action - 操作类型
+ * @param {string|number} id - 附件ID（可选）
+ * @returns {string} 附件管理接口URL
+ */
+export function getAttachmentUrl(action, id = null) {
+  const endpoint = API_CONFIG.ENDPOINTS.ATTACHMENTS[action.toUpperCase()];
+  if (!endpoint) {
+    throw new Error(`Invalid attachment action: ${action}`);
+  }
+
+  let url = getApiUrl(endpoint);
+
+  if (id && ['DETAIL', 'UPDATE', 'DELETE', 'RESTORE'].includes(action.toUpperCase())) {
+    url += `/${id}`;
+  } else if (action.toUpperCase() === 'RESTORE' && id) {
+    url += `/${id}/restore`;
   }
 
   return url;

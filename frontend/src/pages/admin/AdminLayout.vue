@@ -65,13 +65,13 @@
               <span v-show="!sidebarCollapsed">个人信息</span>
             </router-link>
             <router-link
-              to="/admin/system"
+              to="/admin/attachments"
               class="menu-item"
-              :class="{ active: $route.path === '/admin/system' }"
-              :title="sidebarCollapsed ? '系统设置' : ''"
+              :class="{ active: $route.path === '/admin/attachments' }"
+              :title="sidebarCollapsed ? '附件管理' : ''"
             >
-              <Icon type="ios-settings" />
-              <span v-show="!sidebarCollapsed">系统设置</span>
+              <Icon type="ios-folder" />
+              <span v-show="!sidebarCollapsed">附件管理</span>
             </router-link>
             <router-link
               to="/admin/settings"
@@ -199,7 +199,7 @@ const pageTitles = {
   '/admin/comments': '评论管理',
   '/admin/posts': '文章管理',
   '/admin/profile': '个人信息设置',
-  '/admin/system': '系统默认参数',
+  '/admin/attachments': '附件管理',
   '/admin/settings': '系统设置',
   '/admin/test-viewui': '组件测试',
   '/admin/fullscreen-test': '全屏测试',

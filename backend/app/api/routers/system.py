@@ -4,9 +4,27 @@ from sqlmodel import Session, select
 
 from app.api.routers.auth import get_current_admin
 from app.db.session import get_db
-from app.models.system import SystemDefault, SystemDefaultRead, SystemDefaultUpdate, SystemDefaultCreate
+from app.models.system import (
+    SystemDefault,
+    SystemDefaultRead,
+    SystemDefaultUpdate,
+    SystemDefaultCreate,
+)
 
 router = APIRouter(prefix="/system", tags=["system"])
+
+
+@router.get("/defaults/categories", response_model=List[str])
+def get_categories(
+    db: Session = Depends(get_db)
+) -> List[str]:
+    """获取所有分类列表（公开接口）"""
+    categories = db.exec(
+        select(SystemDefault.category)
+        .distinct()
+        .where(SystemDefault.is_public == 1)
+    ).all()
+    return sorted(categories)
 
 
 @router.get("/defaults", response_model=List[SystemDefaultRead])
@@ -24,7 +42,11 @@ def list_defaults(
     if is_public is not None:
         query = query.where(SystemDefault.is_public == is_public)
 
-    query = query.order_by(SystemDefault.category, SystemDefault.sort_order, SystemDefault.key_name)
+    query = query.order_by(
+        SystemDefault.category,
+        SystemDefault.sort_order,
+        SystemDefault.key_name,
+    )
 
     defaults = db.exec(query).all()
     return [SystemDefaultRead.model_validate(default) for default in defaults]
@@ -36,12 +58,16 @@ def list_public_defaults(
     db: Session = Depends(get_db)
 ) -> List[SystemDefaultRead]:
     """获取公开的系统默认参数（无需权限）"""
-    query = select(SystemDefault).where(SystemDefault.is_public == True)
+    query = select(SystemDefault).where(SystemDefault.is_public == 1)
 
     if category:
         query = query.where(SystemDefault.category == category)
 
-    query = query.order_by(SystemDefault.category, SystemDefault.sort_order, SystemDefault.key_name)
+    query = query.order_by(
+        SystemDefault.category,
+        SystemDefault.sort_order,
+        SystemDefault.key_name,
+    )
 
     defaults = db.exec(query).all()
     return [SystemDefaultRead.model_validate(default) for default in defaults]
@@ -60,7 +86,9 @@ def get_default(
     return SystemDefaultRead.model_validate(default)
 
 
-@router.get("/defaults/category/{category}", response_model=List[SystemDefaultRead])
+@router.get(
+    "/defaults/category/{category}", response_model=List[SystemDefaultRead]
+)
 def get_defaults_by_category(
     category: str,
     is_public: Optional[bool] = Query(None, description="是否公开"),
@@ -73,15 +101,20 @@ def get_defaults_by_category(
         query = query.where(SystemDefault.is_public == is_public)
     else:
         # 默认只返回公开参数
-        query = query.where(SystemDefault.is_public == True)
+        query = query.where(SystemDefault.is_public == 1)
 
-    query = query.order_by(SystemDefault.sort_order, SystemDefault.key_name)
+    query = query.order_by(
+        SystemDefault.sort_order,
+        SystemDefault.key_name,
+    )
 
     defaults = db.exec(query).all()
     return [SystemDefaultRead.model_validate(default) for default in defaults]
 
 
-@router.get("/defaults/key/{category}/{key_name}", response_model=SystemDefaultRead)
+@router.get(
+    "/defaults/key/{category}/{key_name}", response_model=SystemDefaultRead
+)
 def get_default_by_key(
     category: str,
     key_name: str,
@@ -92,7 +125,7 @@ def get_default_by_key(
         select(SystemDefault).where(
             SystemDefault.category == category,
             SystemDefault.key_name == key_name,
-            SystemDefault.is_public == True
+            SystemDefault.is_public == 1,
         )
     ).first()
 
@@ -172,14 +205,3 @@ def delete_default(
     db.commit()
 
     return {"message": "参数删除成功"}
-
-
-@router.get("/defaults/categories", response_model=List[str])
-def get_categories(
-    db: Session = Depends(get_db)
-) -> List[str]:
-    """获取所有分类列表（公开接口）"""
-    categories = db.exec(
-        select(SystemDefault.category).distinct().where(SystemDefault.is_public == True)
-    ).all()
-    return sorted(categories)

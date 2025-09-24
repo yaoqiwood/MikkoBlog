@@ -4,6 +4,7 @@
  */
 
 import {
+  getAttachmentUrl,
   getAuthUrl,
   getCommentUrl,
   getHealthUrl,
@@ -382,6 +383,83 @@ export const systemApi = {
   },
 };
 
+/**
+ * 附件管理API
+ */
+export const attachmentApi = {
+  /**
+   * 获取附件列表（管理员）
+   * @param {object} params - 查询参数
+   * @returns {Promise} 附件列表
+   */
+  async getAttachments(params = {}) {
+    return get(getAttachmentUrl('LIST'), { params });
+  },
+
+  /**
+   * 获取公开附件列表
+   * @param {object} params - 查询参数
+   * @returns {Promise} 公开附件列表
+   */
+  async getPublicAttachments(params = {}) {
+    return get(getAttachmentUrl('PUBLIC_LIST'), { params });
+  },
+
+  /**
+   * 获取附件详情
+   * @param {number} id - 附件ID
+   * @returns {Promise} 附件详情
+   */
+  async getAttachment(id) {
+    return get(getAttachmentUrl('DETAIL', id));
+  },
+
+  /**
+   * 上传附件
+   * @param {FormData} formData - 文件数据
+   * @returns {Promise} 上传结果
+   */
+  async uploadAttachment(formData) {
+    return postForm(getAttachmentUrl('UPLOAD'), formData);
+  },
+
+  /**
+   * 更新附件信息（管理员）
+   * @param {number} id - 附件ID
+   * @param {object} attachmentData - 附件数据
+   * @returns {Promise} 更新结果
+   */
+  async updateAttachment(id, attachmentData) {
+    return put(getAttachmentUrl('UPDATE', id), attachmentData);
+  },
+
+  /**
+   * 删除附件（软删除，管理员）
+   * @param {number} id - 附件ID
+   * @returns {Promise} 删除结果
+   */
+  async deleteAttachment(id) {
+    return del(getAttachmentUrl('DELETE', id));
+  },
+
+  /**
+   * 恢复已删除的附件（管理员）
+   * @param {number} id - 附件ID
+   * @returns {Promise} 恢复结果
+   */
+  async restoreAttachment(id) {
+    return post(getAttachmentUrl('RESTORE', id));
+  },
+
+  /**
+   * 获取附件统计信息（管理员）
+   * @returns {Promise} 统计信息
+   */
+  async getAttachmentStats() {
+    return get(getAttachmentUrl('STATS'));
+  },
+};
+
 // 导出所有API
 export default {
   auth: authApi,
@@ -391,4 +469,5 @@ export default {
   comment: commentApi,
   upload: uploadApi,
   system: systemApi,
+  attachment: attachmentApi,
 };

@@ -63,6 +63,11 @@ const router = createRouter({
           name: 'admin-system',
           component: () => import('@/pages/admin/SystemSettings.vue'),
         },
+        {
+          path: 'attachments',
+          name: 'admin-attachments',
+          component: () => import('@/pages/admin/AttachmentManagement.vue'),
+        },
         { path: 'test-viewui', name: 'admin-test-viewui', component: TestViewUI },
         { path: 'fullscreen-test', name: 'admin-fullscreen-test', component: FullscreenTest },
       ],

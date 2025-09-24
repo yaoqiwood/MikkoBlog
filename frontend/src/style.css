@@ -64,6 +64,36 @@ button:focus-visible {
   box-sizing: border-box;
 }
 
+/* 全局滚动条样式 - 强制白色主题 */
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: #c1c1c1 #ffffff !important;
+}
+
+*::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+*::-webkit-scrollbar-track {
+  background: #ffffff !important;
+  border-radius: 4px !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #c1c1c1 !important;
+  border-radius: 4px !important;
+  border: 1px solid #ffffff !important;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8 !important;
+}
+
+*::-webkit-scrollbar-corner {
+  background: #ffffff !important;
+}
+
 html,
 body {
   margin: 0;
@@ -97,6 +127,233 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
+}
+
+/* 针对特定元素的滚动条样式 */
+html,
+body,
+div,
+section,
+article,
+aside,
+nav,
+main,
+header,
+footer {
+  scrollbar-width: thin !important;
+  scrollbar-color: #c1c1c1 #ffffff !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+div::-webkit-scrollbar,
+section::-webkit-scrollbar,
+article::-webkit-scrollbar,
+aside::-webkit-scrollbar,
+nav::-webkit-scrollbar,
+main::-webkit-scrollbar,
+header::-webkit-scrollbar,
+footer::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+div::-webkit-scrollbar-track,
+section::-webkit-scrollbar-track,
+article::-webkit-scrollbar-track,
+aside::-webkit-scrollbar-track,
+nav::-webkit-scrollbar-track,
+main::-webkit-scrollbar-track,
+header::-webkit-scrollbar-track,
+footer::-webkit-scrollbar-track {
+  background: #ffffff !important;
+  border-radius: 4px !important;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+div::-webkit-scrollbar-thumb,
+section::-webkit-scrollbar-thumb,
+article::-webkit-scrollbar-thumb,
+aside::-webkit-scrollbar-thumb,
+nav::-webkit-scrollbar-thumb,
+main::-webkit-scrollbar-thumb,
+header::-webkit-scrollbar-thumb,
+footer::-webkit-scrollbar-thumb {
+  background: #c1c1c1 !important;
+  border-radius: 4px !important;
+  border: 1px solid #ffffff !important;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+div::-webkit-scrollbar-thumb:hover,
+section::-webkit-scrollbar-thumb:hover,
+article::-webkit-scrollbar-thumb:hover,
+aside::-webkit-scrollbar-thumb:hover,
+nav::-webkit-scrollbar-thumb:hover,
+main::-webkit-scrollbar-thumb:hover,
+header::-webkit-scrollbar-thumb:hover,
+footer::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8 !important;
+}
+
+/* 强制设置所有下拉框滚动条为白色主题，不受系统主题影响 */
+.ivu-select-dropdown-list {
+  scrollbar-width: thin !important;
+  scrollbar-color: #c1c1c1 #ffffff !important;
+}
+
+.ivu-select-dropdown-list::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.ivu-select-dropdown-list::-webkit-scrollbar-track {
+  background: #ffffff !important;
+  border-radius: 3px !important;
+}
+
+.ivu-select-dropdown-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1 !important;
+  border-radius: 3px !important;
+}
+
+.ivu-select-dropdown-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8 !important;
+}
+
+/* 修复所有可能的滚动条容器 */
+.ivu-select-dropdown,
+.ivu-select-dropdown-list,
+.ivu-dropdown-menu {
+  scrollbar-width: thin !important;
+  scrollbar-color: #c1c1c1 #ffffff !important;
+}
+
+.ivu-select-dropdown::-webkit-scrollbar,
+.ivu-select-dropdown-list::-webkit-scrollbar,
+.ivu-dropdown-menu::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.ivu-select-dropdown::-webkit-scrollbar-track,
+.ivu-select-dropdown-list::-webkit-scrollbar-track,
+.ivu-dropdown-menu::-webkit-scrollbar-track {
+  background: #ffffff !important;
+  border-radius: 3px !important;
+}
+
+.ivu-select-dropdown::-webkit-scrollbar-thumb,
+.ivu-select-dropdown-list::-webkit-scrollbar-thumb,
+.ivu-dropdown-menu::-webkit-scrollbar-thumb {
+  background: #c1c1c1 !important;
+  border-radius: 3px !important;
+}
+
+.ivu-select-dropdown::-webkit-scrollbar-thumb:hover,
+.ivu-select-dropdown-list::-webkit-scrollbar-thumb:hover,
+.ivu-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8 !important;
+}
+
+/* 针对表格、列表等组件的滚动条样式 */
+.ivu-table-body,
+.ivu-table-body-wrapper,
+.ivu-list,
+.ivu-scroll-container,
+.ivu-scroll-content,
+.ivu-modal-body,
+.ivu-drawer-body,
+.ivu-tabs-content,
+.ivu-tabs-tabpane {
+  scrollbar-width: thin !important;
+  scrollbar-color: #c1c1c1 #ffffff !important;
+}
+
+.ivu-table-body::-webkit-scrollbar,
+.ivu-table-body-wrapper::-webkit-scrollbar,
+.ivu-list::-webkit-scrollbar,
+.ivu-scroll-container::-webkit-scrollbar,
+.ivu-scroll-content::-webkit-scrollbar,
+.ivu-modal-body::-webkit-scrollbar,
+.ivu-drawer-body::-webkit-scrollbar,
+.ivu-tabs-content::-webkit-scrollbar,
+.ivu-tabs-tabpane::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.ivu-table-body::-webkit-scrollbar-track,
+.ivu-table-body-wrapper::-webkit-scrollbar-track,
+.ivu-list::-webkit-scrollbar-track,
+.ivu-scroll-container::-webkit-scrollbar-track,
+.ivu-scroll-content::-webkit-scrollbar-track,
+.ivu-modal-body::-webkit-scrollbar-track,
+.ivu-drawer-body::-webkit-scrollbar-track,
+.ivu-tabs-content::-webkit-scrollbar-track,
+.ivu-tabs-tabpane::-webkit-scrollbar-track {
+  background: #ffffff !important;
+  border-radius: 4px !important;
+}
+
+.ivu-table-body::-webkit-scrollbar-thumb,
+.ivu-table-body-wrapper::-webkit-scrollbar-thumb,
+.ivu-list::-webkit-scrollbar-thumb,
+.ivu-scroll-container::-webkit-scrollbar-thumb,
+.ivu-scroll-content::-webkit-scrollbar-thumb,
+.ivu-modal-body::-webkit-scrollbar-thumb,
+.ivu-drawer-body::-webkit-scrollbar-thumb,
+.ivu-tabs-content::-webkit-scrollbar-thumb,
+.ivu-tabs-tabpane::-webkit-scrollbar-thumb {
+  background: #c1c1c1 !important;
+  border-radius: 4px !important;
+  border: 1px solid #ffffff !important;
+}
+
+.ivu-table-body::-webkit-scrollbar-thumb:hover,
+.ivu-table-body-wrapper::-webkit-scrollbar-thumb:hover,
+.ivu-list::-webkit-scrollbar-thumb:hover,
+.ivu-scroll-container::-webkit-scrollbar-thumb:hover,
+.ivu-scroll-content::-webkit-scrollbar-thumb:hover,
+.ivu-modal-body::-webkit-scrollbar-thumb:hover,
+.ivu-drawer-body::-webkit-scrollbar-thumb:hover,
+.ivu-tabs-content::-webkit-scrollbar-thumb:hover,
+.ivu-tabs-tabpane::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8 !important;
+}
+
+/* 强制所有滚动条使用白色主题 - 最高优先级 */
+*:not(.dark-scrollbar):not(.black-scrollbar) {
+  scrollbar-width: thin !important;
+  scrollbar-color: #c1c1c1 #ffffff !important;
+}
+
+*:not(.dark-scrollbar):not(.black-scrollbar)::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+*:not(.dark-scrollbar):not(.black-scrollbar)::-webkit-scrollbar-track {
+  background: #ffffff !important;
+  border-radius: 4px !important;
+}
+
+*:not(.dark-scrollbar):not(.black-scrollbar)::-webkit-scrollbar-thumb {
+  background: #c1c1c1 !important;
+  border-radius: 4px !important;
+  border: 1px solid #ffffff !important;
+}
+
+*:not(.dark-scrollbar):not(.black-scrollbar)::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8 !important;
+}
+
+*:not(.dark-scrollbar):not(.black-scrollbar)::-webkit-scrollbar-corner {
+  background: #ffffff !important;
 }
 
 @media (prefers-color-scheme: light) {
