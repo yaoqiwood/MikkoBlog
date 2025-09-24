@@ -2,9 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from passlib.context import CryptContext
 
-from app.api.routers.auth import get_current_admin
+from app.api.routers.auth import get_current_admin, get_current_user
 from app.db.session import get_db
-from app.models.user import User, UserRead, UserCreate, UserUpdate
+from app.models.user import (
+    User,
+    UserRead,
+    UserCreate,
+    UserUpdate,
+    UserProfile,
+    UserProfileRead,
+    UserProfileUpdate,
+)
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -92,3 +100,40 @@ def update_user(
 def list_users_public(db: Session = Depends(get_db)) -> list[User]:
     """不需要权限验证的用户列表接口（仅用于演示）"""
     return db.exec(select(User)).all()
+
+
+# ========== 个人资料（当前登录用户） ==========
+@router.get("/profiles/me", response_model=UserProfileRead)
+def get_my_profile(
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = db.exec(select(UserProfile).where(UserProfile.user_id == current_user.id)).first()
+    if not profile:
+        profile = UserProfile(user_id=current_user.id, email=current_user.email, nickname=current_user.full_name)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    return profile
+
+
+@router.put("/profiles/me", response_model=UserProfileRead)
+def update_my_profile(
+    payload: UserProfileUpdate,
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = db.exec(select(UserProfile).where(UserProfile.user_id == current_user.id)).first()
+    if not profile:
+        profile = UserProfile(user_id=current_user.id)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(profile, key, value)
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile

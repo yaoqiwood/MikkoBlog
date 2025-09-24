@@ -25,6 +25,21 @@ const API_CONFIG = {
       ME: '/auth/me',
     },
 
+    // 个人资料
+    PROFILES: {
+      ME: '/admin/profiles/me',
+      UPDATE: '/admin/profiles/me',
+    },
+
+    // 系统默认参数
+    SYSTEM: {
+      DEFAULTS: '/system/defaults',
+      PUBLIC_DEFAULTS: '/system/defaults/public',
+      BY_CATEGORY: '/system/defaults/category',
+      BY_KEY: '/system/defaults/key',
+      CATEGORIES: '/system/defaults/categories',
+    },
+
     // 用户管理
     USERS: {
       LIST: '/admin/users',
@@ -171,6 +186,43 @@ export function getCommentUrl(action, id = null) {
   } else if (id && action.toUpperCase() === 'POST_COMMENTS') {
     url += `${id}`;
   }
+  return url;
+}
+
+/**
+ * 获取个人资料相关的URL
+ * @param {string} action - 操作类型
+ * @returns {string} 个人资料接口URL
+ */
+export function getProfileUrl(action) {
+  const endpoint = API_CONFIG.ENDPOINTS.PROFILES[action.toUpperCase()];
+  if (!endpoint) {
+    throw new Error(`Invalid profile action: ${action}`);
+  }
+  return getApiUrl(endpoint);
+}
+
+/**
+ * 获取系统默认参数相关的URL
+ * @param {string} action - 操作类型
+ * @param {string} category - 分类（可选）
+ * @param {string} keyName - 键名（可选）
+ * @returns {string} 系统默认参数接口URL
+ */
+export function getSystemUrl(action, category = null, keyName = null) {
+  const endpoint = API_CONFIG.ENDPOINTS.SYSTEM[action.toUpperCase()];
+  if (!endpoint) {
+    throw new Error(`Invalid system action: ${action}`);
+  }
+
+  let url = getApiUrl(endpoint);
+
+  if (action.toUpperCase() === 'BY_CATEGORY' && category) {
+    url += `/${category}`;
+  } else if (action.toUpperCase() === 'BY_KEY' && category && keyName) {
+    url += `/${category}/${keyName}`;
+  }
+
   return url;
 }
 

@@ -56,6 +56,24 @@
               <span v-show="!sidebarCollapsed">评论管理</span>
             </router-link>
             <router-link
+              to="/admin/profile"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/profile' }"
+              :title="sidebarCollapsed ? '个人信息' : ''"
+            >
+              <Icon type="ios-person" />
+              <span v-show="!sidebarCollapsed">个人信息</span>
+            </router-link>
+            <router-link
+              to="/admin/system"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/system' }"
+              :title="sidebarCollapsed ? '系统设置' : ''"
+            >
+              <Icon type="ios-settings" />
+              <span v-show="!sidebarCollapsed">系统设置</span>
+            </router-link>
+            <router-link
               to="/admin/settings"
               class="menu-item"
               :class="{ active: $route.path === '/admin/settings' }"
@@ -180,6 +198,8 @@ const pageTitles = {
   '/admin/users': '用户管理',
   '/admin/comments': '评论管理',
   '/admin/posts': '文章管理',
+  '/admin/profile': '个人信息设置',
+  '/admin/system': '系统默认参数',
   '/admin/settings': '系统设置',
   '/admin/test-viewui': '组件测试',
   '/admin/fullscreen-test': '全屏测试',
@@ -447,6 +467,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 100px;
+  box-sizing: border-box;
 }
 
 .admin-sidebar.collapsed .sidebar-header {
@@ -454,6 +476,7 @@ onMounted(() => {
   justify-content: center;
   flex-direction: column;
   gap: 0.5rem;
+  height: 100px;
 }
 
 .logo {
@@ -645,6 +668,7 @@ onMounted(() => {
   background: white;
   border-bottom: 1px solid #e8eaec;
   padding: 0 1.5rem;
+  position: relative;
 }
 
 .tabs-container {

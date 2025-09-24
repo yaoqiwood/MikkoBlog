@@ -342,7 +342,7 @@ const columns = ref([
   },
   {
     title: '操作',
-    width: 200,
+    width: 280,
     render: (h, params) => {
       return h(
         'div',
@@ -371,7 +371,7 @@ const columns = ref([
               type: 'default',
               size: 'small',
               icon: params.row.is_approved ? 'ios-checkmark' : 'ios-close',
-              style: `background: #fff; color: ${params.row.is_approved ? '#52c41a' : '#faad14'}; border: 1px solid ${params.row.is_approved ? '#52c41a' : '#faad14'}; min-width: 54px;`,
+              style: `background: #fff; color: ${params.row.is_approved ? '#52c41a' : '#faad14'}; border: 1px solid ${params.row.is_approved ? '#52c41a' : '#faad14'}; min-width: 70px; white-space: nowrap;`,
               onClick: () => toggleApproval(params.row),
             },
             {

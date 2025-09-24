@@ -2,6 +2,7 @@ import AdminLayout from '@/pages/admin/AdminLayout.vue';
 import CommentManagement from '@/pages/admin/CommentManagement.vue';
 import Dashboard from '@/pages/admin/Dashboard.vue';
 import UserManagement from '@/pages/admin/UserManagement.vue';
+import BlogHome from '@/pages/BlogHome.vue';
 import CookieTest from '@/pages/CookieTest.vue';
 import FullscreenTest from '@/pages/FullscreenTest.vue';
 import Home from '@/pages/Home.vue';
@@ -16,7 +17,8 @@ import { createRouter, createWebHistory } from 'vue-router';
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/login' },
+    { path: '/', redirect: '/blog' },
+    { path: '/blog', name: 'blog-home', component: BlogHome },
     { path: '/login', name: 'login', component: Login },
     { path: '/home', name: 'home', component: Home },
     { path: '/cookie-test', name: 'cookie-test', component: CookieTest },
@@ -50,6 +52,16 @@ const router = createRouter({
           path: 'settings',
           name: 'admin-settings',
           component: () => import('@/pages/admin/Settings.vue'),
+        },
+        {
+          path: 'profile',
+          name: 'admin-profile',
+          component: () => import('@/pages/admin/ProfileSettings.vue'),
+        },
+        {
+          path: 'system',
+          name: 'admin-system',
+          component: () => import('@/pages/admin/SystemSettings.vue'),
         },
         { path: 'test-viewui', name: 'admin-test-viewui', component: TestViewUI },
         { path: 'fullscreen-test', name: 'admin-fullscreen-test', component: FullscreenTest },

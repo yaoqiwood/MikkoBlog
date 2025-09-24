@@ -8,6 +8,8 @@ import {
   getCommentUrl,
   getHealthUrl,
   getPostUrl,
+  getProfileUrl,
+  getSystemUrl,
   getUploadUrl,
   getUserUrl,
 } from './apiConfig';
@@ -62,6 +64,26 @@ export const authApi = {
    */
   async getMe() {
     return get(getAuthUrl('ME'));
+  },
+};
+
+/**
+ * 个人资料API
+ */
+export const profileApi = {
+  /**
+   * 获取当前登录用户的个人资料（user_profiles）
+   */
+  async getMyProfile() {
+    return get(getProfileUrl('ME'));
+  },
+
+  /**
+   * 更新当前登录用户的个人资料
+   * @param {object} data
+   */
+  async updateMyProfile(data) {
+    return put(getProfileUrl('UPDATE'), data);
   },
 };
 
@@ -284,11 +306,86 @@ export const systemApi = {
   async healthCheck() {
     return get(getHealthUrl());
   },
+
+  /**
+   * 获取所有系统默认参数（管理员）
+   * @param {object} params - 查询参数
+   * @returns {Promise} 系统默认参数列表
+   */
+  async getDefaults(params = {}) {
+    return get(getSystemUrl('DEFAULTS'), { params });
+  },
+
+  /**
+   * 获取公开的系统默认参数
+   * @param {object} params - 查询参数
+   * @returns {Promise} 公开的系统默认参数列表
+   */
+  async getPublicDefaults(params = {}) {
+    return get(getSystemUrl('PUBLIC_DEFAULTS'), { params });
+  },
+
+  /**
+   * 按分类获取系统默认参数
+   * @param {string} category - 分类
+   * @param {object} params - 查询参数
+   * @returns {Promise} 系统默认参数列表
+   */
+  async getDefaultsByCategory(category, params = {}) {
+    return get(getSystemUrl('BY_CATEGORY', category), { params });
+  },
+
+  /**
+   * 根据分类和键名获取系统默认参数
+   * @param {string} category - 分类
+   * @param {string} keyName - 键名
+   * @returns {Promise} 系统默认参数
+   */
+  async getDefaultByKey(category, keyName) {
+    return get(getSystemUrl('BY_KEY', category, keyName));
+  },
+
+  /**
+   * 获取所有分类列表
+   * @returns {Promise} 分类列表
+   */
+  async getCategories() {
+    return get(getSystemUrl('CATEGORIES'));
+  },
+
+  /**
+   * 创建系统默认参数（管理员）
+   * @param {object} defaultData - 系统默认参数数据
+   * @returns {Promise} 创建结果
+   */
+  async createDefault(defaultData) {
+    return post(getSystemUrl('DEFAULTS'), defaultData);
+  },
+
+  /**
+   * 更新系统默认参数（管理员）
+   * @param {number} id - 参数ID
+   * @param {object} defaultData - 系统默认参数数据
+   * @returns {Promise} 更新结果
+   */
+  async updateDefault(id, defaultData) {
+    return put(`${getSystemUrl('DEFAULTS')}/${id}`, defaultData);
+  },
+
+  /**
+   * 删除系统默认参数（管理员）
+   * @param {number} id - 参数ID
+   * @returns {Promise} 删除结果
+   */
+  async deleteDefault(id) {
+    return del(`${getSystemUrl('DEFAULTS')}/${id}`);
+  },
 };
 
 // 导出所有API
 export default {
   auth: authApi,
+  profile: profileApi,
   user: userApi,
   post: postApi,
   comment: commentApi,

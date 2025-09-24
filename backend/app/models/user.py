@@ -38,5 +38,35 @@ class UserUpdate(SQLModel):
     is_admin: Optional[bool] = None
 
 
+# 用户个人资料（与 user_profiles 表对应）
+class UserProfileBase(SQLModel):
+    nickname: Optional[str] = None
+    email: Optional[str] = None
+    bio: Optional[str] = None
+    avatar: Optional[str] = None
+    blog_title: Optional[str] = None
+    blog_subtitle: Optional[str] = None
+    motto: Optional[str] = None
+    github_url: Optional[str] = None
+    twitter_url: Optional[str] = None
+    weibo_url: Optional[str] = None
+    website_url: Optional[str] = None
 
 
+class UserProfile(UserProfileBase, table=True):
+    __tablename__ = "user_profiles"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(index=True, nullable=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class UserProfileRead(UserProfileBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserProfileUpdate(UserProfileBase):
+    pass
