@@ -23,6 +23,7 @@ const API_CONFIG = {
       LOGOUT: '/auth/logout',
       PROFILE: '/auth/profile',
       ME: '/auth/me',
+      AVATAR: '/auth/avatar',
     },
 
     // 个人资料
@@ -47,8 +48,10 @@ const API_CONFIG = {
       DETAIL: '/attachments',
       UPLOAD: '/attachments/upload',
       UPDATE: '/attachments',
-      DELETE: '/attachments',
+      SOFT_DELETE: '/attachments',
       RESTORE: '/attachments',
+      HARD_DELETE: '/attachments',
+      BATCH_HARD_DELETE: '/attachments/batch/hard-delete',
       STATS: '/attachments/stats/summary',
     },
 
@@ -252,10 +255,14 @@ export function getAttachmentUrl(action, id = null) {
 
   let url = getApiUrl(endpoint);
 
-  if (id && ['DETAIL', 'UPDATE', 'DELETE', 'RESTORE'].includes(action.toUpperCase())) {
-    url += `/${id}`;
-  } else if (action.toUpperCase() === 'RESTORE' && id) {
+  if (action.toUpperCase() === 'RESTORE' && id) {
     url += `/${id}/restore`;
+  } else if (action.toUpperCase() === 'HARD_DELETE' && id) {
+    url += `/${id}/hard-delete`;
+  } else if (action.toUpperCase() === 'SOFT_DELETE' && id) {
+    url += `/${id}/soft-delete`;
+  } else if (id && ['DETAIL', 'UPDATE'].includes(action.toUpperCase())) {
+    url += `/${id}`;
   }
 
   return url;

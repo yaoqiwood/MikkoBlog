@@ -62,6 +62,9 @@ const router = createRouter({
           path: 'system',
           name: 'admin-system',
           component: () => import('@/pages/admin/SystemSettings.vue'),
+          meta: {
+            title: '系统默认参数设置',
+          },
         },
         {
           path: 'attachments',
@@ -83,6 +86,15 @@ const router = createRouter({
     { path: '/404', name: 'not-found', component: NotFound },
     { path: '/:pathMatch(.*)*', name: 'catch-all', redirect: '/404' },
   ],
+});
+
+// 全局路由守卫 - 设置页面标题
+router.afterEach(to => {
+  if (to.meta && to.meta.title) {
+    document.title = `${to.meta.title} - MikkoBlog`;
+  } else {
+    document.title = 'MikkoBlog';
+  }
 });
 
 export default router;

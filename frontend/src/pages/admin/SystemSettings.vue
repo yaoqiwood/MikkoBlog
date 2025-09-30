@@ -61,9 +61,9 @@
       v-model="showCreateModal"
       :title="editingDefault ? '编辑参数' : '新增参数'"
       width="600"
-      @on-cancel="resetForm"
+      @on-cancel="cancelEdit"
     >
-      <Form :model="formData" :rules="formRules" ref="formRef" label-width="120">
+      <Form :model="formData" :rules="formRules" ref="formRef" :label-width="120">
         <FormItem label="分类" prop="category">
           <Input v-model="formData.category" placeholder="请输入分类" />
         </FormItem>
@@ -96,7 +96,7 @@
         </FormItem>
       </Form>
       <template #footer>
-        <Button @click="resetForm">取消</Button>
+        <Button @click="cancelEdit">取消</Button>
         <Button type="primary" :loading="saving" @click="saveDefault">
           {{ editingDefault ? '更新' : '创建' }}
         </Button>
@@ -234,6 +234,8 @@ const loadDefaults = async () => {
       params.category = selectedCategory.value;
     }
 
+    console.log('发送请求参数:', params);
+
     const response = await systemApi.getDefaults(params);
     defaults.value = response.data || response;
   } catch (error) {
@@ -245,7 +247,8 @@ const loadDefaults = async () => {
 };
 
 // 分类变化处理
-const handleCategoryChange = () => {
+const handleCategoryChange = value => {
+  console.log('分类变化:', value, 'selectedCategory:', selectedCategory.value);
   loadDefaults();
 };
 
@@ -258,8 +261,8 @@ const editDefault = defaultItem => {
     key_value: defaultItem.key_value,
     description: defaultItem.description,
     data_type: defaultItem.data_type,
-    is_editable: defaultItem.is_editable,
-    is_public: defaultItem.is_public,
+    is_editable: Boolean(defaultItem.is_editable),
+    is_public: Boolean(defaultItem.is_public),
     sort_order: defaultItem.sort_order,
   });
   showCreateModal.value = true;
@@ -306,6 +309,11 @@ const saveDefault = async () => {
   } finally {
     saving.value = false;
   }
+};
+
+// 取消编辑（只关闭对话框，不清空表单）
+const cancelEdit = () => {
+  showCreateModal.value = false;
 };
 
 // 重置表单

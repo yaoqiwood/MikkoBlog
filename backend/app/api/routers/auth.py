@@ -2,13 +2,17 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.security import create_access_token, decode_token, verify_password
+from app.core.security import (
+    create_access_token,
+    decode_token,
+    verify_password,
+)
 from app.db.session import get_db
-from app.models.user import User, UserRead
+from app.models.user import User, UserRead, UserProfile
+from app.models.system import SystemDefault
 
 # 创建一个FastAPI路由器，前缀为/auth，标签为auth
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -77,3 +81,41 @@ def get_current_admin(user: UserRead = Depends(get_current_user)) -> UserRead:
 def get_me(current_user: UserRead = Depends(get_current_user)) -> UserRead:
     """获取当前用户信息"""
     return current_user
+
+
+# 获取用户头像的接口
+@router.get("/avatar")
+def get_user_avatar(
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> dict:
+    """获取用户头像（智能获取：个人信息表优先，否则使用系统默认头像）"""
+    # 首先尝试从用户个人信息表获取头像
+    user_profile_query = select(UserProfile).where(
+        UserProfile.user_id == current_user.id
+    )
+    user_profile = db.exec(user_profile_query).first()
+    user_avatar = (
+        user_profile.avatar if user_profile and user_profile.avatar else None
+    )
+
+    # 查询系统默认头像
+    default_avatar_query = select(SystemDefault).where(
+        SystemDefault.category == "user",
+        SystemDefault.key_name == "default_avatar"
+    )
+    default_avatar_record = db.exec(default_avatar_query).first()
+    default_avatar_url = (
+        default_avatar_record.key_value
+        if default_avatar_record
+        else "https://via.placeholder.com/150x150/87ceeb/ffffff?text=Avatar"
+    )
+
+    # 如果用户有自定义头像，使用自定义头像；否则使用默认头像
+    final_avatar = user_avatar if user_avatar else default_avatar_url
+
+    return {
+        "avatar_url": final_avatar,
+        "is_default": user_avatar is None,
+        "source": "user_profile" if user_avatar else "system_default"
+    }

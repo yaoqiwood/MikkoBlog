@@ -72,6 +72,9 @@
     <div class="settings-actions">
       <Button type="primary" size="large" @click="saveSettings">保存设置</Button>
       <Button type="default" size="large" @click="resetSettings">重置设置</Button>
+      <Button type="success" size="large" @click="goToSystemDefaults" style="margin-left: 10px">
+        设置系统默认变量
+      </Button>
     </div>
   </div>
 </template>
@@ -79,6 +82,9 @@
 <script setup>
 import { Message } from 'view-ui-plus';
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const settings = ref({
   siteName: 'MikkoBlog',
@@ -101,6 +107,10 @@ function saveSettings() {
 
 function resetSettings() {
   Message.info('设置已重置');
+}
+
+function goToSystemDefaults() {
+  router.push('/admin/system');
 }
 </script>
 

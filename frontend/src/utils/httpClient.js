@@ -39,6 +39,7 @@ httpClient.interceptors.request.use(
     }
 
     console.log(`🚀 [${config.method?.toUpperCase()}] ${config.url}`, config.data || config.params);
+    console.log('🔍 [interceptor] Full config:', config);
     return config;
   },
   error => {
@@ -76,8 +77,15 @@ httpClient.interceptors.response.use(
       error.response?.data || error.message
     );
 
-    // 处理401未授权错误
-    if (error.response?.status === 401) {
+    // 处理不同类型的错误
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || !error.response) {
+      // 网络连接错误（后端服务未启动）
+      const networkError = new Error('服务器连接失败，请检查后端服务是否已启动');
+      networkError.type = 'NETWORK_ERROR';
+      networkError.originalError = error;
+      return Promise.reject(networkError);
+    } else if (error.response?.status === 401) {
+      // 401未授权错误
       authCookie.clearAuth();
       // 可以在这里触发登录页面跳转
       window.location.href = '/login';
@@ -97,6 +105,11 @@ httpClient.interceptors.response.use(
  */
 async function request(method, url, data = null, config = {}) {
   try {
+    console.log('🔍 [request] Method:', method);
+    console.log('🔍 [request] URL:', url);
+    console.log('🔍 [request] Data:', data);
+    console.log('🔍 [request] Config:', config);
+
     const response = await httpClient({
       method,
       url,
@@ -117,7 +130,10 @@ async function request(method, url, data = null, config = {}) {
  * @returns {Promise} 请求结果
  */
 export async function get(url, params = {}, config = {}) {
-  return request('GET', url, null, { params, ...config });
+  console.log('🔍 [httpClient.get] URL:', url);
+  console.log('🔍 [httpClient.get] Params:', params);
+  console.log('🔍 [httpClient.get] Config:', config);
+  return request('GET', url, null, { ...config, params });
 }
 
 /**

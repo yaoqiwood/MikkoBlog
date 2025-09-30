@@ -45,9 +45,14 @@ def list_attachments(
     db: Session = Depends(get_db)
 ) -> List[AttachmentRead]:
     """获取附件列表（需要管理员权限）"""
-    query = select(Attachment).where(
-        Attachment.status != AttachmentStatus.DELETED
-    )
+    query = select(Attachment)
+
+    # 如果没有指定status参数，默认排除已删除的附件
+    # 如果指定了status参数，则根据参数筛选（包括已删除的）
+    if status is None:
+        query = query.where(Attachment.status != AttachmentStatus.DELETED)
+    else:
+        query = query.where(Attachment.status == status)
 
     # 应用筛选条件
     if file_category:
@@ -58,8 +63,6 @@ def list_attachments(
         query = query.where(Attachment.is_public == is_public)
     if is_featured is not None:
         query = query.where(Attachment.is_featured == is_featured)
-    if status:
-        query = query.where(Attachment.status == status)
     if uploaded_by:
         query = query.where(Attachment.uploaded_by == uploaded_by)
     if related_type:
@@ -275,13 +278,13 @@ def update_attachment(
     return AttachmentRead.model_validate(attachment)
 
 
-@router.delete("/{attachment_id}")
-def delete_attachment(
+@router.delete("/{attachment_id}/soft-delete")
+def soft_delete_attachment(
     attachment_id: int,
     _: UserRead = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ) -> dict:
-    """删除附件（软删除，需要管理员权限）"""
+    """软删除附件（需要管理员权限）"""
     attachment = db.get(Attachment, attachment_id)
     if not attachment or attachment.status == AttachmentStatus.DELETED:
         raise HTTPException(status_code=404, detail="附件不存在")
@@ -317,6 +320,77 @@ def restore_attachment(
     db.commit()
 
     return {"message": "附件恢复成功"}
+
+
+@router.delete("/{attachment_id}/hard-delete")
+def hard_delete_attachment(
+    attachment_id: int,
+    _: UserRead = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+) -> dict:
+    """硬删除附件（需要管理员权限）"""
+    attachment = db.get(Attachment, attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail="附件不存在")
+
+    if attachment.status != AttachmentStatus.DELETED:
+        raise HTTPException(status_code=400, detail="只能永久删除已删除的附件")
+
+    # 删除文件
+    try:
+        if attachment.file_path and os.path.exists(attachment.file_path):
+            os.remove(attachment.file_path)
+    except Exception as e:
+        print(f"删除文件失败: {e}")
+        # 继续删除数据库记录，即使文件删除失败
+
+    # 从数据库中删除记录
+    db.delete(attachment)
+    db.commit()
+
+    return {"message": "附件永久删除成功"}
+
+
+@router.post("/batch/hard-delete")
+def batch_hard_delete_attachments(
+    attachment_ids: List[int],
+    _: UserRead = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+) -> dict:
+    """批量硬删除附件（需要管理员权限）"""
+    if not attachment_ids:
+        raise HTTPException(status_code=400, detail="请选择要删除的附件")
+
+    # 获取所有已删除的附件
+    attachments = db.exec(
+        select(Attachment).where(
+            and_(
+                Attachment.id.in_(attachment_ids),
+                Attachment.status == AttachmentStatus.DELETED
+            )
+        )
+    ).all()
+
+    if not attachments:
+        raise HTTPException(status_code=404, detail="没有找到可删除的附件")
+
+    deleted_count = 0
+    for attachment in attachments:
+        # 删除文件
+        try:
+            if attachment.file_path and os.path.exists(attachment.file_path):
+                os.remove(attachment.file_path)
+        except Exception as e:
+            print(f"删除文件失败: {e}")
+            # 继续删除数据库记录，即使文件删除失败
+
+        # 从数据库中删除记录
+        db.delete(attachment)
+        deleted_count += 1
+
+    db.commit()
+
+    return {"message": f"成功永久删除 {deleted_count} 个附件"}
 
 
 @router.get("/stats/summary")

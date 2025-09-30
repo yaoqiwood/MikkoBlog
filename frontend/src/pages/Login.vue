@@ -192,7 +192,13 @@ async function validateToken(token) {
     console.error('Token验证失败:', error);
     // 如果token无效，清除cookie
     authCookie.clearAuth();
-    Message.warning('登录状态已过期，请重新登录');
+
+    // 根据错误类型显示不同的提示信息
+    if (error.type === 'NETWORK_ERROR') {
+      Message.warning('服务器连接失败，请检查后端服务状态');
+    } else {
+      Message.warning('登录状态已过期，请重新登录');
+    }
   } finally {
     checkingAuth.value = false;
   }
@@ -223,9 +229,21 @@ async function login() {
 
     Message.success('登录成功！');
     routerUtils.navigateTo(router, ROUTES.ADMIN_DASHBOARD);
-  } catch {
-    error.value = '登录失败，请检查用户名/邮箱和密码';
-    Message.error('登录失败，请检查用户名/邮箱和密码');
+  } catch (err) {
+    // 根据错误类型显示不同的错误信息
+    if (err.type === 'NETWORK_ERROR') {
+      error.value = '服务器无法连接，请联系管理员';
+      Message.error('服务器无法连接，请联系管理员');
+    } else if (err.response?.status === 401) {
+      error.value = '用户名或密码错误';
+      Message.error('用户名或密码错误');
+    } else if (err.response?.status === 422) {
+      error.value = '输入格式不正确，请检查用户名/邮箱和密码';
+      Message.error('输入格式不正确，请检查用户名/邮箱和密码');
+    } else {
+      error.value = '登录失败，请稍后重试';
+      Message.error('登录失败，请稍后重试');
+    }
   } finally {
     loading.value = false;
   }

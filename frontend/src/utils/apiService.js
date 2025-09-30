@@ -66,6 +66,22 @@ export const authApi = {
   async getMe() {
     return get(getAuthUrl('ME'));
   },
+
+  /**
+   * 获取用户头像（智能获取：个人信息表优先，否则使用系统默认头像）
+   * @returns {Promise} 头像信息
+   */
+  async getAvatar() {
+    return get(getAuthUrl('AVATAR'));
+  },
+
+  /**
+   * 重置用户头像为默认头像
+   * @returns {Promise} 重置结果
+   */
+  async resetAvatar() {
+    return del('http://localhost:8000/api/upload/avatar');
+  },
 };
 
 /**
@@ -314,7 +330,7 @@ export const systemApi = {
    * @returns {Promise} 系统默认参数列表
    */
   async getDefaults(params = {}) {
-    return get(getSystemUrl('DEFAULTS'), { params });
+    return get(getSystemUrl('DEFAULTS'), params);
   },
 
   /**
@@ -323,7 +339,7 @@ export const systemApi = {
    * @returns {Promise} 公开的系统默认参数列表
    */
   async getPublicDefaults(params = {}) {
-    return get(getSystemUrl('PUBLIC_DEFAULTS'), { params });
+    return get(getSystemUrl('PUBLIC_DEFAULTS'), params);
   },
 
   /**
@@ -333,7 +349,7 @@ export const systemApi = {
    * @returns {Promise} 系统默认参数列表
    */
   async getDefaultsByCategory(category, params = {}) {
-    return get(getSystemUrl('BY_CATEGORY', category), { params });
+    return get(getSystemUrl('BY_CATEGORY', category), params);
   },
 
   /**
@@ -393,7 +409,7 @@ export const attachmentApi = {
    * @returns {Promise} 附件列表
    */
   async getAttachments(params = {}) {
-    return get(getAttachmentUrl('LIST'), { params });
+    return get(getAttachmentUrl('LIST'), params);
   },
 
   /**
@@ -402,7 +418,7 @@ export const attachmentApi = {
    * @returns {Promise} 公开附件列表
    */
   async getPublicAttachments(params = {}) {
-    return get(getAttachmentUrl('PUBLIC_LIST'), { params });
+    return get(getAttachmentUrl('PUBLIC_LIST'), params);
   },
 
   /**
@@ -434,12 +450,12 @@ export const attachmentApi = {
   },
 
   /**
-   * 删除附件（软删除，管理员）
+   * 软删除附件（管理员）
    * @param {number} id - 附件ID
    * @returns {Promise} 删除结果
    */
-  async deleteAttachment(id) {
-    return del(getAttachmentUrl('DELETE', id));
+  async softDeleteAttachment(id) {
+    return del(getAttachmentUrl('SOFT_DELETE', id));
   },
 
   /**
@@ -449,6 +465,24 @@ export const attachmentApi = {
    */
   async restoreAttachment(id) {
     return post(getAttachmentUrl('RESTORE', id));
+  },
+
+  /**
+   * 硬删除附件（管理员）
+   * @param {number} id - 附件ID
+   * @returns {Promise} 硬删除结果
+   */
+  async hardDeleteAttachment(id) {
+    return del(getAttachmentUrl('HARD_DELETE', id));
+  },
+
+  /**
+   * 批量硬删除附件（管理员）
+   * @param {Array<number>} ids - 附件ID数组
+   * @returns {Promise} 批量删除结果
+   */
+  async batchHardDeleteAttachments(ids) {
+    return post(getAttachmentUrl('BATCH_HARD_DELETE'), ids);
   },
 
   /**

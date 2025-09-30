@@ -54,7 +54,7 @@
         <div class="card-content">
           <div class="avatar-section">
             <div class="current-avatar">
-              <img :src="profileForm.avatar || defaultAvatar" alt="当前头像" />
+              <img :src="getCurrentAvatar()" alt="当前头像" />
               <div class="avatar-overlay">
                 <Icon type="ios-camera" size="24" />
                 <span>点击更换</span>
@@ -68,11 +68,14 @@
                 :on-error="handleAvatarError"
                 :show-upload-list="false"
                 accept="image/*"
-                action="/api/upload/avatar"
+                :action="uploadAction"
+                :headers="uploadHeaders"
               >
-                <Button type="primary" icon="ios-cloud-upload-outline"> 选择头像 </Button>
+                <Button type="primary" icon="ios-cloud-upload-outline" class="avatar-btn">
+                  选择头像
+                </Button>
               </Upload>
-              <Button @click="resetAvatar" style="margin-left: 10px"> 重置为默认 </Button>
+              <Button @click="resetAvatar" class="avatar-btn"> 重置为默认 </Button>
             </div>
           </div>
         </div>
@@ -181,17 +184,44 @@
         <Button size="large" @click="resetForm" style="margin-left: 10px"> 重置 </Button>
       </div>
     </div>
+
+    <!-- 重置头像确认对话框 -->
+    <Modal v-model="showResetModal" title="确认重置头像" :mask-closable="false" :closable="false">
+      <p>您确定要将头像重置为默认头像吗？</p>
+      <p style="color: #999; font-size: 14px; margin-top: 10px">
+        重置后，您的自定义头像将被清除，系统将使用默认头像。
+      </p>
+      <template #footer>
+        <Button @click="showResetModal = false">取消</Button>
+        <Button type="error" @click="confirmResetAvatar" :loading="resetting"> 确认重置 </Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup>
-import { profileApi } from '@/utils/apiService';
+import { authApi, profileApi } from '@/utils/apiService';
+import { authCookie } from '@/utils/cookieUtils';
 import { Message } from 'view-ui-plus';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 // 响应式数据
 const saving = ref(false);
-const defaultAvatar = 'https://via.placeholder.com/150x150/87ceeb/ffffff?text=Avatar';
+const resetting = ref(false);
+const showResetModal = ref(false);
+const defaultAvatar = ref('https://via.placeholder.com/150x150/87ceeb/ffffff?text=Avatar');
+
+// 上传配置
+const uploadAction = computed(() => {
+  return 'http://localhost:8000/api/upload/avatar';
+});
+
+const uploadHeaders = computed(() => {
+  const auth = authCookie.getAuth();
+  return {
+    Authorization: `Bearer ${auth.token}`,
+  };
+});
 
 // 表单数据
 const profileForm = reactive({
@@ -240,7 +270,7 @@ const handleAvatarUpload = file => {
 };
 
 // 头像上传成功
-const handleAvatarSuccess = (response, file) => {
+const handleAvatarSuccess = response => {
   if (response.success) {
     profileForm.avatar = response.data.url;
     Message.success('头像上传成功!');
@@ -250,15 +280,42 @@ const handleAvatarSuccess = (response, file) => {
 };
 
 // 头像上传失败
-const handleAvatarError = (error, file) => {
+const handleAvatarError = error => {
   console.error('头像上传失败:', error);
   Message.error('头像上传失败，请重试!');
 };
 
-// 重置头像
+// 获取当前头像
+const getCurrentAvatar = () => {
+  // 如果个人信息表中有头像，使用个人信息表的头像
+  if (profileForm.avatar && profileForm.avatar.trim() !== '') {
+    return profileForm.avatar;
+  }
+  // 否则使用系统默认头像
+  return defaultAvatar.value;
+};
+
+// 重置头像（显示确认对话框）
 const resetAvatar = () => {
-  profileForm.avatar = defaultAvatar;
-  Message.success('头像已重置为默认头像!');
+  showResetModal.value = true;
+};
+
+// 确认重置头像
+const confirmResetAvatar = async () => {
+  resetting.value = true;
+  try {
+    await authApi.resetAvatar();
+    profileForm.avatar = '';
+    showResetModal.value = false;
+    // 重新加载用户头像以获取最新的默认头像
+    await loadUserAvatar();
+    Message.success('头像已重置为默认头像!');
+  } catch (error) {
+    console.error('重置头像失败:', error);
+    Message.error('重置头像失败，请重试!');
+  } finally {
+    resetting.value = false;
+  }
 };
 
 // 保存个人资料
@@ -299,6 +356,19 @@ const resetForm = () => {
   Message.success('表单已重置!');
 };
 
+// 加载用户头像（智能获取）
+const loadUserAvatar = async () => {
+  try {
+    const response = await authApi.getAvatar();
+    if (response && response.avatar_url) {
+      defaultAvatar.value = response.avatar_url;
+    }
+  } catch (error) {
+    console.error('加载用户头像失败:', error);
+    // 保持使用默认的占位符头像
+  }
+};
+
 // 加载个人资料
 const loadProfile = async () => {
   try {
@@ -328,8 +398,9 @@ const loadProfile = async () => {
 };
 
 // 生命周期
-onMounted(() => {
-  loadProfile();
+onMounted(async () => {
+  await loadUserAvatar();
+  await loadProfile();
 });
 </script>
 
@@ -473,6 +544,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.avatar-btn {
+  width: 120px;
+  height: 36px;
+  font-size: 14px;
 }
 
 /* 操作按钮 */

@@ -1,68 +1,117 @@
 <template>
   <div class="attachment-management">
     <div class="page-header">
-      <h2>附件管理</h2>
-      <p>管理系统中的图片、文档等附件文件</p>
+      <h2>{{ showRecycleBin ? '回收站' : '附件管理' }}</h2>
+      <p>
+        {{
+          showRecycleBin
+            ? '管理已删除的附件文件，可以恢复或永久删除'
+            : '管理系统中的图片、文档等附件文件'
+        }}
+      </p>
     </div>
 
     <div class="management-container">
       <!-- 筛选和操作区域 -->
       <div class="filter-section">
         <div class="filter-controls">
-          <Select
-            v-model="filters.file_category"
-            placeholder="文件分类"
-            clearable
-            style="width: 150px; margin-right: 10px"
-            @on-change="loadAttachments"
-          >
-            <Option value="">全部分类</Option>
-            <Option value="image">图片</Option>
-            <Option value="document">文档</Option>
-            <Option value="video">视频</Option>
-            <Option value="audio">音频</Option>
-            <Option value="other">其他</Option>
-          </Select>
+          <div class="filter-inputs">
+            <Select
+              v-model="filters.file_category"
+              placeholder="文件分类"
+              clearable
+              class="filter-select"
+              @on-change="loadAttachments"
+            >
+              <Option value="">全部分类</Option>
+              <Option value="image">图片</Option>
+              <Option value="document">文档</Option>
+              <Option value="video">视频</Option>
+              <Option value="audio">音频</Option>
+              <Option value="other">其他</Option>
+            </Select>
 
-          <Select
-            v-model="filters.status"
-            placeholder="文件状态"
-            clearable
-            style="width: 120px; margin-right: 10px"
-            @on-change="loadAttachments"
-          >
-            <Option value="">全部状态</Option>
-            <Option value="active">正常</Option>
-            <Option value="hidden">隐藏</Option>
-            <Option value="deleted">已删除</Option>
-          </Select>
+            <Select
+              v-if="!showRecycleBin"
+              v-model="filters.status"
+              placeholder="文件状态"
+              clearable
+              class="filter-select"
+              @on-change="loadAttachments"
+            >
+              <Option value="">全部状态</Option>
+              <Option value="active">正常</Option>
+              <Option value="hidden">隐藏</Option>
+            </Select>
 
-          <Input
-            v-model="filters.search"
-            placeholder="搜索文件名、标题..."
-            style="width: 200px; margin-right: 10px"
-            @on-enter="loadAttachments"
-          />
+            <Input
+              v-model="filters.search"
+              placeholder="搜索文件名、标题..."
+              class="filter-input"
+              @on-enter="loadAttachments"
+            />
+            <div class="left-buttons">
+              <Button type="primary" @click="loadAttachments">搜索</Button>
+              <Button @click="resetFilters">重置</Button>
+              <Button v-if="!showRecycleBin" type="success" @click="showUploadModal = true">
+                上传文件
+              </Button>
+            </div>
+          </div>
 
-          <Button type="primary" @click="loadAttachments">搜索</Button>
-          <Button @click="resetFilters" style="margin-left: 10px">重置</Button>
-          <Button type="success" @click="showUploadModal = true" style="margin-left: 10px">
-            上传文件
-          </Button>
+          <div class="filter-buttons">
+            <div class="right-buttons">
+              <!-- 回收站模式下的批量操作按钮 -->
+              <template v-if="showRecycleBin">
+                <Button
+                  type="error"
+                  :disabled="selectedAttachments.length === 0"
+                  @click="batchPermanentDelete"
+                >
+                  批量删除 ({{ selectedAttachments.length }})
+                </Button>
+                <Button
+                  type="error"
+                  :disabled="attachments.length === 0"
+                  @click="clearRecycleBin"
+                  style="margin-left: 8px"
+                >
+                  清空回收站
+                </Button>
+              </template>
+              <Button :type="showRecycleBin ? 'warning' : 'default'" @click="toggleRecycleBin">
+                {{ showRecycleBin ? '返回列表附件管理' : '切换到回收站' }}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- 统计信息 -->
       <div class="stats-section" v-if="stats">
         <div class="stat-card">
-          <div class="stat-number">{{ stats.total_count || 0 }}</div>
+          <div class="stat-number">
+            {{ showRecycleBin ? recycleBinStats.total_count || 0 : stats.total_count || 0 }}
+          </div>
           <div class="stat-label">总文件数</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">{{ formatFileSize(stats.total_size || 0) }}</div>
+          <div class="stat-number">
+            {{
+              formatFileSize(
+                showRecycleBin ? recycleBinStats.total_size || 0 : stats.total_size || 0
+              )
+            }}
+          </div>
           <div class="stat-label">总大小</div>
         </div>
-        <div class="stat-card" v-for="(count, category) in stats.category_stats" :key="category">
+        <div
+          class="stat-card"
+          v-for="(count, category) in showRecycleBin
+            ? recycleBinStats.category_stats
+            : stats.category_stats"
+          :key="category"
+        >
           <div class="stat-number">{{ count }}</div>
           <div class="stat-label">{{ getCategoryLabel(category) }}</div>
         </div>
@@ -71,6 +120,14 @@
       <!-- 附件列表 -->
       <div class="table-section">
         <Table :columns="columns" :data="attachments" :loading="loading" stripe border height="600">
+          <!-- 多选框模板 -->
+          <template #selection="{ row }">
+            <Checkbox
+              :value="isSelected(row)"
+              @on-change="checked => handleSelectItem(checked, row)"
+            />
+          </template>
+
           <template #file_preview="{ row }">
             <div class="file-preview">
               <img
@@ -124,25 +181,30 @@
 
           <template #action="{ row }">
             <div class="action-buttons">
-              <Button type="primary" size="small" @click="editAttachment(row)"> 编辑 </Button>
-              <Button
-                v-if="row.status === 'deleted'"
-                type="success"
-                size="small"
-                @click="restoreAttachment(row)"
-                style="margin-left: 5px"
-              >
-                恢复
-              </Button>
-              <Button
-                v-else
-                type="error"
-                size="small"
-                @click="deleteAttachment(row)"
-                style="margin-left: 5px"
-              >
-                删除
-              </Button>
+              <!-- 回收站模式：只显示恢复按钮 -->
+              <template v-if="showRecycleBin">
+                <Button type="success" size="small" @click="restoreAttachment(row)"> 恢复 </Button>
+                <Button
+                  type="error"
+                  size="small"
+                  @click="permanentDeleteAttachment(row)"
+                  style="margin-left: 5px"
+                >
+                  永久删除
+                </Button>
+              </template>
+              <!-- 正常模式：显示编辑和删除按钮 -->
+              <template v-else>
+                <Button type="primary" size="small" @click="editAttachment(row)"> 编辑 </Button>
+                <Button
+                  type="error"
+                  size="small"
+                  @click="deleteAttachment(row)"
+                  style="margin-left: 5px"
+                >
+                  删除
+                </Button>
+              </template>
             </div>
           </template>
         </Table>
@@ -275,6 +337,71 @@
         </div>
       </div>
     </Modal>
+
+    <!-- 删除确认对话框 -->
+    <Modal
+      v-model="showDeleteModal"
+      :title="showRecycleBin ? '确认永久删除附件' : '确认删除附件'"
+      :mask-closable="false"
+      :closable="false"
+    >
+      <p>{{ showRecycleBin ? '您确定要永久删除这个附件吗？' : '您确定要删除这个附件吗？' }}</p>
+      <p style="color: #999; font-size: 14px; margin-top: 10px">
+        {{
+          showRecycleBin
+            ? '永久删除后，该附件将无法恢复，请谨慎操作！'
+            : '删除后，该附件将被标记为已删除状态，但仍可在回收站中恢复。'
+        }}
+      </p>
+      <template #footer>
+        <Button @click="showDeleteModal = false">取消</Button>
+        <Button
+          type="error"
+          @click="showRecycleBin ? confirmPermanentDeleteAttachment() : confirmDeleteAttachment()"
+          :loading="deleting"
+        >
+          {{ showRecycleBin ? '确认永久删除' : '确认删除' }}
+        </Button>
+      </template>
+    </Modal>
+
+    <!-- 批量删除确认对话框 -->
+    <Modal
+      v-model="showBatchDeleteModal"
+      title="确认批量永久删除"
+      :mask-closable="false"
+      :closable="false"
+    >
+      <p>您确定要永久删除选中的 {{ selectedAttachments.length }} 个附件吗？</p>
+      <p style="color: #999; font-size: 14px; margin-top: 10px">
+        永久删除后，这些附件将无法恢复，请谨慎操作！
+      </p>
+      <template #footer>
+        <Button @click="showBatchDeleteModal = false">取消</Button>
+        <Button type="error" @click="confirmBatchPermanentDelete" :loading="batchDeleting">
+          确认批量删除
+        </Button>
+      </template>
+    </Modal>
+
+    <!-- 清空回收站确认对话框 -->
+    <Modal
+      v-model="showClearRecycleBinModal"
+      title="确认清空回收站"
+      :mask-closable="false"
+      :closable="false"
+    >
+      <p>您确定要清空整个回收站吗？</p>
+      <p style="color: #999; font-size: 14px; margin-top: 10px">
+        这将永久删除回收站中的所有 {{ attachments.length }} 个附件，无法恢复，请谨慎操作！
+      </p>
+      <template #footer>
+        <Button @click="showClearRecycleBinModal = false">取消</Button>
+        <Button type="error" @click="confirmClearRecycleBin" :loading="batchDeleting">
+          确认清空回收站
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -282,7 +409,7 @@
 import { attachmentApi } from '@/utils/apiService';
 import httpClient from '@/utils/httpClient';
 import { Message } from 'view-ui-plus';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 // 响应式数据
 const loading = ref(false);
@@ -290,6 +417,7 @@ const uploading = ref(false);
 const saving = ref(false);
 const attachments = ref([]);
 const stats = ref(null);
+const recycleBinStats = ref(null);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(20);
@@ -303,7 +431,18 @@ const previewModalWidth = ref('80%');
 const selectedFile = ref(null);
 const editingAttachment = ref(null);
 const editFormRef = ref(null);
+const showDeleteModal = ref(false);
+const deleting = ref(false);
+const deletingAttachment = ref(null);
 const uploadFormRef = ref(null);
+const showRecycleBin = ref(false);
+
+// 多选相关
+const selectedAttachments = ref([]);
+const selectAll = ref(false);
+const showBatchDeleteModal = ref(false);
+const showClearRecycleBinModal = ref(false);
+const batchDeleting = ref(false);
 
 // 筛选条件
 const filters = reactive({
@@ -341,66 +480,106 @@ const editRules = {
 };
 
 // 表格列配置
-const columns = [
-  {
-    title: '预览',
-    key: 'file_preview',
-    width: 80,
-    slot: 'file_preview',
-  },
-  {
-    title: '文件信息',
-    key: 'file_info',
-    minWidth: 200,
-    slot: 'file_info',
-  },
-  {
-    title: 'URL',
-    key: 'file_url',
-    width: 200,
-    slot: 'file_url',
-  },
-  {
-    title: '分类',
-    key: 'file_category',
-    width: 100,
-    render: (h, params) => {
-      return h(
-        'Tag',
-        {
-          color: getCategoryColor(params.row.file_category),
-        },
-        getCategoryLabel(params.row.file_category)
-      );
+const columns = computed(() => {
+  const baseColumns = [
+    {
+      title: '预览',
+      key: 'file_preview',
+      width: 80,
+      slot: 'file_preview',
     },
-  },
-  {
-    title: '状态',
-    key: 'status',
-    width: 100,
-    slot: 'status',
-  },
-  {
-    title: '查看次数',
-    key: 'view_count',
-    width: 100,
-  },
-  {
-    title: '上传时间',
-    key: 'created_at',
-    width: 150,
-    render: (h, params) => {
-      return h('span', new Date(params.row.created_at).toLocaleString());
+  ];
+
+  // 在回收站模式下添加多选框
+  if (showRecycleBin.value) {
+    baseColumns.unshift({
+      title: '选择',
+      key: 'selection',
+      width: 60,
+      slot: 'selection',
+      renderHeader: h => {
+        return h('Checkbox', {
+          value: selectAll.value,
+          on: {
+            'on-change': handleSelectAll,
+          },
+        });
+      },
+    });
+  }
+
+  return baseColumns.concat([
+    {
+      title: '文件信息',
+      key: 'file_info',
+      minWidth: 200,
+      slot: 'file_info',
     },
-  },
-  {
-    title: '操作',
-    key: 'action',
-    width: 200,
-    slot: 'action',
-    fixed: 'right',
-  },
-];
+    {
+      title: 'URL',
+      key: 'file_url',
+      width: 200,
+      slot: 'file_url',
+    },
+    {
+      title: '分类',
+      key: 'file_category',
+      width: 100,
+      render: (h, params) => {
+        return h(
+          'Tag',
+          {
+            color: getCategoryColor(params.row.file_category),
+          },
+          getCategoryLabel(params.row.file_category)
+        );
+      },
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 100,
+      slot: 'status',
+    },
+    {
+      title: '查看次数',
+      key: 'view_count',
+      width: 100,
+    },
+    {
+      title: '上传时间',
+      key: 'created_at',
+      width: 150,
+      render: (h, params) => {
+        return h('span', new Date(params.row.created_at).toLocaleString());
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 200,
+      slot: 'action',
+      fixed: 'right',
+    },
+  ]);
+});
+
+// 错误处理函数
+const handleApiError = (error, defaultMessage) => {
+  console.error(defaultMessage, error);
+
+  if (error.type === 'NETWORK_ERROR') {
+    Message.error('服务器连接失败，请检查后端服务是否已启动');
+  } else if (error.response?.status === 401) {
+    Message.error('登录已过期，请重新登录');
+  } else if (error.response?.status === 403) {
+    Message.error('权限不足，无法执行此操作');
+  } else if (error.response?.status >= 500) {
+    Message.error('服务器内部错误，请稍后重试');
+  } else {
+    Message.error(defaultMessage);
+  }
+};
 
 // 工具函数
 const formatFileSize = bytes => {
@@ -462,6 +641,21 @@ const getStatusColor = status => {
   return colors[status] || 'default';
 };
 
+// 切换回收站模式
+const toggleRecycleBin = () => {
+  showRecycleBin.value = !showRecycleBin.value;
+  // 重置筛选条件
+  filters.status = '';
+  filters.file_category = '';
+  filters.search = '';
+  // 重置多选状态
+  selectedAttachments.value = [];
+  selectAll.value = false;
+  // 重新加载数据和统计信息
+  loadAttachments();
+  loadStats();
+};
+
 // 加载附件列表
 const loadAttachments = async () => {
   loading.value = true;
@@ -469,15 +663,34 @@ const loadAttachments = async () => {
     const params = {
       page: currentPage.value,
       page_size: pageSize.value,
-      ...filters,
     };
+
+    // 如果在回收站模式，只显示已删除的附件
+    if (showRecycleBin.value) {
+      params.status = 'deleted';
+    } else {
+      // 正常模式，应用筛选条件
+      if (filters.file_category) {
+        params.file_category = filters.file_category;
+      }
+      if (filters.status) {
+        params.status = filters.status;
+      }
+      if (filters.search) {
+        params.search = filters.search;
+      }
+    }
 
     const response = await attachmentApi.getAttachments(params);
     attachments.value = response.data || response;
     total.value = response.total || attachments.value.length;
+
+    // 如果是回收站模式，重新计算统计信息
+    if (showRecycleBin.value) {
+      loadStats();
+    }
   } catch (error) {
-    console.error('加载附件失败:', error);
-    Message.error('加载附件失败!');
+    handleApiError(error, '加载附件失败!');
   } finally {
     loading.value = false;
   }
@@ -486,10 +699,31 @@ const loadAttachments = async () => {
 // 加载统计信息
 const loadStats = async () => {
   try {
-    const response = await attachmentApi.getAttachmentStats();
-    stats.value = response.data || response;
+    if (showRecycleBin.value) {
+      // 回收站模式：计算回收站中的统计数据
+      const deletedAttachments = attachments.value;
+      const totalCount = deletedAttachments.length;
+      const totalSize = deletedAttachments.reduce((sum, item) => sum + (item.file_size || 0), 0);
+
+      // 按分类统计
+      const categoryStats = {};
+      deletedAttachments.forEach(item => {
+        const category = item.file_category;
+        categoryStats[category] = (categoryStats[category] || 0) + 1;
+      });
+
+      recycleBinStats.value = {
+        total_count: totalCount,
+        total_size: totalSize,
+        category_stats: categoryStats,
+      };
+    } else {
+      // 正常模式：加载正常文件的统计数据
+      const response = await attachmentApi.getAttachmentStats();
+      stats.value = response.data || response;
+    }
   } catch (error) {
-    console.error('加载统计信息失败:', error);
+    handleApiError(error, '加载统计信息失败!');
   }
 };
 
@@ -534,8 +768,7 @@ const uploadFile = async () => {
     loadAttachments();
     loadStats();
   } catch (error) {
-    console.error('上传失败:', error);
-    Message.error('上传失败!');
+    handleApiError(error, '上传失败!');
   } finally {
     uploading.value = false;
   }
@@ -569,23 +802,34 @@ const saveAttachment = async () => {
     resetEditForm();
     loadAttachments();
   } catch (error) {
-    console.error('保存失败:', error);
-    Message.error('保存失败!');
+    handleApiError(error, '保存失败!');
   } finally {
     saving.value = false;
   }
 };
 
-// 删除附件
-const deleteAttachment = async attachment => {
+// 删除附件（显示确认对话框）
+const deleteAttachment = attachment => {
+  deletingAttachment.value = attachment;
+  showDeleteModal.value = true;
+};
+
+// 确认删除附件
+const confirmDeleteAttachment = async () => {
+  if (!deletingAttachment.value) return;
+
+  deleting.value = true;
   try {
-    await attachmentApi.deleteAttachment(attachment.id);
+    await attachmentApi.softDeleteAttachment(deletingAttachment.value.id);
     Message.success('删除成功!');
+    showDeleteModal.value = false;
+    deletingAttachment.value = null;
     loadAttachments();
     loadStats();
   } catch (error) {
-    console.error('删除失败:', error);
-    Message.error('删除失败!');
+    handleApiError(error, '删除失败!');
+  } finally {
+    deleting.value = false;
   }
 };
 
@@ -597,8 +841,120 @@ const restoreAttachment = async attachment => {
     loadAttachments();
     loadStats();
   } catch (error) {
-    console.error('恢复失败:', error);
-    Message.error('恢复失败!');
+    handleApiError(error, '恢复失败!');
+  }
+};
+
+// 永久删除附件（显示确认对话框）
+const permanentDeleteAttachment = attachment => {
+  deletingAttachment.value = attachment;
+  showDeleteModal.value = true;
+};
+
+// 确认永久删除附件
+const confirmPermanentDeleteAttachment = async () => {
+  if (!deletingAttachment.value) return;
+
+  deleting.value = true;
+  try {
+    await attachmentApi.hardDeleteAttachment(deletingAttachment.value.id);
+    Message.success('永久删除成功!');
+    showDeleteModal.value = false;
+    deletingAttachment.value = null;
+    loadAttachments();
+    loadStats();
+  } catch (error) {
+    handleApiError(error, '永久删除失败!');
+  } finally {
+    deleting.value = false;
+  }
+};
+
+// 多选相关函数
+const handleSelectAll = checked => {
+  if (checked) {
+    selectedAttachments.value = attachments.value.map(item => item.id);
+  } else {
+    selectedAttachments.value = [];
+  }
+  selectAll.value = checked;
+};
+
+const handleSelectItem = (checked, attachment) => {
+  if (checked) {
+    if (!selectedAttachments.value.includes(attachment.id)) {
+      selectedAttachments.value.push(attachment.id);
+    }
+  } else {
+    const index = selectedAttachments.value.indexOf(attachment.id);
+    if (index > -1) {
+      selectedAttachments.value.splice(index, 1);
+    }
+  }
+  // 更新全选状态
+  selectAll.value = selectedAttachments.value.length === attachments.value.length;
+};
+
+const isSelected = attachment => {
+  return selectedAttachments.value.includes(attachment.id);
+};
+
+// 批量永久删除
+const batchPermanentDelete = () => {
+  if (selectedAttachments.value.length === 0) {
+    Message.warning('请选择要删除的附件');
+    return;
+  }
+  showBatchDeleteModal.value = true;
+};
+
+// 确认批量永久删除
+const confirmBatchPermanentDelete = async () => {
+  if (selectedAttachments.value.length === 0) return;
+
+  batchDeleting.value = true;
+  try {
+    await attachmentApi.batchHardDeleteAttachments(selectedAttachments.value);
+    Message.success(`成功永久删除 ${selectedAttachments.value.length} 个附件`);
+    showBatchDeleteModal.value = false;
+    selectedAttachments.value = [];
+    selectAll.value = false;
+    loadAttachments();
+    loadStats();
+  } catch (error) {
+    handleApiError(error, '批量删除失败!');
+  } finally {
+    batchDeleting.value = false;
+  }
+};
+
+// 清空回收站
+const clearRecycleBin = () => {
+  if (attachments.value.length === 0) {
+    Message.warning('回收站为空');
+    return;
+  }
+  showClearRecycleBinModal.value = true;
+};
+
+// 确认清空回收站
+const confirmClearRecycleBin = async () => {
+  if (attachments.value.length === 0) return;
+
+  batchDeleting.value = true;
+  try {
+    const allIds = attachments.value.map(item => item.id);
+    await attachmentApi.batchHardDeleteAttachments(allIds);
+    Message.success(`成功清空回收站，删除了 ${allIds.length} 个附件`);
+    showClearRecycleBinModal.value = false;
+    selectedAttachments.value = [];
+    selectAll.value = false;
+    loadAttachments();
+    loadStats();
+  } catch (error) {
+    handleApiError(error, '清空回收站失败!');
+  } finally {
+    batchDeleting.value = false;
   }
 };
 
@@ -732,8 +1088,7 @@ const handleUploadSuccess = () => {
 
 // 上传失败处理
 const handleUploadError = error => {
-  console.error('上传失败:', error);
-  Message.error('文件上传失败，请重试！');
+  handleApiError(error, '文件上传失败，请重试！');
 };
 
 // 获取完整URL
@@ -804,8 +1159,43 @@ onMounted(() => {
 .filter-controls {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+}
+
+.filter-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.filter-select {
+  width: 120px !important;
+}
+
+.filter-input {
+  width: 180px !important;
+}
+
+.left-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.right-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .stats-section {

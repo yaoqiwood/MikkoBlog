@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select
 
 from app.api.routers.auth import get_current_admin
@@ -22,23 +22,33 @@ def get_categories(
     categories = db.exec(
         select(SystemDefault.category)
         .distinct()
-        .where(SystemDefault.is_public == 1)
     ).all()
     return sorted(categories)
 
 
 @router.get("/defaults", response_model=List[SystemDefaultRead])
 def list_defaults(
+    request: Request,
     category: Optional[str] = Query(None, description="按分类筛选"),
     is_public: Optional[bool] = Query(None, description="是否公开"),
     _: SystemDefaultRead = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ) -> List[SystemDefaultRead]:
     """获取系统默认参数列表（需要管理员权限）"""
+    print(f"🔍 [DEBUG] 接收到的参数: category={category}, is_public={is_public}")
+    print(f"🔍 [DEBUG] 请求URL: {request.url}")
+    print(f"🔍 [DEBUG] 查询参数: {request.query_params}")
+
+    # 手动解析嵌套参数 params[category]
+    actual_category = category
+    if not actual_category and 'params[category]' in request.query_params:
+        actual_category = request.query_params['params[category]']
+        print(f"🔍 [DEBUG] 从嵌套参数解析到: category={actual_category}")
+
     query = select(SystemDefault)
 
-    if category:
-        query = query.where(SystemDefault.category == category)
+    if actual_category:
+        query = query.where(SystemDefault.category == actual_category)
     if is_public is not None:
         query = query.where(SystemDefault.is_public == is_public)
 
