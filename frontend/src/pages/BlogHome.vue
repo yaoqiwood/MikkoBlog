@@ -1,5 +1,5 @@
 <template>
-  <div class="blog-home">
+  <div class="blog-home" :style="{ '--bg-image': backgroundImageUrl }">
     <!-- 头部导航 -->
     <header class="blog-header">
       <div class="header-container">
@@ -26,7 +26,9 @@
           <!-- 用户信息卡片 -->
           <div class="user-card">
             <div class="profile-banner">
+              <img v-if="bannerImageUrl" :src="bannerImageUrl" alt="Profile Banner" />
               <img
+                v-else
                 src="https://via.placeholder.com/300x120/ffb6c1/ffffff?text=Anime+Girl"
                 alt="Profile Banner"
               />
@@ -272,9 +274,9 @@
 </template>
 
 <script setup>
-import { authApi, postApi } from '@/utils/apiService';
+import { authApi, homepageApi, postApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 // 响应式数据
 const showFullscreenTip = ref(false);
@@ -301,6 +303,58 @@ const userProfile = ref({
 });
 const profileLoading = ref(false);
 const profileError = ref('');
+
+// 主页设置数据
+const homepageSettings = ref({
+  banner_image_url: '',
+  background_image_url: '',
+  show_music_player: false,
+  music_url: '',
+  show_live2d: false,
+});
+
+// 将相对路径转换为完整URL
+const getFullUrl = url => {
+  if (!url) return '';
+
+  // 如果是相对路径，转换为完整URL
+  if (url.startsWith('/')) {
+    return `${window.location.origin}${url}`;
+  }
+
+  return url;
+};
+
+// 计算背景图URL
+const backgroundImageUrl = computed(() => {
+  const url = homepageSettings.value.background_image_url;
+
+  if (!url) return '';
+
+  const fullUrl = getFullUrl(url);
+  return `url(${fullUrl})`;
+});
+
+// 计算Banner图片URL
+const bannerImageUrl = computed(() => {
+  return getFullUrl(homepageSettings.value.banner_image_url);
+});
+
+// 加载主页设置
+const loadHomepageSettings = async () => {
+  try {
+    const settings = await homepageApi.getSettings();
+    homepageSettings.value = {
+      banner_image_url: settings.banner_image_url || '',
+      background_image_url: settings.background_image_url || '',
+      show_music_player: !!settings.show_music_player,
+      music_url: settings.music_url || '',
+      show_live2d: !!settings.show_live2d,
+    };
+  } catch (err) {
+    console.error('加载主页设置失败:', err);
+  }
+};
 
 // 格式化时间显示
 const formatTime = dateString => {
@@ -444,14 +498,21 @@ onMounted(() => {
   // 初始加载
   loadUserProfile();
   loadPosts();
+  loadHomepageSettings();
 });
 </script>
 
 <style scoped>
 .blog-home {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   font-family: 'Microsoft YaHei', sans-serif;
+  position: relative;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  /* 使用CSS变量设置背景图，如果没有则使用默认渐变 */
+  background-image: var(--bg-image, linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%));
 }
 
 /* 头部样式 */
@@ -470,8 +531,9 @@ onMounted(() => {
   padding: 0 20px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   height: 60px;
+  position: relative;
 }
 
 .blog-title h1 {
@@ -517,7 +579,29 @@ onMounted(() => {
   width: 100%;
 }
 
+.blog-title {
+  position: absolute;
+  left: 20px;
+}
+
+.blog-title h1 {
+  font-size: 24px;
+  font-weight: bold;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+}
+
+.main-nav {
+  display: flex;
+  gap: 30px;
+}
+
 .search-box {
+  position: absolute;
+  right: 20px;
   padding: 8px 12px;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 20px;
@@ -1224,6 +1308,11 @@ onMounted(() => {
 
 /* 响应式设计 */
 @media (max-width: 1024px) {
+  .blog-home {
+    background-size: contain;
+    background-attachment: scroll;
+  }
+
   .content-container {
     grid-template-columns: 1fr;
     gap: 20px;
@@ -1240,6 +1329,11 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .blog-home {
+    background-size: contain;
+    background-attachment: scroll;
+  }
+
   .header-container {
     flex-direction: column;
     height: auto;
@@ -1252,6 +1346,13 @@ onMounted(() => {
 
   .content-container {
     padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .blog-home {
+    background-size: contain;
+    background-position: center top;
   }
 }
 </style>

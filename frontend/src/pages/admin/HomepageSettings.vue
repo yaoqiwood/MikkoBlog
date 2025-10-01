@@ -5,7 +5,7 @@
         <Icon type="ios-settings" />
         主页设置
       </template>
-      <Form :model="form" label-position="left" :label-width="auto">
+      <Form :model="form" label-position="left" :label-width="'auto'">
         <FormItem label="用户卡片 Banner 图">
           <div class="banner-upload-container">
             <div v-if="!form.banner_image_url" class="upload-area" @click="triggerFileInput">
@@ -73,7 +73,7 @@
           <div class="button-group">
             <Button type="primary" :loading="saving" @click="save">保存设置</Button>
             <Button @click="load">重置</Button>
-            <Button type="warning" @click="resetToDefault">恢复默认</Button>
+            <Button type="warning" @click="confirmResetToDefault">恢复默认</Button>
           </div>
         </FormItem>
       </Form>
@@ -105,7 +105,7 @@
 
 <script setup>
 import { homepageApi } from '@/utils/apiService';
-import { Message } from 'view-ui-plus';
+import { Message, Modal } from 'view-ui-plus';
 import { nextTick, onMounted, ref } from 'vue';
 
 const form = ref({
@@ -176,7 +176,7 @@ function handleFileSelect(event) {
   }
 
   selectedFile.value = file;
-  const reader = new FileReader();
+  const reader = new window.FileReader();
   reader.onload = e => {
     cropImageSrc.value = e.target.result;
     showCropModal.value = true;
@@ -284,10 +284,10 @@ async function confirmCrop() {
     canvas.toBlob(
       async blob => {
         try {
-          const formData = new FormData();
+          const formData = new window.FormData();
           formData.append('file', blob, 'banner.jpg');
 
-          const response = await fetch('/api/upload/image', {
+          const response = await window.fetch('/api/upload/image', {
             method: 'POST',
             body: formData,
           });
@@ -335,7 +335,7 @@ function handleBackgroundFileSelect(event) {
   }
 
   // 检查图片分辨率
-  const img = new Image();
+  const img = new window.Image();
   img.onload = function () {
     if (img.width < 1080 || img.height < 1080) {
       Message.error('图片分辨率至少需要1080x1080像素');
@@ -348,16 +348,16 @@ function handleBackgroundFileSelect(event) {
   img.onerror = function () {
     Message.error('图片格式不正确');
   };
-  img.src = URL.createObjectURL(file);
+  img.src = window.URL.createObjectURL(file);
 }
 
 // 上传背景图
 async function uploadBackgroundImage(file) {
   try {
-    const formData = new FormData();
+    const formData = new window.FormData();
     formData.append('file', file);
 
-    const response = await fetch('/api/upload/image', {
+    const response = await window.fetch('/api/upload/image', {
       method: 'POST',
       body: formData,
     });
@@ -380,16 +380,65 @@ function removeBackground() {
   form.value.background_image_url = '';
 }
 
+// 确认恢复默认设置
+function confirmResetToDefault() {
+  Modal.confirm({
+    title: '确认恢复默认设置',
+    content: '确定要恢复所有主页设置为默认值吗？此操作将覆盖当前的所有设置。',
+    okText: '确定',
+    cancelText: '取消',
+    onOk: () => {
+      resetToDefault();
+    },
+  });
+}
+
 // 恢复默认设置
-function resetToDefault() {
-  form.value = {
-    banner_image_url: '',
-    background_image_url: '',
-    show_music_player: false,
-    music_url: '',
-    show_live2d: false,
-  };
-  Message.success('已恢复默认设置');
+async function resetToDefault() {
+  try {
+    // 从系统默认设置API获取默认值
+    const response = await window.fetch('/api/system/defaults/category/homepage');
+    if (!response.ok) {
+      throw new Error('获取默认设置失败');
+    }
+
+    const defaults = await response.json();
+
+    // 构建默认表单数据
+    const defaultForm = {
+      banner_image_url: '',
+      background_image_url: '',
+      show_music_player: false,
+      music_url: '',
+      show_live2d: false,
+    };
+
+    // 从API响应中提取默认值
+    defaults.forEach(defaultItem => {
+      if (defaultItem.key_name === 'default_banner_image') {
+        defaultForm.banner_image_url = defaultItem.key_value || '';
+      } else if (defaultItem.key_name === 'default_background_image') {
+        defaultForm.background_image_url = defaultItem.key_value || '';
+      } else if (defaultItem.key_name === 'default_show_music_player') {
+        defaultForm.show_music_player = defaultItem.key_value === 'true';
+      } else if (defaultItem.key_name === 'default_music_url') {
+        defaultForm.music_url = defaultItem.key_value || '';
+      } else if (defaultItem.key_name === 'default_show_live2d') {
+        defaultForm.show_live2d = defaultItem.key_value === 'true';
+      }
+    });
+
+    // 更新表单数据
+    form.value = defaultForm;
+
+    // 自动保存设置
+    await save();
+
+    Message.success('已恢复默认设置并保存');
+  } catch (err) {
+    console.error('恢复默认设置失败:', err);
+    Message.error('恢复默认设置失败');
+  }
 }
 
 onMounted(load);
