@@ -213,6 +213,7 @@ const pageTitles = {
   '/admin/system': '系统默认参数设置',
   '/admin/test-viewui': '组件测试',
   '/admin/fullscreen-test': '全屏测试',
+  '/admin/homepage': '主页设置',
 };
 
 // 当前页面标题

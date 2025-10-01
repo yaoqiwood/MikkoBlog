@@ -5,7 +5,7 @@
         <Icon type="ios-settings" />
         主页设置
       </template>
-      <Form :model="form" label-position="top" :label-width="100">
+      <Form :model="form" label-position="left" :label-width="auto">
         <FormItem label="用户卡片 Banner 图">
           <div class="banner-upload-container">
             <div v-if="!form.banner_image_url" class="upload-area" @click="triggerFileInput">
@@ -29,8 +29,36 @@
             />
           </div>
         </FormItem>
-        <FormItem label="博客全背景图 (URL)">
-          <Input v-model="form.background_image_url" placeholder="https://..." />
+        <FormItem label="博客全背景图">
+          <div class="background-upload-container">
+            <div
+              v-if="!form.background_image_url"
+              class="upload-area"
+              @click="triggerBackgroundFileInput"
+            >
+              <Icon type="ios-cloud-upload" size="48" />
+              <p>点击上传背景图片</p>
+              <p class="upload-tip">要求：至少1080分辨率，文件大小不超过5MB</p>
+            </div>
+            <div v-else class="background-preview">
+              <img
+                :src="form.background_image_url"
+                alt="Background Preview"
+                class="background-image"
+              />
+              <div class="background-actions">
+                <Button size="small" @click="triggerBackgroundFileInput">重新上传</Button>
+                <Button size="small" type="error" @click="removeBackground">删除</Button>
+              </div>
+            </div>
+            <input
+              ref="backgroundFileInput"
+              type="file"
+              accept="image/*"
+              @change="handleBackgroundFileSelect"
+              style="display: none"
+            />
+          </div>
         </FormItem>
         <FormItem label="显示音乐模块">
           <Switch v-model="form.show_music_player" />
@@ -42,8 +70,11 @@
           <Switch v-model="form.show_live2d" />
         </FormItem>
         <FormItem>
-          <Button type="primary" :loading="saving" @click="save">保存设置</Button>
-          <Button class="ml-2" @click="load">重置</Button>
+          <div class="button-group">
+            <Button type="primary" :loading="saving" @click="save">保存设置</Button>
+            <Button @click="load">重置</Button>
+            <Button type="warning" @click="resetToDefault">恢复默认</Button>
+          </div>
         </FormItem>
       </Form>
     </Card>
@@ -94,6 +125,7 @@ const cropOverlay = ref(null);
 const cropBox = ref(null);
 const selectedFile = ref(null);
 const cropData = ref({ x: 0, y: 0, width: 0, height: 0 });
+const backgroundFileInput = ref(null);
 
 async function load() {
   try {
@@ -285,6 +317,81 @@ function removeBanner() {
   form.value.banner_image_url = '';
 }
 
+// 触发背景图文件选择
+function triggerBackgroundFileInput() {
+  backgroundFileInput.value?.click();
+}
+
+// 处理背景图文件选择
+function handleBackgroundFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // 检查文件大小（5MB限制）
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    Message.error('文件大小不能超过5MB');
+    return;
+  }
+
+  // 检查图片分辨率
+  const img = new Image();
+  img.onload = function () {
+    if (img.width < 1080 || img.height < 1080) {
+      Message.error('图片分辨率至少需要1080x1080像素');
+      return;
+    }
+
+    // 分辨率符合要求，直接上传
+    uploadBackgroundImage(file);
+  };
+  img.onerror = function () {
+    Message.error('图片格式不正确');
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+// 上传背景图
+async function uploadBackgroundImage(file) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/upload/image', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('上传失败');
+    }
+
+    const result = await response.json();
+    form.value.background_image_url = result.url;
+    Message.success('背景图上传成功');
+  } catch (err) {
+    console.error('上传失败:', err);
+    Message.error('背景图上传失败');
+  }
+}
+
+// 删除背景图
+function removeBackground() {
+  form.value.background_image_url = '';
+}
+
+// 恢复默认设置
+function resetToDefault() {
+  form.value = {
+    banner_image_url: '',
+    background_image_url: '',
+    show_music_player: false,
+    music_url: '',
+    show_live2d: false,
+  };
+  Message.success('已恢复默认设置');
+}
+
 onMounted(load);
 </script>
 
@@ -292,6 +399,7 @@ onMounted(load);
 .page-container {
   max-width: 860px;
   margin: 0 auto;
+  padding: 20px;
 }
 .mb-6 {
   margin-bottom: 1.5rem;
@@ -300,19 +408,112 @@ onMounted(load);
   margin-left: 0.5rem;
 }
 
+/* 表单水平布局优化 */
+:deep(.ivu-form-item) {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+}
+
+:deep(.ivu-form-item-label) {
+  font-weight: 500;
+  color: #333;
+  text-align: right;
+  padding-right: 10px;
+  line-height: 32px;
+  padding-top: 0;
+  margin-top: 0;
+  width: 140px !important;
+  min-width: 140px !important;
+  max-width: 140px !important;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+:deep(.ivu-form-item-content) {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  margin-left: 0;
+  padding-left: 10px;
+}
+
+/* 输入框样式 */
+:deep(.ivu-input) {
+  border-radius: 6px;
+  border: 1px solid #d7dde4;
+  transition: all 0.3s ease;
+}
+
+:deep(.ivu-input:focus) {
+  border-color: #2d8cf0;
+  box-shadow: 0 0 0 2px rgba(45, 140, 240, 0.1);
+}
+
+/* Switch 组件对齐 */
+:deep(.ivu-switch) {
+  margin-top: 6px;
+}
+
+/* 按钮组特殊处理 */
+:deep(.ivu-form-item:last-child) {
+  margin-bottom: 0;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+
+:deep(.ivu-form-item:last-child .ivu-form-item-content) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 按钮组样式 */
+.button-group {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
 /* Banner 上传样式 */
 .banner-upload-container {
   border: 2px dashed #d7dde4;
   border-radius: 6px;
-  padding: 20px;
+  padding: 12px;
   text-align: center;
   background: #fafafa;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  padding-top: 12px;
+  width: 100%;
+}
+
+/* 背景图上传样式 */
+.background-upload-container {
+  border: 2px dashed #d7dde4;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  background: #fafafa;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  padding-top: 12px;
+  width: 100%;
 }
 
 .upload-area {
   cursor: pointer;
-  padding: 20px;
+  padding: 8px;
   color: #657180;
+  width: 100%;
 }
 
 .upload-area:hover {
@@ -343,6 +544,26 @@ onMounted(load);
 }
 
 .banner-actions .ivu-btn {
+  margin: 0 5px;
+}
+
+.background-preview {
+  position: relative;
+  display: inline-block;
+}
+
+.background-image {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.background-actions {
+  margin-top: 10px;
+}
+
+.background-actions .ivu-btn {
   margin: 0 5px;
 }
 
