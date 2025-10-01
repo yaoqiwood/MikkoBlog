@@ -86,6 +86,13 @@
                   {{ error }}
                 </Alert>
 
+                <!-- Save Credentials Checkbox -->
+                <FormItem>
+                  <Checkbox v-model="saveCredentials">
+                    <span class="save-credentials-text">保存账号密码</span>
+                  </Checkbox>
+                </FormItem>
+
                 <!-- Login Button -->
                 <FormItem>
                   <Button
@@ -134,13 +141,14 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const loginType = ref('email'); // 'email' or 'username'
 const loginModel = ref({
-  email: 'admin@example.com',
-  username: 'admin',
-  password: 'admin123',
+  email: '',
+  username: '',
+  password: '',
 });
 const error = ref('');
 const loading = ref(false);
 const checkingAuth = ref(false);
+const saveCredentials = ref(false);
 
 // 路由路径常量
 const homePath = getRoutePath(ROUTES.HOME);
@@ -167,16 +175,16 @@ function toggleLoginType() {
 // 检查登录状态
 function checkLoginStatus() {
   // 检查cookie中的token
-  const token = authCookie.getAuth().token;
+  const auth = authCookie.getAuth();
 
-  if (token) {
+  if (auth.token) {
     // 验证token是否有效
-    validateToken(token);
+    validateToken();
   }
 }
 
 // 验证token有效性
-async function validateToken(token) {
+async function validateToken() {
   checkingAuth.value = true;
   try {
     // 调用API验证token有效性
@@ -184,7 +192,7 @@ async function validateToken(token) {
     if (response) {
       Message.info('检测到已登录状态，正在跳转...');
       // 延迟一下让用户看到提示信息
-      setTimeout(() => {
+      window.setTimeout(() => {
         routerUtils.navigateTo(router, ROUTES.ADMIN_DASHBOARD);
       }, 1000);
     }
@@ -204,9 +212,28 @@ async function validateToken(token) {
   }
 }
 
+// 加载保存的账号密码
+function loadSavedCredentials() {
+  try {
+    const savedCredentials = localStorage.getItem('savedCredentials');
+    if (savedCredentials) {
+      const credentials = JSON.parse(savedCredentials);
+      loginModel.value.email = credentials.email || '';
+      loginModel.value.username = credentials.username || '';
+      loginType.value = credentials.loginType || 'email';
+      saveCredentials.value = true; // 如果有保存的账号密码，默认勾选保存选项
+    }
+  } catch (error) {
+    console.error('加载保存的账号密码失败:', error);
+    // 如果解析失败，清除无效数据
+    localStorage.removeItem('savedCredentials');
+  }
+}
+
 // 页面加载时检查登录状态
 onMounted(() => {
   checkLoginStatus();
+  loadSavedCredentials();
 });
 
 async function login() {
@@ -226,6 +253,19 @@ async function login() {
       email: username,
       is_admin: true,
     });
+
+    // 如果用户选择保存账号密码，则保存到localStorage
+    if (saveCredentials.value) {
+      const credentials = {
+        email: loginModel.value.email,
+        username: loginModel.value.username,
+        loginType: loginType.value,
+      };
+      localStorage.setItem('savedCredentials', JSON.stringify(credentials));
+    } else {
+      // 如果不保存，清除之前保存的账号密码
+      localStorage.removeItem('savedCredentials');
+    }
 
     Message.success('登录成功！');
     routerUtils.navigateTo(router, ROUTES.ADMIN_DASHBOARD);
@@ -442,6 +482,23 @@ async function login() {
 .info-text {
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+/* 保存账号密码样式 */
+.save-credentials-text {
+  font-size: 14px;
+  color: #6b7280;
+  user-select: none;
+}
+
+.ivu-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ivu-checkbox {
+  margin-right: 0;
 }
 
 /* 响应式设计 */

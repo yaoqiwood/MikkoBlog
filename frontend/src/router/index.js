@@ -54,6 +54,12 @@ const router = createRouter({
           component: () => import('@/pages/admin/Settings.vue'),
         },
         {
+          path: 'homepage',
+          name: 'admin-homepage',
+          component: () => import('@/pages/admin/HomepageSettings.vue'),
+          meta: { title: '主页设置' },
+        },
+        {
           path: 'profile',
           name: 'admin-profile',
           component: () => import('@/pages/admin/ProfileSettings.vue'),

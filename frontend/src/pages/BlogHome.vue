@@ -4,7 +4,7 @@
     <header class="blog-header">
       <div class="header-container">
         <div class="blog-title">
-          <h1>阑珊处</h1>
+          <h1>{{ userProfile.blog_title }}</h1>
         </div>
         <nav class="main-nav">
           <a href="#" class="nav-item">首页</a>
@@ -32,38 +32,48 @@
               />
             </div>
             <div class="profile-info">
-              <div class="avatar">
-                <img
-                  src="https://via.placeholder.com/80x80/87ceeb/ffffff?text=Avatar"
-                  alt="Avatar"
-                />
+              <!-- 加载状态 -->
+              <div v-if="profileLoading" class="profile-loading">
+                <div class="loading-spinner"></div>
+                <span>加载用户信息中...</span>
               </div>
-              <div class="username">@Suyeq</div>
-              <div class="stats">
-                <span class="stat-item">14 博客</span>
-                <span class="stat-item">37 分享</span>
-                <button class="share-btn">分享</button>
-              </div>
-              <div class="contact-info">
-                <div class="contact-item">
-                  <i class="contact-icon">🔔</i>
-                  <span>473721601</span>
+
+              <!-- 用户信息内容 -->
+              <div v-else>
+                <div class="avatar">
+                  <img :src="userProfile.avatar" :alt="userProfile.nickname" />
                 </div>
-                <div class="contact-item">
-                  <i class="contact-icon">✉️</i>
-                  <span>Suyeq233</span>
+                <div class="username">@{{ userProfile.nickname }}</div>
+                <div class="stats">
+                  <span class="stat-item">14 博客</span>
+                  <span class="stat-item">37 分享</span>
+                  <button class="share-btn">分享</button>
                 </div>
-                <div class="contact-item">
-                  <i class="contact-icon">🐙</i>
-                  <span>Suyeq233</span>
+                <div class="contact-info">
+                  <div v-if="userProfile.email" class="contact-item">
+                    <i class="contact-icon">✉️</i>
+                    <span>{{ userProfile.email }}</span>
+                  </div>
+                  <div v-if="userProfile.github_url" class="contact-item">
+                    <i class="contact-icon">🐙</i>
+                    <span>{{ userProfile.github_url }}</span>
+                  </div>
+                  <div v-if="userProfile.twitter_url" class="contact-item">
+                    <i class="contact-icon">🐦</i>
+                    <span>{{ userProfile.twitter_url }}</span>
+                  </div>
+                  <div v-if="userProfile.weibo_url" class="contact-item">
+                    <i class="contact-icon">🔴</i>
+                    <span>{{ userProfile.weibo_url }}</span>
+                  </div>
+                  <div v-if="userProfile.website_url" class="contact-item">
+                    <i class="contact-icon">🌐</i>
+                    <span>{{ userProfile.website_url }}</span>
+                  </div>
                 </div>
-                <div class="contact-item">
-                  <i class="contact-icon">🔴</i>
-                  <span>Suyeq233</span>
+                <div class="motto">
+                  <p>{{ userProfile.motto }}</p>
                 </div>
-              </div>
-              <div class="motto">
-                <p>一杯敬明天,一杯敬过往</p>
               </div>
             </div>
           </div>
@@ -124,6 +134,15 @@
             <a href="#" class="content-nav-item">说说</a>
           </div>
           <div class="posts-wrapper">
+            <!-- 错误提示 -->
+            <div v-if="error" class="error-message">
+              <div class="error-content">
+                <i class="error-icon">⚠️</i>
+                <span>{{ error }}</span>
+                <button @click="reloadPosts" class="retry-btn">重新加载</button>
+              </div>
+            </div>
+
             <div class="posts-container" @scroll="handleScroll">
               <!-- 博客文章列表 -->
               <article class="blog-post" v-for="(post, index) in blogPosts" :key="post.id">
@@ -140,6 +159,7 @@
                   </div>
                 </div>
                 <div class="post-content">
+                  <h3 class="post-title">{{ post.title }}</h3>
                   <p>{{ post.content }}</p>
                   <div v-if="post.image" class="post-image">
                     <img :src="post.image" :alt="post.title" />
@@ -161,6 +181,15 @@
                 </div>
                 <div v-if="index < blogPosts.length - 1" class="post-divider"></div>
               </article>
+
+              <!-- 空状态 -->
+              <div v-if="!loading && blogPosts.length === 0 && !error" class="empty-state">
+                <div class="empty-content">
+                  <i class="empty-icon">📝</i>
+                  <h3>暂无文章</h3>
+                  <p>还没有发布任何文章，请稍后再来查看</p>
+                </div>
+              </div>
 
               <!-- 加载状态 -->
               <div v-if="loading" class="loading-indicator">
@@ -243,6 +272,8 @@
 </template>
 
 <script setup>
+import { authApi, postApi } from '@/utils/apiService';
+import { Message } from 'view-ui-plus';
 import { onMounted, ref } from 'vue';
 
 // 响应式数据
@@ -251,143 +282,97 @@ const blogPosts = ref([]);
 const loading = ref(false);
 const hasMore = ref(true);
 const currentPage = ref(1);
-const pageSize = 5;
+const pageSize = 10;
+const error = ref('');
 
-// 模拟博客文章数据
-const allBlogPosts = [
-  {
-    id: 1,
-    content: '敏感词过滤已上线。。。。',
-    time: '24天前',
-    views: 49,
-    comments: 0,
-    likes: 5,
-    image: null,
-  },
-  {
-    id: 2,
-    content: '小林家的龙女仆~~ 康娜很可爱!!!!',
-    time: '25天前',
-    views: 56,
-    comments: 5,
-    likes: 4,
-    image: 'https://via.placeholder.com/400x200/ffb6c1/ffffff?text=Kobayashi+Dragon+Maid',
-  },
-  {
-    id: 3,
-    content: '今天学习了Vue 3的新特性，Composition API真的很好用！',
-    time: '26天前',
-    views: 32,
-    comments: 3,
-    likes: 8,
-    image: null,
-  },
-  {
-    id: 4,
-    content: 'React vs Vue，哪个更适合你的项目？',
-    time: '27天前',
-    views: 78,
-    comments: 12,
-    likes: 15,
-    image: 'https://via.placeholder.com/400x200/98fb98/ffffff?text=React+vs+Vue',
-  },
-  {
-    id: 5,
-    content: 'JavaScript异步编程的几种方式对比',
-    time: '28天前',
-    views: 45,
-    comments: 7,
-    likes: 12,
-    image: null,
-  },
-  {
-    id: 6,
-    content: 'CSS Grid布局实战：创建响应式网格系统',
-    time: '29天前',
-    views: 67,
-    comments: 9,
-    likes: 18,
-    image: 'https://via.placeholder.com/400x200/ffa07a/ffffff?text=CSS+Grid',
-  },
-  {
-    id: 7,
-    content: 'Node.js性能优化技巧分享',
-    time: '30天前',
-    views: 89,
-    comments: 15,
-    likes: 22,
-    image: null,
-  },
-  {
-    id: 8,
-    content: 'TypeScript入门指南：从JavaScript到TypeScript',
-    time: '31天前',
-    views: 123,
-    comments: 18,
-    likes: 35,
-    image: 'https://via.placeholder.com/400x200/87ceeb/ffffff?text=TypeScript',
-  },
-  {
-    id: 9,
-    content: 'Docker容器化部署最佳实践',
-    time: '32天前',
-    views: 156,
-    comments: 25,
-    likes: 42,
-    image: null,
-  },
-  {
-    id: 10,
-    content: '微服务架构设计模式详解',
-    time: '33天前',
-    views: 198,
-    comments: 32,
-    likes: 58,
-    image: 'https://via.placeholder.com/400x200/ffb6c1/ffffff?text=Microservices',
-  },
-  {
-    id: 11,
-    content: 'Redis缓存策略与性能优化',
-    time: '34天前',
-    views: 234,
-    comments: 41,
-    likes: 67,
-    image: null,
-  },
-  {
-    id: 12,
-    content: 'MongoDB vs MySQL：数据库选择指南',
-    time: '35天前',
-    views: 287,
-    comments: 52,
-    likes: 89,
-    image: 'https://via.placeholder.com/400x200/98fb98/ffffff?text=Database',
-  },
-];
+// 用户资料数据
+const userProfile = ref({
+  nickname: 'Suyeq',
+  email: 'suyeq@example.com',
+  bio: '',
+  avatar: 'https://via.placeholder.com/80x80/87ceeb/ffffff?text=Avatar',
+  blog_title: '阑珊处',
+  blog_subtitle: '一杯敬明天,一杯敬过往',
+  motto: '一杯敬明天,一杯敬过往',
+  github_url: '',
+  twitter_url: '',
+  weibo_url: '',
+  website_url: '',
+});
+const profileLoading = ref(false);
+const profileError = ref('');
 
-// 异步加载博文
+// 格式化时间显示
+const formatTime = dateString => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 1) return '1天前';
+  if (diffDays < 7) return `${diffDays}天前`;
+  if (diffDays < 30) return `${Math.ceil(diffDays / 7)}周前`;
+  if (diffDays < 365) return `${Math.ceil(diffDays / 30)}个月前`;
+  return `${Math.ceil(diffDays / 365)}年前`;
+};
+
+// 从后端API加载博文
 const loadPosts = async () => {
   if (loading.value || !hasMore.value) return;
 
   loading.value = true;
+  error.value = '';
 
-  // 模拟API请求延迟
-  await new Promise(resolve => {
-    window.setTimeout(resolve, 800);
-  });
+  try {
+    // 调用后端API获取文章列表
+    const posts = await postApi.getPosts({
+      page: currentPage.value,
+      limit: pageSize,
+      is_visible: true, // 只获取可见的文章
+      is_deleted: false, // 只获取未删除的文章
+    });
 
-  const startIndex = (currentPage.value - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const newPosts = allBlogPosts.slice(startIndex, endIndex);
+    if (posts && posts.length > 0) {
+      // 转换数据格式以适配前端显示
+      const formattedPosts = posts.map(post => ({
+        id: post.id,
+        title: post.title,
+        content: post.summary || post.content.substring(0, 200) + '...',
+        time: formatTime(post.created_at),
+        views: Math.floor(Math.random() * 100) + 10, // 临时使用随机数，后续可以从后端获取真实数据
+        comments: post.comments?.length || 0,
+        likes: Math.floor(Math.random() * 50) + 5, // 临时使用随机数，后续可以从后端获取真实数据
+        image: post.cover_image_url,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+      }));
 
-  if (newPosts.length > 0) {
-    blogPosts.value.push(...newPosts);
-    currentPage.value++;
-  } else {
+      blogPosts.value.push(...formattedPosts);
+      currentPage.value++;
+
+      // 如果返回的文章数量少于页面大小，说明没有更多数据了
+      if (posts.length < pageSize) {
+        hasMore.value = false;
+      }
+    } else {
+      hasMore.value = false;
+    }
+  } catch (err) {
+    console.error('加载文章失败:', err);
+
+    // 根据错误类型显示不同的错误信息
+    if (err.type === 'NETWORK_ERROR') {
+      error.value = '服务器连接失败，请检查网络连接';
+      Message.error('服务器连接失败，请检查网络连接');
+    } else {
+      error.value = '加载文章失败，请稍后重试';
+      Message.error('加载文章失败，请稍后重试');
+    }
+
     hasMore.value = false;
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 };
 
 // 滚动加载更多
@@ -400,6 +385,55 @@ const handleScroll = event => {
   }
 };
 
+// 加载用户资料
+const loadUserProfile = async () => {
+  try {
+    profileLoading.value = true;
+    profileError.value = '';
+
+    // 假设用户ID为1，实际项目中可能需要从路由参数或其他方式获取
+    const userId = 1;
+    const profile = await authApi.getPublicProfile(userId);
+
+    // 更新用户资料数据
+    userProfile.value = {
+      nickname: profile.nickname || 'Suyeq',
+      email: profile.email || 'suyeq@example.com',
+      bio: profile.bio || '',
+      avatar: profile.avatar || 'https://via.placeholder.com/80x80/87ceeb/ffffff?text=Avatar',
+      blog_title: profile.blog_title || '阑珊处',
+      blog_subtitle: profile.blog_subtitle || '一杯敬明天,一杯敬过往',
+      motto: profile.motto || '一杯敬明天,一杯敬过往',
+      github_url: profile.github_url || '',
+      twitter_url: profile.twitter_url || '',
+      weibo_url: profile.weibo_url || '',
+      website_url: profile.website_url || '',
+    };
+  } catch (err) {
+    console.error('加载用户资料失败:', err);
+
+    // 根据错误类型显示不同的错误信息
+    if (err.type === 'NETWORK_ERROR') {
+      profileError.value = '服务器连接失败，无法加载用户资料';
+    } else {
+      profileError.value = '加载用户资料失败，使用默认信息';
+    }
+
+    // 使用默认数据，不显示错误提示
+    console.log('使用默认用户资料数据');
+  } finally {
+    profileLoading.value = false;
+  }
+};
+
+// 重新加载数据
+const reloadPosts = async () => {
+  blogPosts.value = [];
+  currentPage.value = 1;
+  hasMore.value = true;
+  await loadPosts();
+};
+
 // 生命周期
 onMounted(() => {
   // 检查是否全屏模式
@@ -408,6 +442,7 @@ onMounted(() => {
   }
 
   // 初始加载
+  loadUserProfile();
   loadPosts();
 });
 </script>
@@ -870,6 +905,82 @@ onMounted(() => {
   }
 }
 
+/* 错误提示 */
+.error-message {
+  margin-bottom: 20px;
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 20px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #dc2626;
+}
+
+.error-icon {
+  font-size: 18px;
+}
+
+.retry-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 5px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-content {
+  color: #666;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.empty-content h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.empty-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 文章标题样式 */
+.post-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+}
+
 /* 没有更多数据提示 */
 .no-more-data {
   text-align: center;
@@ -1084,6 +1195,31 @@ onMounted(() => {
   80% {
     opacity: 1;
   }
+}
+
+/* 用户资料加载状态 */
+.profile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.profile-loading .loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f0f0f0;
+  border-top: 2px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+.profile-loading span {
+  font-size: 14px;
+  color: #999;
 }
 
 /* 响应式设计 */

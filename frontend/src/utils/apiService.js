@@ -82,6 +82,15 @@ export const authApi = {
   async resetAvatar() {
     return del('http://localhost:8000/api/upload/avatar');
   },
+
+  /**
+   * 获取公开的用户资料（不需要登录）
+   * @param {number} userId - 用户ID
+   * @returns {Promise} 用户资料
+   */
+  async getPublicProfile(userId) {
+    return get(`http://localhost:8000/api/admin/profiles/public/${userId}`);
+  },
 };
 
 /**
@@ -400,6 +409,18 @@ export const systemApi = {
 };
 
 /**
+ * 主页设置 API
+ */
+export const homepageApi = {
+  async getSettings() {
+    return get('http://localhost:8000/api/homepage/settings');
+  },
+  async updateSettings(data) {
+    return put('http://localhost:8000/api/homepage/settings', data);
+  },
+};
+
+/**
  * 附件管理API
  */
 export const attachmentApi = {
@@ -503,5 +524,6 @@ export default {
   comment: commentApi,
   upload: uploadApi,
   system: systemApi,
+  homepage: homepageApi,
   attachment: attachmentApi,
 };

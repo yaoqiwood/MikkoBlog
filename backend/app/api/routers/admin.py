@@ -13,6 +13,7 @@ from app.models.user import (
     UserProfileRead,
     UserProfileUpdate,
 )
+from app.models.system import SystemDefault
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -100,6 +101,42 @@ def update_user(
 def list_users_public(db: Session = Depends(get_db)) -> list[User]:
     """不需要权限验证的用户列表接口（仅用于演示）"""
     return db.exec(select(User)).all()
+
+
+@router.get("/profiles/public/{user_id}", response_model=UserProfileRead)
+def get_public_profile(user_id: int, db: Session = Depends(get_db)) -> UserProfileRead:
+    """获取公开的用户资料（不需要登录）"""
+    profile = db.exec(select(UserProfile).where(UserProfile.user_id == user_id)).first()
+    if not profile:
+        # 如果用户资料不存在，创建一个默认的
+        user = db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        profile = UserProfile(
+            user_id=user_id,
+            email=user.email,
+            nickname=user.full_name or "用户"
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+
+    # 如果头像为空，从系统默认设置获取
+    if not profile.avatar:
+        default_avatar_query = select(SystemDefault).where(
+            SystemDefault.category == "user",
+            SystemDefault.key_name == "default_avatar"
+        )
+        default_avatar_record = db.exec(default_avatar_query).first()
+        if default_avatar_record:
+            profile.avatar = default_avatar_record.key_value
+        else:
+            # 如果系统默认头像也没有，使用占位符
+            profile.avatar = (
+                "https://via.placeholder.com/150x150/87ceeb/ffffff?text=Avatar"
+            )
+
+    return profile
 
 
 # ========== 个人资料（当前登录用户） ==========

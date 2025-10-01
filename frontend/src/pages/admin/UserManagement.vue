@@ -179,6 +179,26 @@
         <FormItem label="姓名" prop="full_name">
           <Input v-model="editingUser.full_name" placeholder="请输入姓名" />
         </FormItem>
+        <FormItem label="密码" prop="password">
+          <Input
+            v-model="editingUser.password"
+            type="password"
+            placeholder="留空则不修改密码"
+            show-password
+          />
+        </FormItem>
+        <FormItem label="确认密码" prop="confirmPassword">
+          <Input
+            v-model="editingUser.confirmPassword"
+            type="password"
+            placeholder="请再次输入新密码"
+            show-password
+          />
+          <div class="password-tip">
+            <Icon type="ios-information-circle" />
+            <span>留空则不修改密码，输入新密码将替换当前密码</span>
+          </div>
+        </FormItem>
         <FormItem label="管理员权限">
           <Switch v-model="editingUser.is_admin" />
         </FormItem>
@@ -366,6 +386,8 @@ const editingUser = ref({
   id: null,
   email: '',
   full_name: '',
+  password: '',
+  confirmPassword: '',
   is_admin: false,
   is_active: true,
 });
@@ -394,6 +416,41 @@ const editUserRules = {
   full_name: [
     { required: true, message: '请输入姓名', trigger: 'blur' },
     { min: 2, message: '姓名长度不能少于2位', trigger: 'blur' },
+  ],
+  password: [
+    {
+      validator: (rule, value, callback) => {
+        if (value && value.length < 6) {
+          callback(new Error('密码长度不能少于6位'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
+  confirmPassword: [
+    {
+      validator: (rule, value, callback) => {
+        const password = editingUser.value.password;
+        const confirmPassword = value;
+
+        // 如果密码为空，确认密码也必须为空
+        if (!password && confirmPassword) {
+          callback(new Error('请先输入密码'));
+          return;
+        }
+
+        // 如果密码不为空，确认密码必须与密码一致
+        if (password && password !== confirmPassword) {
+          callback(new Error('两次输入的密码不一致'));
+          return;
+        }
+
+        callback();
+      },
+      trigger: 'blur',
+    },
   ],
 };
 
@@ -473,7 +530,11 @@ async function addUser() {
 
 // 编辑用户
 function editUser(user) {
-  editingUser.value = { ...user };
+  editingUser.value = {
+    ...user,
+    password: '', // 重置密码字段，不显示原密码
+    confirmPassword: '', // 重置确认密码字段
+  };
   showEditUser.value = true;
 }
 
@@ -481,6 +542,16 @@ function editUser(user) {
 async function updateUser() {
   try {
     updating.value = true;
+
+    // 检查密码一致性
+    const password = editingUser.value.password;
+    const confirmPassword = editingUser.value.confirmPassword;
+
+    if (password && password !== confirmPassword) {
+      Message.error('两次输入的密码不一致，请重新输入');
+      return;
+    }
+
     // 调用API更新用户
     const userData = {
       email: editingUser.value.email,
@@ -488,6 +559,11 @@ async function updateUser() {
       is_admin: editingUser.value.is_admin,
       is_active: editingUser.value.is_active,
     };
+
+    // 只有当密码不为空时才添加到更新数据中
+    if (password && password.trim() !== '') {
+      userData.password = password;
+    }
 
     console.log('更新用户数据:', userData);
     console.log('用户ID:', editingUser.value.id);
@@ -907,6 +983,20 @@ onMounted(() => {
 .table-container .ivu-table-wrapper {
   overflow: hidden !important;
   max-width: 100% !important;
+}
+
+/* 密码提示样式 */
+.password-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
+}
+
+.password-tip .ivu-icon {
+  font-size: 14px;
 }
 
 /* 响应式设计 */

@@ -82,6 +82,15 @@
               <Icon type="ios-settings" />
               <span v-show="!sidebarCollapsed">系统设置</span>
             </router-link>
+            <router-link
+              to="/admin/homepage"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/homepage' }"
+              :title="sidebarCollapsed ? '主页设置' : ''"
+            >
+              <Icon type="ios-color-palette" />
+              <span v-show="!sidebarCollapsed">主页设置</span>
+            </router-link>
           </div>
         </div>
 

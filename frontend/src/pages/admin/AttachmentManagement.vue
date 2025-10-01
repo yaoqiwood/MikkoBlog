@@ -132,10 +132,11 @@
             <div class="file-preview">
               <img
                 v-if="row.file_category === 'image'"
-                :src="row.file_url"
+                :src="getFullUrl(row.file_url)"
                 :alt="row.alt_text"
                 class="preview-image"
                 @click="previewImage(row)"
+                @error="handleImageError"
               />
               <div v-else class="file-icon">
                 <Icon :type="getFileIcon(row.file_category)" size="24" />
@@ -320,12 +321,17 @@
       <div class="image-preview-container">
         <div class="image-preview-wrapper" :class="{ fullscreen: isFullscreen }">
           <img
+            v-if="previewImageUrl"
             :src="previewImageUrl"
             alt="预览图片"
             class="preview-image-large"
             @load="onImageLoad"
             @error="onImageError"
           />
+          <div v-else class="image-placeholder">
+            <Icon type="ios-image" size="48" />
+            <p>请选择要预览的图片</p>
+          </div>
           <div class="preview-controls">
             <Button type="primary" size="small" @click="toggleFullscreen" class="fullscreen-btn">
               {{ isFullscreen ? '退出全屏' : '全屏显示' }}
@@ -960,7 +966,7 @@ const confirmClearRecycleBin = async () => {
 
 // 预览图片
 const previewImage = attachment => {
-  previewImageUrl.value = attachment.file_url;
+  previewImageUrl.value = getFullUrl(attachment.file_url);
   isFullscreen.value = false;
   showPreviewModal.value = true;
 };
@@ -976,8 +982,35 @@ const onImageLoad = event => {
 };
 
 // 图片加载错误
-const onImageError = () => {
-  Message.error('图片加载失败');
+const onImageError = e => {
+  console.warn('图片加载失败:', e);
+  console.warn('失败的图片URL:', e.target.src);
+  console.warn('图片元素:', e.target);
+
+  // 检查是否是URL问题
+  const imgSrc = e.target.src;
+  if (imgSrc && !imgSrc.startsWith('http')) {
+    console.error('图片URL格式错误，缺少协议:', imgSrc);
+    Message.error('图片URL格式错误');
+  } else {
+    console.error('图片加载失败，可能是网络问题或文件不存在');
+    Message.error('图片加载失败，请检查网络连接或文件是否存在');
+  }
+};
+
+// 处理表格中图片加载错误
+const handleImageError = event => {
+  // 静默处理，不显示错误消息，因为可能是网络问题或图片不存在
+  console.warn('表格图片加载失败:', event.target.src);
+  // 隐藏失败的图片，显示文件图标
+  const parentDiv = event.target.parentElement;
+  if (parentDiv) {
+    parentDiv.innerHTML = `
+      <div class="file-icon">
+        <Icon type="ios-image" size="24" />
+      </div>
+    `;
+  }
 };
 
 // 计算模态框大小
@@ -1098,10 +1131,12 @@ const getFullUrl = fileUrl => {
   }
 
   if (typeof window !== 'undefined' && window.location) {
-    return `${window.location.origin}${fileUrl}`;
+    const fullUrl = `${window.location.origin}${fileUrl}`;
+    return fullUrl;
   }
   // 如果window不可用，使用默认的localhost地址
-  return `http://localhost:8000${fileUrl}`;
+  const defaultUrl = `http://localhost:8000${fileUrl}`;
+  return defaultUrl;
 };
 
 // 复制URL
@@ -1342,6 +1377,20 @@ onMounted(() => {
 
 .preview-image-large:hover {
   transform: scale(1.02);
+}
+
+.image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #999;
+}
+
+.image-placeholder p {
+  margin-top: 10px;
+  font-size: 14px;
 }
 
 .preview-controls {
