@@ -6,6 +6,9 @@
         主页设置
       </template>
       <Form :model="form" label-position="left" :label-width="'auto'">
+        <FormItem label="主页标题">
+          <Input v-model="form.header_title" placeholder="请输入主页标题" />
+        </FormItem>
         <FormItem label="用户卡片 Banner 图">
           <div class="banner-upload-container">
             <div v-if="!form.banner_image_url" class="upload-area" @click="triggerFileInput">
@@ -109,6 +112,7 @@ import { Message, Modal } from 'view-ui-plus';
 import { nextTick, onMounted, ref } from 'vue';
 
 const form = ref({
+  header_title: '',
   banner_image_url: '',
   background_image_url: '',
   show_music_player: false,
@@ -132,6 +136,7 @@ async function load() {
     error.value = '';
     const data = await homepageApi.getSettings();
     form.value = {
+      header_title: data.header_title || '',
       banner_image_url: data.banner_image_url || '',
       background_image_url: data.background_image_url || '',
       show_music_player: !!data.show_music_player,
@@ -406,6 +411,7 @@ async function resetToDefault() {
 
     // 构建默认表单数据
     const defaultForm = {
+      header_title: '',
       banner_image_url: '',
       background_image_url: '',
       show_music_player: false,
@@ -415,7 +421,9 @@ async function resetToDefault() {
 
     // 从API响应中提取默认值
     defaults.forEach(defaultItem => {
-      if (defaultItem.key_name === 'default_banner_image') {
+      if (defaultItem.key_name === 'header_title') {
+        defaultForm.header_title = defaultItem.key_value || '';
+      } else if (defaultItem.key_name === 'default_banner_image') {
         defaultForm.banner_image_url = defaultItem.key_value || '';
       } else if (defaultItem.key_name === 'default_background_image') {
         defaultForm.background_image_url = defaultItem.key_value || '';

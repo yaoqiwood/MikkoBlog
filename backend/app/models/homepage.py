@@ -5,6 +5,7 @@ from sqlmodel import Field, SQLModel
 
 
 class HomePageSettingsBase(SQLModel):
+    header_title: Optional[str] = None
     banner_image_url: Optional[str] = None
     background_image_url: Optional[str] = None
     show_music_player: bool = False
@@ -31,6 +32,7 @@ class HomePageSettingsRead(HomePageSettingsBase):
 
 
 class HomePageSettingsUpdate(SQLModel):
+    header_title: Optional[str] = None
     banner_image_url: Optional[str] = None
     background_image_url: Optional[str] = None
     show_music_player: Optional[bool] = None

@@ -56,6 +56,15 @@
               <span v-show="!sidebarCollapsed">评论管理</span>
             </router-link>
             <router-link
+              to="/admin/moments"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/moments' }"
+              :title="sidebarCollapsed ? '说说管理' : ''"
+            >
+              <Icon type="ios-heart" />
+              <span v-show="!sidebarCollapsed">说说管理</span>
+            </router-link>
+            <router-link
               to="/admin/profile"
               class="menu-item"
               :class="{ active: $route.path === '/admin/profile' }"
@@ -74,15 +83,6 @@
               <span v-show="!sidebarCollapsed">附件管理</span>
             </router-link>
             <router-link
-              to="/admin/settings"
-              class="menu-item"
-              :class="{ active: $route.path === '/admin/settings' }"
-              :title="sidebarCollapsed ? '系统设置' : ''"
-            >
-              <Icon type="ios-settings" />
-              <span v-show="!sidebarCollapsed">系统设置</span>
-            </router-link>
-            <router-link
               to="/admin/homepage"
               class="menu-item"
               :class="{ active: $route.path === '/admin/homepage' }"
@@ -90,6 +90,15 @@
             >
               <Icon type="ios-color-palette" />
               <span v-show="!sidebarCollapsed">主页设置</span>
+            </router-link>
+            <router-link
+              to="/admin/settings"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/settings' }"
+              :title="sidebarCollapsed ? '系统设置' : ''"
+            >
+              <Icon type="ios-settings" />
+              <span v-show="!sidebarCollapsed">系统设置</span>
             </router-link>
           </div>
         </div>
@@ -207,6 +216,7 @@ const pageTitles = {
   '/admin/users': '用户管理',
   '/admin/comments': '评论管理',
   '/admin/posts': '文章管理',
+  '/admin/moments': '说说管理',
   '/admin/profile': '个人信息设置',
   '/admin/attachments': '附件管理',
   '/admin/settings': '系统设置',

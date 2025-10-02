@@ -18,7 +18,9 @@ router = APIRouter(prefix="/homepage", tags=["homepage"])
 
 
 @router.get("/settings", response_model=HomePageSettingsRead)
-def get_homepage_settings(db: Session = Depends(get_db)) -> HomePageSettingsRead:
+def get_homepage_settings(
+    db: Session = Depends(get_db)
+) -> HomePageSettingsRead:
     settings = db.exec(select(HomePageSettings)).first()
     if not settings:
         # 若不存在，创建默认记录
@@ -87,6 +89,9 @@ def upsert_default(
 
 
 def sync_system_defaults(db: Session, settings: HomePageSettings) -> None:
+    upsert_default(
+        db, "homepage", "header_title", settings.header_title, "string"
+    )
     upsert_default(
         db, "homepage", "banner_image_url", settings.banner_image_url, "url"
     )

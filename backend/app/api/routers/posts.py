@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from app.db.session import get_db
 from app.models.post import Post, PostCreate, PostRead, PostUpdate
 from app.models.user import UserProfile
+from app.models.postStats import PostStats
 
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -23,7 +24,7 @@ def list_posts(
     """
     获取文章列表接口
 
-    支持分页、可见性和删除状态筛选，返回文章及其作者信息。
+    支持分页、可见性和删除状态筛选，返回文章及其作者信息和统计数据。
 
     参数:
         page (int): 页码，从1开始，默认1
@@ -33,12 +34,13 @@ def list_posts(
         db (Session): 数据库会话（依赖注入）
 
     返回:
-        List[PostRead]: 文章列表，每项包含文章和作者信息
+        List[PostRead]: 文章列表，每项包含文章、作者信息和统计数据
     """
-    # 构建查询，联表获取文章和用户资料
+    # 构建查询，联表获取文章、用户资料和统计数据
     statement = (
-        select(Post, UserProfile)
+        select(Post, UserProfile, PostStats)
         .join(UserProfile, Post.user_id == UserProfile.user_id)
+        .outerjoin(PostStats, Post.id == PostStats.post_id)
     )
 
     # 处理删除状态过滤
@@ -61,8 +63,8 @@ def list_posts(
 
     # 构建响应数据列表
     result = []
-    for post, user_profile in results:
-        # 组装包含文章和作者信息的字典
+    for post, user_profile, post_stats in results:
+        # 组装包含文章、作者信息和统计数据的字典
         post_dict = {
             'id': post.id,
             'title': post.title,
@@ -76,7 +78,12 @@ def list_posts(
             'created_at': post.created_at,
             'updated_at': post.updated_at,
             'user_nickname': user_profile.nickname,
-            'user_avatar': user_profile.avatar
+            'user_avatar': user_profile.avatar,
+            # 统计数据，如果不存在则默认为0
+            'view_count': post_stats.view_count if post_stats else 0,
+            'like_count': post_stats.like_count if post_stats else 0,
+            'share_count': post_stats.share_count if post_stats else 0,
+            'comment_count': post_stats.comment_count if post_stats else 0
         }
 
         # 校验并转换为响应模型
@@ -85,7 +92,8 @@ def list_posts(
 
         # 打印调试信息
         print(f"Post {post.id}: user_nickname={user_profile.nickname}, "
-              f"user_avatar={user_profile.avatar}")
+              f"user_avatar={user_profile.avatar}, "
+              f"stats={post_stats.view_count if post_stats else 0} views")
 
     return result
 

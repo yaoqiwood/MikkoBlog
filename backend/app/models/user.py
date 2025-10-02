@@ -1,7 +1,11 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
+
+if TYPE_CHECKING:
+    from app.models.post import Post
+    from app.models.moments import Moments
 
 
 class UserBase(SQLModel):
@@ -14,8 +18,12 @@ class UserBase(SQLModel):
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     hashed_password: str
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, nullable=False
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, nullable=False
+    )
 
 
 class UserCreate(SQLModel):
@@ -57,8 +65,16 @@ class UserProfile(UserProfileBase, table=True):
     __tablename__ = "user_profiles"
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(index=True, nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, nullable=False
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, nullable=False
+    )
+
+    # 关联关系
+    posts: List["Post"] = Relationship(back_populates="author")
+    moments: List["Moments"] = Relationship(back_populates="author")
 
 
 class UserProfileRead(UserProfileBase):

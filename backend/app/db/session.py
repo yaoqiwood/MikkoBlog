@@ -21,6 +21,11 @@ def initialize_database() -> None:
     SQLModel.metadata.create_all(engine)
 
 
+def get_session() -> Generator[Session, None, None]:
+    with Session(engine) as session:
+        yield session
+
+
 def get_db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session

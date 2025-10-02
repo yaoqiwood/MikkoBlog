@@ -4,7 +4,7 @@
     <header class="blog-header">
       <div class="header-container">
         <div class="blog-title">
-          <h1>{{ userProfile.blog_title }}</h1>
+          <h1>{{ homepageSettings.header_title || userProfile.blog_title || 'MikkoBlog' }}</h1>
         </div>
         <nav class="main-nav">
           <a href="#" class="nav-item">首页</a>
@@ -150,14 +150,10 @@
               <article class="blog-post" v-for="(post, index) in blogPosts" :key="post.id">
                 <div class="post-header">
                   <div class="post-avatar">
-                    <img
-                      src="https://via.placeholder.com/40x40/87ceeb/ffffff?text=S"
-                      alt="Author"
-                    />
+                    <img :src="getFullUrl(post.author_avatar)" :alt="post.author_name" />
                   </div>
                   <div class="post-meta">
-                    <div class="author-name">Suyeq</div>
-                    <div class="post-time">{{ post.time }}</div>
+                    <div class="author-name">{{ post.author_name }}</div>
                   </div>
                 </div>
                 <div class="post-content">
@@ -179,6 +175,13 @@
                   <div class="stat-item">
                     <i class="stat-icon">👍</i>
                     <span>{{ post.likes }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <i class="stat-icon">📤</i>
+                    <span>{{ post.shares }}</span>
+                  </div>
+                  <div class="post-time-info">
+                    {{ post.create_or_update_time }}
                   </div>
                 </div>
                 <div v-if="index < blogPosts.length - 1" class="post-divider"></div>
@@ -289,13 +292,13 @@ const error = ref('');
 
 // 用户资料数据
 const userProfile = ref({
-  nickname: 'Suyeq',
-  email: 'suyeq@example.com',
+  nickname: '',
+  email: '',
   bio: '',
   avatar: 'https://via.placeholder.com/80x80/87ceeb/ffffff?text=Avatar',
-  blog_title: '阑珊处',
-  blog_subtitle: '一杯敬明天,一杯敬过往',
-  motto: '一杯敬明天,一杯敬过往',
+  blog_title: '',
+  blog_subtitle: '',
+  motto: '',
   github_url: '',
   twitter_url: '',
   weibo_url: '',
@@ -306,6 +309,7 @@ const profileError = ref('');
 
 // 主页设置数据
 const homepageSettings = ref({
+  header_title: '',
   banner_image_url: '',
   background_image_url: '',
   show_music_player: false,
@@ -345,6 +349,7 @@ const loadHomepageSettings = async () => {
   try {
     const settings = await homepageApi.getSettings();
     homepageSettings.value = {
+      header_title: settings.header_title || '',
       banner_image_url: settings.banner_image_url || '',
       background_image_url: settings.background_image_url || '',
       show_music_player: !!settings.show_music_player,
@@ -370,6 +375,28 @@ const formatTime = dateString => {
   return `${Math.ceil(diffDays / 365)}年前`;
 };
 
+// 格式化创建/修改时间显示
+const formatCreateOrUpdateTime = (createdAt, updatedAt) => {
+  const createdDate = new Date(createdAt);
+  const updatedDate = updatedAt ? new Date(updatedAt) : null;
+
+  // 如果修改时间为null或空，或者修改时间等于创建时间，显示创建时间
+  if (!updatedDate || updatedDate.getTime() === createdDate.getTime()) {
+    const timeStr = formatTime(createdAt);
+    return `创建于${timeStr}`;
+  }
+
+  // 如果修改时间大于创建时间，显示修改时间
+  if (updatedDate.getTime() > createdDate.getTime()) {
+    const timeStr = formatTime(updatedAt);
+    return `修改于${timeStr}`;
+  }
+
+  // 默认显示创建时间
+  const timeStr = formatTime(createdAt);
+  return `创建于${timeStr}`;
+};
+
 // 从后端API加载博文
 const loadPosts = async () => {
   if (loading.value || !hasMore.value) return;
@@ -393,12 +420,21 @@ const loadPosts = async () => {
         title: post.title,
         content: post.summary || post.content.substring(0, 200) + '...',
         time: formatTime(post.created_at),
-        views: Math.floor(Math.random() * 100) + 10, // 临时使用随机数，后续可以从后端获取真实数据
-        comments: post.comments?.length || 0,
-        likes: Math.floor(Math.random() * 50) + 5, // 临时使用随机数，后续可以从后端获取真实数据
+        display_time: formatTime(post.updated_at || post.created_at), // 优先显示修改时间
+        create_or_update_time: formatCreateOrUpdateTime(post.created_at, post.updated_at), // 新的时间显示
+        views: post.view_count || 0, // 使用后端返回的真实观看数据
+        comments: post.comment_count || 0, // 使用后端返回的真实评论数据
+        likes: post.like_count || 0, // 使用后端返回的真实点赞数据
+        shares: post.share_count || 0, // 使用后端返回的真实分享数据
         image: post.cover_image_url,
         created_at: post.created_at,
         updated_at: post.updated_at,
+        // 添加作者信息 - 使用后端返回的用户信息
+        author_name: post.user_nickname || userProfile.value.nickname || '',
+        author_avatar:
+          post.user_avatar ||
+          userProfile.value.avatar ||
+          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
       }));
 
       blogPosts.value.push(...formattedPosts);
@@ -451,13 +487,13 @@ const loadUserProfile = async () => {
 
     // 更新用户资料数据
     userProfile.value = {
-      nickname: profile.nickname || 'Suyeq',
-      email: profile.email || 'suyeq@example.com',
+      nickname: profile.nickname || '',
+      email: profile.email || '',
       bio: profile.bio || '',
       avatar: profile.avatar || 'https://via.placeholder.com/80x80/87ceeb/ffffff?text=Avatar',
-      blog_title: profile.blog_title || '阑珊处',
-      blog_subtitle: profile.blog_subtitle || '一杯敬明天,一杯敬过往',
-      motto: profile.motto || '一杯敬明天,一杯敬过往',
+      blog_title: profile.blog_title || '',
+      blog_subtitle: profile.blog_subtitle || '',
+      motto: profile.motto || '',
       github_url: profile.github_url || '',
       twitter_url: profile.twitter_url || '',
       weibo_url: profile.weibo_url || '',
@@ -1091,6 +1127,7 @@ onMounted(() => {
 
 .author-name {
   font-weight: bold;
+  font-size: 16px;
   color: #333;
 }
 
@@ -1118,6 +1155,8 @@ onMounted(() => {
 
 .post-stats {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 20px;
 }
 
@@ -1134,6 +1173,13 @@ onMounted(() => {
 .stat-item:hover {
   color: #ff6b6b;
   transform: translateY(-1px);
+}
+
+.post-time-info {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+  margin-left: auto;
 }
 
 /* 右侧边栏 */

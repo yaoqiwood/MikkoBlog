@@ -6,7 +6,9 @@ import yaml
 
 class Settings:
     def __init__(self) -> None:
-        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        root_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..")
+        )
         default_config_path = os.path.join(root_dir, "config", "config.yaml")
         config_path = os.environ.get("MIKKO_CONFIG", default_config_path)
 
@@ -30,17 +32,24 @@ class Settings:
             "sqlite:///./dev.db",
         )
 
-        self.cors_allow_origins: List[str] = cors_cfg.get("allow_origins", ["*"])
+        self.cors_allow_origins: List[str] = cors_cfg.get(
+            "allow_origins", ["*"]
+        )
 
-        self.jwt_secret: str = os.environ.get("MIKKO_JWT_SECRET", jwt_cfg.get("secret", "change_me"))
+        self.jwt_secret: str = os.environ.get(
+            "MIKKO_JWT_SECRET", jwt_cfg.get("secret", "change_me")
+        )
         self.jwt_algorithm: str = jwt_cfg.get("algorithm", "HS256")
-        self.jwt_expires_minutes: int = int(jwt_cfg.get("expires_minutes", 60 * 24))
+        self.jwt_expires_minutes: int = int(
+            jwt_cfg.get("expires_minutes", 60 * 24)
+        )
 
-        self.default_admin_email: str = admin_cfg.get("email", "admin@example.com")
-        self.default_admin_password: str = admin_cfg.get("password", "admin123")
+        self.default_admin_email: str = admin_cfg.get(
+            "email", "admin@example.com"
+        )
+        self.default_admin_password: str = admin_cfg.get(
+            "password", "admin123"
+        )
 
 
 settings = Settings()
-
-
-
