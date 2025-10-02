@@ -34,6 +34,11 @@ const router = createRouter({
         { path: 'users', name: 'admin-users', component: UserManagement },
         { path: 'comments', name: 'admin-comments', component: CommentManagement },
         {
+          path: 'moments',
+          name: 'admin-moments',
+          component: () => import('@/pages/admin/MomentsManagement.vue'),
+        },
+        {
           path: 'posts',
           name: 'admin-posts',
           component: () => import('@/pages/admin/PostManagement.vue'),

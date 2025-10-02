@@ -9,7 +9,6 @@
         <nav class="main-nav">
           <a href="#" class="nav-item">首页</a>
           <a href="#" class="nav-item">归档</a>
-          <a href="#" class="nav-item">友情链接</a>
           <a href="#" class="nav-item">关于我</a>
         </nav>
         <div class="search-box">
@@ -131,9 +130,30 @@
         <!-- 主内容区 -->
         <main class="main-area">
           <div class="content-nav">
-            <a href="#" class="content-nav-item active">全部</a>
-            <a href="#" class="content-nav-item">博客</a>
-            <a href="#" class="content-nav-item">说说</a>
+            <a
+              href="#"
+              class="content-nav-item"
+              :class="{ active: activeContentType === 'all' }"
+              @click.prevent="switchContentType('all')"
+            >
+              全部
+            </a>
+            <a
+              href="#"
+              class="content-nav-item"
+              :class="{ active: activeContentType === 'blog' }"
+              @click.prevent="switchContentType('blog')"
+            >
+              博客
+            </a>
+            <a
+              href="#"
+              class="content-nav-item"
+              :class="{ active: activeContentType === 'moments' }"
+              @click.prevent="switchContentType('moments')"
+            >
+              说说
+            </a>
           </div>
           <div class="posts-wrapper">
             <!-- 错误提示 -->
@@ -146,53 +166,76 @@
             </div>
 
             <div class="posts-container" @scroll="handleScroll">
-              <!-- 博客文章列表 -->
-              <article class="blog-post" v-for="(post, index) in blogPosts" :key="post.id">
+              <!-- 内容列表 -->
+              <article
+                class="blog-post"
+                v-for="(item, index) in displayedContent"
+                :key="`${item.type}-${item.id}`"
+              >
                 <div class="post-header">
                   <div class="post-avatar">
-                    <img :src="getFullUrl(post.author_avatar)" :alt="post.author_name" />
+                    <img :src="getFullUrl(item.author_avatar)" :alt="item.author_name" />
+                    <div class="post-meta">
+                      <div class="author-name">{{ item.author_name }}</div>
+                    </div>
                   </div>
-                  <div class="post-meta">
-                    <div class="author-name">{{ post.author_name }}</div>
+                  <div class="content-type-badge" :class="item.type">
+                    {{ item.type === 'blog' ? '博客' : '说说' }}
                   </div>
                 </div>
                 <div class="post-content">
-                  <h3 class="post-title">{{ post.title }}</h3>
-                  <p>{{ post.content }}</p>
-                  <div v-if="post.image" class="post-image">
-                    <img :src="post.image" :alt="post.title" />
-                  </div>
+                  <!-- 博客文章内容 -->
+                  <template v-if="item.type === 'blog'">
+                    <h3 class="post-title">{{ item.title }}</h3>
+                    <p>{{ item.content }}</p>
+                    <div v-if="item.image" class="post-image">
+                      <img :src="item.image" :alt="item.title" />
+                    </div>
+                  </template>
+
+                  <!-- 说说内容 -->
+                  <template v-else-if="item.type === 'moment'">
+                    <p class="moment-content">{{ item.content }}</p>
+                    <!-- 说说图片 -->
+                    <div v-if="item.images && item.images.length > 0" class="moment-images">
+                      <div class="images-grid" :class="getImageGridClass(item.images.length)">
+                        <div v-for="image in item.images" :key="image.id" class="moment-image-item">
+                          <img :src="getFullUrl(image.url)" :alt="image.filename" />
+                        </div>
+                      </div>
+                    </div>
+                  </template>
                 </div>
                 <div class="post-stats">
                   <div class="stat-item">
                     <i class="stat-icon">👁️</i>
-                    <span>{{ post.views }}</span>
+                    <span>{{ item.views }}</span>
                   </div>
                   <div class="stat-item">
                     <i class="stat-icon">💬</i>
-                    <span>{{ post.comments }}</span>
+                    <span>{{ item.comments }}</span>
                   </div>
                   <div class="stat-item">
                     <i class="stat-icon">👍</i>
-                    <span>{{ post.likes }}</span>
+                    <span>{{ item.likes }}</span>
                   </div>
                   <div class="stat-item">
                     <i class="stat-icon">📤</i>
-                    <span>{{ post.shares }}</span>
+                    <span>{{ item.shares }}</span>
                   </div>
                   <div class="post-time-info">
-                    {{ post.create_or_update_time }}
+                    {{ item.create_or_update_time }}
                   </div>
                 </div>
-                <div v-if="index < blogPosts.length - 1" class="post-divider"></div>
+                <div v-if="index < displayedContent.length - 1" class="post-divider"></div>
               </article>
 
               <!-- 空状态 -->
-              <div v-if="!loading && blogPosts.length === 0 && !error" class="empty-state">
+              <div v-if="!loading && displayedContent.length === 0 && !error" class="empty-state">
                 <div class="empty-content">
                   <i class="empty-icon">📝</i>
-                  <h3>暂无文章</h3>
-                  <p>还没有发布任何文章，请稍后再来查看</p>
+                  <h3>暂无内容</h3>
+                  <p>还没有发布任何内容，请稍后再来查看</p>
                 </div>
               </div>
 
@@ -203,7 +246,7 @@
               </div>
 
               <!-- 没有更多数据提示 -->
-              <div v-if="!hasMore && blogPosts.length > 0" class="no-more-data">
+              <div v-if="!hasMore && displayedContent.length > 0" class="no-more-data">
                 <span>没有更多内容了</span>
               </div>
             </div>
@@ -277,18 +320,22 @@
 </template>
 
 <script setup>
-import { authApi, homepageApi, postApi } from '@/utils/apiService';
+import { authApi, homepageApi, mixedContentApi, momentsApi, postApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 // 响应式数据
 const showFullscreenTip = ref(false);
 const blogPosts = ref([]);
+const moments = ref([]);
 const loading = ref(false);
 const hasMore = ref(true);
 const currentPage = ref(1);
 const pageSize = 10;
 const error = ref('');
+
+// 内容类型切换
+const activeContentType = ref('all'); // 'all', 'blog', 'moments'
 
 // 用户资料数据
 const userProfile = ref({
@@ -329,6 +376,15 @@ const getFullUrl = url => {
   return url;
 };
 
+// 获取说说图片网格样式类
+const getImageGridClass = count => {
+  if (count === 1) return 'images-grid-1';
+  if (count === 2) return 'images-grid-2';
+  if (count === 3) return 'images-grid-3';
+  if (count === 4) return 'images-grid-4';
+  return 'images-grid-9';
+};
+
 // 计算背景图URL
 const backgroundImageUrl = computed(() => {
   const url = homepageSettings.value.background_image_url;
@@ -342,6 +398,18 @@ const backgroundImageUrl = computed(() => {
 // 计算Banner图片URL
 const bannerImageUrl = computed(() => {
   return getFullUrl(homepageSettings.value.banner_image_url);
+});
+
+// 计算页面标题
+const pageTitle = computed(() => {
+  const blogTitle =
+    userProfile.value.blog_title || homepageSettings.value.header_title || 'MikkoBlog';
+  const blogSubtitle = userProfile.value.blog_subtitle;
+
+  if (blogSubtitle) {
+    return `${blogTitle} ${blogSubtitle}`;
+  }
+  return blogTitle;
 });
 
 // 加载主页设置
@@ -417,6 +485,7 @@ const loadPosts = async () => {
       // 转换数据格式以适配前端显示
       const formattedPosts = posts.map(post => ({
         id: post.id,
+        type: 'blog',
         title: post.title,
         content: post.summary || post.content.substring(0, 200) + '...',
         time: formatTime(post.created_at),
@@ -465,13 +534,180 @@ const loadPosts = async () => {
   }
 };
 
+// 加载说说
+const loadMoments = async () => {
+  if (loading.value || !hasMore.value) return;
+
+  loading.value = true;
+  error.value = '';
+
+  try {
+    const response = await momentsApi.getMoments({
+      page: currentPage.value,
+      limit: pageSize,
+      is_visible: true,
+    });
+
+    if (response && response.items && response.items.length > 0) {
+      // 转换数据格式以适配前端显示
+      const formattedMoments = response.items.map(moment => ({
+        id: moment.id,
+        type: 'moment',
+        content: moment.content,
+        time: formatTime(moment.created_at),
+        display_time: formatTime(moment.updated_at || moment.created_at),
+        create_or_update_time: formatCreateOrUpdateTime(moment.created_at, moment.updated_at),
+        views: 0, // 说说暂时没有浏览数
+        comments: 0, // 说说暂时没有评论数
+        likes: 0, // 说说暂时没有点赞数
+        shares: 0, // 说说暂时没有分享数
+        images: moment.images || [],
+        created_at: moment.created_at,
+        updated_at: moment.updated_at,
+        author_name: moment.user_nickname || userProfile.value.nickname || '',
+        author_avatar:
+          moment.user_avatar ||
+          userProfile.value.avatar ||
+          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+      }));
+
+      moments.value.push(...formattedMoments);
+      currentPage.value++;
+
+      // 检查是否还有更多数据
+      if (!response.has_more) {
+        hasMore.value = false;
+      }
+    } else {
+      hasMore.value = false;
+    }
+  } catch (err) {
+    console.error('加载说说失败:', err);
+
+    if (err.type === 'NETWORK_ERROR') {
+      error.value = '服务器连接失败，请检查网络连接';
+      Message.error('服务器连接失败，请检查网络连接');
+    } else {
+      error.value = '加载说说失败，请稍后重试';
+      Message.error('加载说说失败，请稍后重试');
+    }
+
+    hasMore.value = false;
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 计算当前显示的内容
+const displayedContent = computed(() => {
+  let allContent = [];
+
+  if (activeContentType.value === 'all') {
+    // 合并博客和说说，按时间排序
+    allContent = [...blogPosts.value, ...moments.value];
+  } else if (activeContentType.value === 'blog') {
+    allContent = [...blogPosts.value];
+  } else if (activeContentType.value === 'moments') {
+    allContent = [...moments.value];
+  }
+
+  // 按创建时间倒序排序
+  return allContent.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+});
+
+// 内容类型切换
+const switchContentType = type => {
+  if (activeContentType.value === type) return;
+
+  activeContentType.value = type;
+  currentPage.value = 1;
+  hasMore.value = true;
+  error.value = '';
+
+  // 清空对应的数据并重新加载
+  if (type === 'all') {
+    blogPosts.value = [];
+    moments.value = [];
+    loadAllContent();
+  } else if (type === 'blog') {
+    blogPosts.value = [];
+    loadPosts();
+  } else if (type === 'moments') {
+    moments.value = [];
+    loadMoments();
+  }
+};
+
+// 加载所有内容（博客+说说）
+const loadAllContent = async () => {
+  if (loading.value || !hasMore.value) return;
+
+  loading.value = true;
+  error.value = '';
+
+  try {
+    const response = await mixedContentApi.getMixedContent({
+      page: currentPage.value,
+      limit: pageSize,
+    });
+
+    if (response && response.items && response.items.length > 0) {
+      // 添加格式化的时间信息
+      const formattedItems = response.items.map(item => ({
+        ...item,
+        time: formatTime(item.created_at),
+        display_time: formatTime(item.updated_at || item.created_at),
+        create_or_update_time: formatCreateOrUpdateTime(item.created_at, item.updated_at),
+        author_name: item.author_name || userProfile.value.nickname || '',
+        author_avatar:
+          item.author_avatar ||
+          userProfile.value.avatar ||
+          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+      }));
+
+      // 分别添加到对应数组
+      blogPosts.value.push(...formattedItems.filter(item => item.type === 'blog'));
+      moments.value.push(...formattedItems.filter(item => item.type === 'moment'));
+
+      currentPage.value++;
+
+      // 检查是否还有更多数据
+      if (!response.has_more) {
+        hasMore.value = false;
+      }
+    } else {
+      hasMore.value = false;
+    }
+  } catch (err) {
+    console.error('加载内容失败:', err);
+
+    if (err.type === 'NETWORK_ERROR') {
+      error.value = '服务器连接失败，请检查网络连接';
+      Message.error('服务器连接失败，请检查网络连接');
+    } else {
+      error.value = '加载内容失败，请稍后重试';
+      Message.error('加载内容失败，请稍后重试');
+    }
+
+    hasMore.value = false;
+  } finally {
+    loading.value = false;
+  }
+};
+
 // 滚动加载更多
 const handleScroll = event => {
   const { scrollTop, scrollHeight, clientHeight } = event.target;
   const threshold = 100; // 距离底部100px时开始加载
 
   if (scrollHeight - scrollTop - clientHeight < threshold && hasMore.value && !loading.value) {
-    loadPosts();
+    if (activeContentType.value === 'all') {
+      loadAllContent();
+    } else if (activeContentType.value === 'blog') {
+      loadPosts();
+    } else if (activeContentType.value === 'moments') {
+      loadMoments();
+    }
   }
 };
 
@@ -519,10 +755,27 @@ const loadUserProfile = async () => {
 // 重新加载数据
 const reloadPosts = async () => {
   blogPosts.value = [];
+  moments.value = [];
   currentPage.value = 1;
   hasMore.value = true;
-  await loadPosts();
+
+  if (activeContentType.value === 'all') {
+    await loadAllContent();
+  } else if (activeContentType.value === 'blog') {
+    await loadPosts();
+  } else if (activeContentType.value === 'moments') {
+    await loadMoments();
+  }
 };
+
+// 监听页面标题变化
+watch(
+  pageTitle,
+  newTitle => {
+    document.title = newTitle;
+  },
+  { immediate: true }
+);
 
 // 生命周期
 onMounted(() => {
@@ -533,7 +786,7 @@ onMounted(() => {
 
   // 初始加载
   loadUserProfile();
-  loadPosts();
+  loadAllContent(); // 默认加载所有内容
   loadHomepageSettings();
 });
 </script>
@@ -1114,8 +1367,16 @@ onMounted(() => {
 .post-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   margin-bottom: 15px;
+  position: relative;
+}
+
+.post-header .post-avatar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .post-avatar img {
@@ -1350,6 +1611,91 @@ onMounted(() => {
 .profile-loading span {
   font-size: 14px;
   color: #999;
+}
+
+/* 内容类型标识 */
+.content-type-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 15px;
+  color: white;
+  font-weight: 500;
+  position: absolute;
+  top: 0;
+  right: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.content-type-badge.blog {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+}
+
+.content-type-badge.moment {
+  background: linear-gradient(45deg, #f093fb, #f5576c);
+}
+
+/* 说说内容样式 */
+.moment-content {
+  color: #333;
+  line-height: 1.6;
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+/* 说说图片网格 */
+.moment-images {
+  margin: 12px 0;
+}
+
+.images-grid {
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.images-grid-1 {
+  grid-template-columns: 1fr;
+  max-width: 300px;
+}
+
+.images-grid-2 {
+  grid-template-columns: 1fr 1fr;
+  max-width: 300px;
+}
+
+.images-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+  max-width: 300px;
+}
+
+.images-grid-4 {
+  grid-template-columns: 1fr 1fr;
+  max-width: 300px;
+}
+
+.images-grid-9 {
+  grid-template-columns: 1fr 1fr 1fr;
+  max-width: 300px;
+}
+
+.moment-image-item {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.moment-image-item:hover {
+  transform: scale(1.02);
+}
+
+.moment-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* 响应式设计 */

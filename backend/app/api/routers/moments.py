@@ -20,7 +20,9 @@ from app.models.attachment import Attachment
 router = APIRouter(prefix="/moments", tags=["moments"])
 
 
-@router.post("/", response_model=MomentsRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=MomentsRead, status_code=status.HTTP_201_CREATED
+)
 def create_moment(
     *,
     session: Session = Depends(get_session),
@@ -64,47 +66,59 @@ def list_moments(
     user_id: Optional[int] = Query(None, description="用户ID筛选")
 ):
     """获取说说列表"""
-    # 构建查询
-    statement = select(Moments).where(Moments.is_deleted.is_(False))
+    try:
+        # 构建查询
+        statement = select(Moments).where(Moments.is_deleted == 0)
 
-    if is_visible is not None:
-        statement = statement.where(Moments.is_visible == is_visible)
+        if is_visible is not None:
+            statement = statement.where(Moments.is_visible == is_visible)
 
-    if user_id is not None:
-        statement = statement.where(Moments.user_id == user_id)
+        if user_id is not None:
+            statement = statement.where(Moments.user_id == user_id)
 
-    # 获取总数
-    count_statement = select(func.count(Moments.id)).where(
-        Moments.is_deleted.is_(False)
-    )
-    if is_visible is not None:
-        count_statement = count_statement.where(
-            Moments.is_visible == is_visible
+        # 获取总数
+        count_statement = select(func.count(Moments.id)).where(
+            Moments.is_deleted == 0
         )
-    if user_id is not None:
-        count_statement = count_statement.where(Moments.user_id == user_id)
+        if is_visible is not None:
+            count_statement = count_statement.where(
+                Moments.is_visible == is_visible
+            )
+        if user_id is not None:
+            count_statement = count_statement.where(Moments.user_id == user_id)
 
-    total = session.exec(count_statement).one()
+        total = session.exec(count_statement).one()
 
-    # 分页查询
-    statement = statement.order_by(Moments.created_at.desc())
-    statement = statement.offset((page - 1) * limit).limit(limit)
+        # 分页查询
+        statement = statement.order_by(Moments.created_at.desc())
+        statement = statement.offset((page - 1) * limit).limit(limit)
 
-    moments = session.exec(statement).all()
+        moments = session.exec(statement).all()
 
-    # 获取详细信息
-    moment_details = []
-    for moment in moments:
-        detail = get_moment_with_details(session, moment.id)
-        moment_details.append(detail)
+        # 获取详细信息
+        moment_details = []
+        for moment in moments:
+            detail = get_moment_with_details(session, moment.id)
+            moment_details.append(detail)
 
-    return MomentsListResponse(
-        items=moment_details,
-        total=total,
-        page=page,
-        limit=limit,
-        has_more=(page * limit) < total
-    )
+        return MomentsListResponse(
+            items=moment_details,
+            total=total,
+            page=page,
+            limit=limit,
+            has_more=(page * limit) < total
+        )
+    except Exception as e:
+        print(f"Error in list_moments: {e}")
+        import traceback
+        traceback.print_exc()
+        return MomentsListResponse(
+            items=[],
+            total=0,
+            page=page,
+            limit=limit,
+            has_more=False
+        )
 
 
 @router.get("/{moment_id}", response_model=MomentsRead)
@@ -201,41 +215,37 @@ def delete_moment(
 
 def get_moment_with_details(session: Session, moment_id: int) -> MomentsRead:
     """获取包含详细信息的说说"""
-    # 获取说说和用户信息
-    statement = (
-        select(Moments, UserProfile)
-        .join(UserProfile, Moments.user_id == UserProfile.user_id)
-        .where(Moments.id == moment_id)
-    )
-
-    result = session.exec(statement).first()
-    if not result:
+    # 获取说说
+    moment = session.get(Moments, moment_id)
+    if not moment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="说说不存在"
         )
 
-    moment, user_profile = result
+    # 获取用户信息
+    user_profile = session.exec(
+        select(UserProfile).where(UserProfile.user_id == moment.user_id)
+    ).first()
 
     # 获取图片信息
-    images_statement = (
-        select(MomentsImages, Attachment)
-        .join(Attachment, MomentsImages.attachment_id == Attachment.id)
-        .where(MomentsImages.moment_id == moment_id)
-        .order_by(MomentsImages.sort_order)
-    )
-
-    images_result = session.exec(images_statement).all()
     images = []
-    for moment_image, attachment in images_result:
-        images.append({
-            "id": attachment.id,
-            "url": attachment.file_url,
-            "filename": attachment.filename,
-            "width": attachment.width,
-            "height": attachment.height,
-            "sort_order": moment_image.sort_order
-        })
+    moment_images = session.exec(
+        select(MomentsImages).where(MomentsImages.moment_id == moment_id)
+    ).all()
+
+    for moment_image in moment_images:
+        attachment = session.get(Attachment, moment_image.attachment_id)
+        if attachment:
+            images.append({
+                "id": attachment.id,
+                "url": attachment.file_url,
+                "filename": attachment.original_name,
+                "sort_order": moment_image.sort_order
+            })
+
+    # 按排序顺序排列图片
+    images.sort(key=lambda x: x["sort_order"])
 
     # 构建响应
     return MomentsRead(
@@ -246,7 +256,7 @@ def get_moment_with_details(session: Session, moment_id: int) -> MomentsRead:
         user_id=moment.user_id,
         created_at=moment.created_at,
         updated_at=moment.updated_at,
-        user_nickname=user_profile.nickname,
-        user_avatar=user_profile.avatar,
+        user_nickname=user_profile.nickname if user_profile else None,
+        user_avatar=user_profile.avatar if user_profile else None,
         images=images
     )

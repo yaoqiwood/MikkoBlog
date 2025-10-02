@@ -421,6 +421,66 @@ export const homepageApi = {
 };
 
 /**
+ * 说说管理API
+ */
+export const momentsApi = {
+  /**
+   * 获取说说列表
+   * @param {object} params - 查询参数
+   * @returns {Promise} 说说列表
+   */
+  async getMoments(params = {}) {
+    return get('http://localhost:8000/api/moments', params);
+  },
+
+  /**
+   * 获取说说详情
+   * @param {string|number} id - 说说ID
+   * @returns {Promise} 说说详情
+   */
+  async getMomentById(id) {
+    return get(`http://localhost:8000/api/moments/${id}`);
+  },
+
+  /**
+   * 创建说说
+   * @param {object} momentData - 说说数据
+   * @returns {Promise} 创建结果
+   */
+  async createMoment(momentData) {
+    return post('http://localhost:8000/api/moments', momentData);
+  },
+
+  /**
+   * 更新说说
+   * @param {string|number} id - 说说ID
+   * @param {object} momentData - 说说数据
+   * @returns {Promise} 更新结果
+   */
+  async updateMoment(id, momentData) {
+    return put(`http://localhost:8000/api/moments/${id}`, momentData);
+  },
+
+  /**
+   * 删除说说（软删除）
+   * @param {string|number} id - 说说ID
+   * @returns {Promise} 删除结果
+   */
+  async deleteMoment(id) {
+    return del(`http://localhost:8000/api/moments/${id}`);
+  },
+
+  /**
+   * 切换说说可见性
+   * @param {string|number} id - 说说ID
+   * @returns {Promise} 切换结果
+   */
+  async toggleMomentVisibility(id) {
+    return patch(`http://localhost:8000/api/moments/${id}/toggle-visibility`);
+  },
+};
+
+/**
  * 附件管理API
  */
 export const attachmentApi = {
@@ -515,6 +575,77 @@ export const attachmentApi = {
   },
 };
 
+/**
+ * 混合内容API（博客+说说）
+ */
+export const mixedContentApi = {
+  /**
+   * 获取混合内容（博客文章和说说）
+   * @param {object} params - 查询参数
+   * @returns {Promise} 混合内容列表
+   */
+  async getMixedContent(params = {}) {
+    // 并行获取博客和说说
+    const [postsResponse, momentsResponse] = await Promise.all([
+      postApi.getPosts({
+        page: params.page || 1,
+        limit: params.limit || 10,
+        is_visible: true,
+        is_deleted: false,
+      }),
+      momentsApi.getMoments({
+        page: params.page || 1,
+        limit: params.limit || 10,
+        is_visible: true,
+      }),
+    ]);
+
+    // 格式化博客数据
+    const formattedPosts = (postsResponse || []).map(post => ({
+      id: post.id,
+      type: 'blog',
+      title: post.title,
+      content: post.summary || post.content.substring(0, 200) + '...',
+      views: post.view_count || 0,
+      comments: post.comment_count || 0,
+      likes: post.like_count || 0,
+      shares: post.share_count || 0,
+      image: post.cover_image_url,
+      created_at: post.created_at,
+      updated_at: post.updated_at,
+      author_name: post.user_nickname || '',
+      author_avatar: post.user_avatar || '',
+    }));
+
+    // 格式化说说数据
+    const formattedMoments = (momentsResponse?.items || []).map(moment => ({
+      id: moment.id,
+      type: 'moment',
+      content: moment.content,
+      views: 0,
+      comments: 0,
+      likes: 0,
+      shares: 0,
+      images: moment.images || [],
+      created_at: moment.created_at,
+      updated_at: moment.updated_at,
+      author_name: moment.user_nickname || '',
+      author_avatar: moment.user_avatar || '',
+    }));
+
+    // 合并并按时间排序
+    const allContent = [...formattedPosts, ...formattedMoments];
+    allContent.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    return {
+      items: allContent,
+      total: (postsResponse?.length || 0) + (momentsResponse?.total || 0),
+      has_more:
+        postsResponse?.length === (params.limit || 10) || momentsResponse?.has_more === true,
+    };
+  },
+};
+
 // 导出所有API
 export default {
   auth: authApi,
@@ -525,5 +656,7 @@ export default {
   upload: uploadApi,
   system: systemApi,
   homepage: homepageApi,
+  moments: momentsApi,
+  mixedContent: mixedContentApi,
   attachment: attachmentApi,
 };

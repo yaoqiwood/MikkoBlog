@@ -777,7 +777,7 @@ onMounted(() => {
 /* 页面内容 */
 .admin-content {
   flex: 1;
-  padding: 1.5rem;
+  padding: 0;
   overflow-y: auto;
   background: #f5f7fa;
 }

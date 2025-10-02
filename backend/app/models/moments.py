@@ -50,7 +50,6 @@ class MomentsImages(SQLModel, table=True):
 
     # 关联关系
     moment: Optional["Moments"] = Relationship(back_populates="images")
-    attachment: Optional["Attachment"] = Relationship()
 
 
 class MomentsCreate(SQLModel):

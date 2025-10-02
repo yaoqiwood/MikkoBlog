@@ -6,35 +6,42 @@
         说说管理
       </template>
       <template #extra>
-        <Button type="primary" @click="showCreateModal = true">
-          <Icon type="ios-add" />
+        <Button
+          type="primary"
+          @click="showCreateModal = true"
+          size="large"
+          class="add-moment-button"
+        >
+          <Icon type="ios-add-circle" />
           发布说说
         </Button>
       </template>
 
       <!-- 筛选条件 -->
       <div class="filter-bar">
-        <Form inline>
-          <FormItem label="可见性">
+        <div class="filter-controls">
+          <div class="filter-item">
+            <label>可见性</label>
             <Select v-model="filters.is_visible" style="width: 120px" @change="loadMoments">
               <Option value="">全部</Option>
-              <Option :value="true">可见</Option>
-              <Option :value="false">隐藏</Option>
+              <Option value="true">可见</Option>
+              <Option value="false">隐藏</Option>
             </Select>
-          </FormItem>
-          <FormItem label="用户">
+          </div>
+          <div class="filter-item">
+            <label>用户</label>
             <Input
               v-model="filters.user_id"
               placeholder="用户ID"
               style="width: 120px"
               @on-enter="loadMoments"
             />
-          </FormItem>
-          <FormItem>
+          </div>
+          <div class="filter-buttons">
             <Button @click="loadMoments">搜索</Button>
             <Button @click="resetFilters" style="margin-left: 8px">重置</Button>
-          </FormItem>
-        </Form>
+          </div>
+        </div>
       </div>
 
       <!-- 说说列表 -->
@@ -50,7 +57,7 @@
             <div class="moment-header">
               <div class="user-info">
                 <Avatar :src="moment.user_avatar" size="small" />
-                <span class="username">{{ moment.user_nickname }}</span>
+                <span class="username">{{ moment.user_nickname || '未知用户' }}</span>
                 <span class="user-id">(ID: {{ moment.user_id }})</span>
               </div>
               <div class="moment-actions">
@@ -77,7 +84,7 @@
                   class="image-item"
                   @click="previewImage(moment.images, index)"
                 >
-                  <img :src="image.url" :alt="image.filename" />
+                  <img :src="getFullImageUrl(image.url)" :alt="image.filename" />
                 </div>
               </div>
             </div>
@@ -107,70 +114,135 @@
     <Modal
       v-model="showCreateModal"
       :title="editingMoment ? '编辑说说' : '发布说说'"
-      width="600"
-      @on-ok="saveMoment"
-      @on-cancel="resetForm"
+      width="650"
+      class-name="moments-modal"
+      :mask-closable="false"
     >
-      <Form ref="momentForm" :model="momentForm" :rules="momentRules" label-position="top">
-        <FormItem label="说说内容" prop="content">
-          <Input
-            v-model="momentForm.content"
-            type="textarea"
-            :rows="4"
-            :maxlength="150"
-            show-word-limit
-            placeholder="分享你的想法..."
-          />
-        </FormItem>
-        <FormItem label="图片">
-          <div class="image-upload-area">
-            <div class="uploaded-images">
-              <div
-                v-for="(image, index) in momentForm.images"
-                :key="image.id"
-                class="uploaded-image"
-              >
-                <img :src="image.url" :alt="image.filename" />
-                <div class="image-overlay">
-                  <Button size="small" type="error" @click="removeImage(index)">删除</Button>
+      <div class="moments-form">
+        <!-- 用户头像和输入区域 -->
+        <div class="form-header">
+          <Avatar size="large" icon="ios-person" />
+          <div class="form-main">
+            <div class="textarea-container">
+              <Input
+                v-model="momentForm.content"
+                type="textarea"
+                :rows="4"
+                :maxlength="150"
+                show-word-limit
+                placeholder="分享你的想法..."
+                class="moments-textarea"
+              />
+            </div>
+
+            <!-- 图片上传区域 -->
+            <div class="image-upload-section">
+              <div class="uploaded-images-grid">
+                <div
+                  v-for="(image, index) in momentForm.images"
+                  :key="image.id"
+                  class="uploaded-image-item"
+                >
+                  <img :src="image.url" :alt="image.filename" />
+                  <div class="image-remove" @click="removeImage(index)">
+                    <Icon type="ios-close" />
+                  </div>
+                </div>
+
+                <!-- 添加图片按钮 -->
+                <div
+                  v-if="momentForm.images.length < 9"
+                  class="add-image-btn"
+                  @click="triggerUpload"
+                >
+                  <Icon type="ios-add" size="32" />
+                </div>
+              </div>
+
+              <input
+                ref="fileInput"
+                type="file"
+                multiple
+                accept="image/*"
+                style="display: none"
+                @change="handleImageUpload"
+              />
+            </div>
+
+            <!-- 底部工具栏 -->
+            <div class="form-toolbar">
+              <div class="toolbar-left">
+                <Button
+                  type="text"
+                  @click="triggerUpload"
+                  :disabled="momentForm.images.length >= 9"
+                >
+                  <Icon type="ios-images" />
+                  图片 ({{ momentForm.images.length }}/9)
+                </Button>
+              </div>
+              <div class="toolbar-right">
+                <div class="visibility-switch">
+                  <span>可见性：</span>
+                  <Switch v-model="momentForm.is_visible" size="small">
+                    <template #open>
+                      <span>公开</span>
+                    </template>
+                    <template #close>
+                      <span>隐藏</span>
+                    </template>
+                  </Switch>
                 </div>
               </div>
             </div>
-            <div v-if="momentForm.images.length < 9" class="upload-trigger" @click="triggerUpload">
-              <Icon type="ios-camera" size="24" />
-              <p>添加图片</p>
-            </div>
-            <input
-              ref="fileInput"
-              type="file"
-              multiple
-              accept="image/*"
-              style="display: none"
-              @change="handleImageUpload"
-            />
           </div>
-        </FormItem>
-        <FormItem label="可见性">
-          <Switch v-model="momentForm.is_visible">
-            <span slot="open">可见</span>
-            <span slot="close">隐藏</span>
-          </Switch>
-        </FormItem>
-      </Form>
+        </div>
+      </div>
+      <template #footer>
+        <div class="modal-footer">
+          <Button @click="resetForm">取消</Button>
+          <Button type="primary" @click="saveMoment" :loading="saving">
+            {{ editingMoment ? '更新' : '发布' }}
+          </Button>
+        </div>
+      </template>
     </Modal>
 
     <!-- 图片预览 -->
-    <Modal v-model="showImagePreview" width="80%" class-name="image-preview-modal">
+    <Modal
+      v-model="showImagePreview"
+      width="90%"
+      class-name="image-preview-modal"
+      :mask-closable="true"
+      :closable="true"
+    >
+      <template #header>
+        <div class="preview-header">
+          <span>图片预览 ({{ previewIndex + 1 }} / {{ previewImages.length }})</span>
+          <div class="preview-actions">
+            <Button type="text" @click="prevImage" :disabled="previewIndex === 0" size="small">
+              <Icon type="ios-arrow-back" />
+              上一张
+            </Button>
+            <Button
+              type="text"
+              @click="nextImage"
+              :disabled="previewIndex === previewImages.length - 1"
+              size="small"
+            >
+              下一张
+              <Icon type="ios-arrow-forward" />
+            </Button>
+          </div>
+        </div>
+      </template>
       <div class="image-preview-container">
-        <img :src="previewImageUrl" alt="预览图片" />
+        <img :src="previewImageUrl" alt="预览图片" @click="closeImagePreview" />
+        <div class="preview-tip">点击图片关闭预览 | 使用 ← → 键切换图片 | ESC 键关闭</div>
       </div>
       <template #footer>
-        <div class="preview-controls">
-          <Button @click="prevImage" :disabled="previewIndex === 0">上一张</Button>
-          <span>{{ previewIndex + 1 }} / {{ previewImages.length }}</span>
-          <Button @click="nextImage" :disabled="previewIndex === previewImages.length - 1">
-            下一张
-          </Button>
+        <div class="preview-footer">
+          <Button @click="closeImagePreview">关闭</Button>
         </div>
       </template>
     </Modal>
@@ -178,8 +250,9 @@
 </template>
 
 <script setup>
+import { momentsApi } from '@/utils/apiService';
 import { Message, Modal } from 'view-ui-plus';
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
 
 // 响应式数据
 const moments = ref([]);
@@ -197,18 +270,19 @@ const filters = reactive({
 // 创建/编辑表单
 const showCreateModal = ref(false);
 const editingMoment = ref(null);
+const saving = ref(false);
 const momentForm = reactive({
   content: '',
   images: [],
   is_visible: true,
 });
 
-const momentRules = {
-  content: [
-    { required: true, message: '请输入说说内容', trigger: 'blur' },
-    { max: 150, message: '内容不能超过150字', trigger: 'blur' },
-  ],
-};
+// const momentRules = {
+//   content: [
+//     { required: true, message: '请输入说说内容', trigger: 'blur' },
+//     { max: 150, message: '内容不能超过150字', trigger: 'blur' },
+//   ],
+// };
 
 // 图片预览
 const showImagePreview = ref(false);
@@ -223,24 +297,22 @@ const fileInput = ref(null);
 const loadMoments = async () => {
   loading.value = true;
   try {
-    const params = new URLSearchParams({
-      page: currentPage.value.toString(),
-      limit: pageSize.value.toString(),
-    });
+    const params = {
+      page: currentPage.value,
+      limit: pageSize.value,
+    };
 
     if (filters.is_visible !== '') {
-      params.append('is_visible', filters.is_visible.toString());
+      params.is_visible = filters.is_visible === 'true';
     }
     if (filters.user_id) {
-      params.append('user_id', filters.user_id);
+      params.user_id = parseInt(filters.user_id);
     }
 
-    const response = await fetch(`/api/moments?${params}`);
-    if (!response.ok) throw new Error('获取说说列表失败');
-
-    const data = await response.json();
-    moments.value = data.items;
-    total.value = data.total;
+    const data = await momentsApi.getMoments(params);
+    // 后端返回的是 MomentsListResponse 格式
+    moments.value = data.items || [];
+    total.value = data.total || 0;
   } catch (error) {
     console.error('加载说说失败:', error);
     Message.error('加载说说失败');
@@ -273,7 +345,12 @@ const handlePageSizeChange = size => {
 const editMoment = moment => {
   editingMoment.value = moment;
   momentForm.content = moment.content;
-  momentForm.images = moment.images || [];
+  // 将后端图片数据转换为前端需要的格式
+  momentForm.images = (moment.images || []).map(img => ({
+    id: img.id,
+    url: getFullImageUrl(img.url),
+    filename: img.filename,
+  }));
   momentForm.is_visible = moment.is_visible;
   showCreateModal.value = true;
 };
@@ -281,14 +358,7 @@ const editMoment = moment => {
 // 切换可见性
 const toggleVisibility = async moment => {
   try {
-    const response = await fetch(`/api/moments/${moment.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_visible: !moment.is_visible }),
-    });
-
-    if (!response.ok) throw new Error('更新失败');
-
+    await momentsApi.toggleMomentVisibility(moment.id);
     Message.success('更新成功');
     loadMoments();
   } catch (error) {
@@ -304,12 +374,7 @@ const deleteMoment = moment => {
     content: '确定要删除这条说说吗？此操作不可恢复。',
     onOk: async () => {
       try {
-        const response = await fetch(`/api/moments/${moment.id}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) throw new Error('删除失败');
-
+        await momentsApi.deleteMoment(moment.id);
         Message.success('删除成功');
         loadMoments();
       } catch (error) {
@@ -320,43 +385,56 @@ const deleteMoment = moment => {
   });
 };
 
-// 保存说说
+// 发布/更新说说
 const saveMoment = async () => {
+  // 验证内容
+  if (!momentForm.content.trim()) {
+    Message.error('请输入说说内容');
+    return;
+  }
+
+  if (momentForm.content.length > 150) {
+    Message.error('说说内容不能超过150字');
+    return;
+  }
+
+  saving.value = true;
   try {
-    const imageIds = momentForm.images.map(img => img.id);
+    const imageIds = momentForm.images.map(img => img.id).filter(id => id);
     const data = {
-      content: momentForm.content,
+      content: momentForm.content.trim(),
       is_visible: momentForm.is_visible,
       image_ids: imageIds,
     };
 
-    const url = editingMoment.value ? `/api/moments/${editingMoment.value.id}` : '/api/moments';
-    const method = editingMoment.value ? 'PUT' : 'POST';
+    if (editingMoment.value) {
+      await momentsApi.updateMoment(editingMoment.value.id, data);
+      Message.success('更新成功');
+    } else {
+      await momentsApi.createMoment(data);
+      Message.success('发布成功');
+    }
 
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) throw new Error('保存失败');
-
-    Message.success(editingMoment.value ? '更新成功' : '发布成功');
     showCreateModal.value = false;
     resetForm();
     loadMoments();
   } catch (error) {
-    console.error('保存失败:', error);
-    Message.error('保存失败');
+    console.error('操作失败:', error);
+    const errorMsg = error.response?.data?.detail || error.message || '操作失败';
+    Message.error(errorMsg);
+  } finally {
+    saving.value = false;
   }
 };
 
 // 重置表单
 const resetForm = () => {
+  showCreateModal.value = false;
   editingMoment.value = null;
   momentForm.content = '';
   momentForm.images = [];
   momentForm.is_visible = true;
+  saving.value = false;
 };
 
 // 触发文件上传
@@ -377,21 +455,31 @@ const handleImageUpload = async event => {
 
   for (const file of files) {
     try {
-      const formData = new FormData();
+      const formData = new window.FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload/image', {
+      // 使用附件上传API而不是简单的图片上传API
+      const { authCookie } = await import('@/utils/cookieUtils');
+      const token = authCookie.getAuth().token;
+
+      const result = await window.fetch('/api/attachments/upload', {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
-      if (!response.ok) throw new Error('上传失败');
+      if (!result.ok) {
+        const errorData = await result.json();
+        throw new Error(errorData.detail || '上传失败');
+      }
 
-      const result = await response.json();
+      const attachment = await result.json();
       momentForm.images.push({
-        id: result.id,
-        url: result.url,
-        filename: result.filename,
+        id: attachment.id,
+        url: getFullImageUrl(attachment.file_url),
+        filename: attachment.original_name,
       });
     } catch (error) {
       console.error('上传失败:', error);
@@ -417,19 +505,55 @@ const getImageGridClass = count => {
   return 'images-grid-9';
 };
 
+// 获取完整的图片URL
+const getFullImageUrl = url => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `http://localhost:8000${url}`;
+};
+
 // 预览图片
 const previewImage = (images, index) => {
   previewImages.value = images;
   previewIndex.value = index;
-  previewImageUrl.value = images[index].url;
+  previewImageUrl.value = getFullImageUrl(images[index].url);
   showImagePreview.value = true;
+
+  // 添加键盘事件监听
+  document.addEventListener('keydown', handleKeydown);
+};
+
+// 键盘导航
+const handleKeydown = event => {
+  if (!showImagePreview.value) return;
+
+  switch (event.key) {
+    case 'ArrowLeft':
+      event.preventDefault();
+      prevImage();
+      break;
+    case 'ArrowRight':
+      event.preventDefault();
+      nextImage();
+      break;
+    case 'Escape':
+      event.preventDefault();
+      closeImagePreview();
+      break;
+  }
+};
+
+// 关闭图片预览
+const closeImagePreview = () => {
+  showImagePreview.value = false;
+  document.removeEventListener('keydown', handleKeydown);
 };
 
 // 上一张图片
 const prevImage = () => {
   if (previewIndex.value > 0) {
     previewIndex.value--;
-    previewImageUrl.value = previewImages.value[previewIndex.value].url;
+    previewImageUrl.value = getFullImageUrl(previewImages.value[previewIndex.value].url);
   }
 };
 
@@ -437,7 +561,7 @@ const prevImage = () => {
 const nextImage = () => {
   if (previewIndex.value < previewImages.value.length - 1) {
     previewIndex.value++;
-    previewImageUrl.value = previewImages.value[previewIndex.value].url;
+    previewImageUrl.value = getFullImageUrl(previewImages.value[previewIndex.value].url);
   }
 };
 
@@ -461,6 +585,11 @@ const formatTime = dateString => {
 onMounted(() => {
   loadMoments();
 });
+
+onUnmounted(() => {
+  // 清理键盘事件监听器
+  document.removeEventListener('keydown', handleKeydown);
+});
 </script>
 
 <style scoped>
@@ -473,6 +602,29 @@ onMounted(() => {
   padding: 16px;
   background: #f8f9fa;
   border-radius: 6px;
+}
+
+.filter-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-item label {
+  font-size: 14px;
+  color: #515a6e;
+  margin-bottom: 4px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
 }
 
 .moments-list {
@@ -531,40 +683,40 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
-/* 朋友圈式图片网格布局 */
+/* 管理页面小尺寸图片网格布局 */
 .images-grid-1 {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 4px;
-  max-width: 200px;
+  gap: 3px;
+  max-width: 60px;
 }
 
 .images-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  max-width: 300px;
+  gap: 3px;
+  max-width: 120px;
 }
 
 .images-grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px;
-  max-width: 300px;
+  gap: 3px;
+  max-width: 180px;
 }
 
 .images-grid-4 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  max-width: 300px;
+  gap: 3px;
+  max-width: 120px;
 }
 
 .images-grid-9 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px;
-  max-width: 300px;
+  gap: 3px;
+  max-width: 180px;
 }
 
 .image-item {
@@ -572,11 +724,38 @@ onMounted(() => {
   overflow: hidden;
   border-radius: 4px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
+  position: relative;
+  border: 1px solid #e8eaec;
 }
 
 .image-item:hover {
-  transform: scale(1.02);
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-color: #1890ff;
+}
+
+.image-item::after {
+  content: '🔍';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.image-item:hover::after {
+  opacity: 1;
 }
 
 .image-item img {
@@ -598,94 +777,215 @@ onMounted(() => {
   text-align: center;
 }
 
-/* 创建/编辑表单样式 */
-.image-upload-area {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* 朋友圈式发布表单样式 */
+.moments-form {
+  padding: 0;
 }
 
-.uploaded-images {
+.form-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
+  align-items: flex-start;
 }
 
-.uploaded-image {
+.form-main {
+  flex: 1;
+}
+
+.textarea-container {
+  margin-bottom: 16px;
+}
+
+.moments-textarea {
+  border: none;
+  box-shadow: none;
+  resize: none;
+}
+
+:deep(.moments-textarea .ivu-input) {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  background: transparent;
+}
+
+:deep(.moments-textarea .ivu-input:focus) {
+  border: none;
+  box-shadow: none;
+}
+
+/* 图片上传网格 */
+.image-upload-section {
+  margin-bottom: 16px;
+}
+
+.uploaded-images-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-width: 240px;
+}
+
+.uploaded-image-item {
   position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: 4px;
+  aspect-ratio: 1;
+  border-radius: 8px;
   overflow: hidden;
+  background: #f5f5f5;
 }
 
-.uploaded-image img {
+.uploaded-image-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.image-overlay {
+.image-remove {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  color: white;
+  font-size: 12px;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
-.uploaded-image:hover .image-overlay {
+.uploaded-image-item:hover .image-remove {
   opacity: 1;
 }
 
-.upload-trigger {
-  width: 80px;
-  height: 80px;
-  border: 2px dashed #d7dde4;
-  border-radius: 4px;
+.add-image-btn {
+  aspect-ratio: 1;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: #999;
   transition: all 0.2s;
+  background: #fafafa;
 }
 
-.upload-trigger:hover {
-  border-color: #2d8cf0;
-  color: #2d8cf0;
+.add-image-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+  background: #f0f8ff;
 }
 
-.upload-trigger p {
-  margin: 4px 0 0 0;
-  font-size: 12px;
-}
-
-/* 图片预览样式 */
-.image-preview-container {
-  text-align: center;
-}
-
-.image-preview-container img {
-  max-width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
-}
-
-.preview-controls {
+/* 工具栏 */
+.form-toolbar {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.toolbar-left {
+  display: flex;
   align-items: center;
   gap: 16px;
 }
 
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.visibility-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 图片预览样式 */
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-right: 20px; /* 向左移动按钮 */
+}
+
+.image-preview-container {
+  text-align: center;
+  position: relative;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 300px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-container img {
+  max-width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.image-preview-container img:hover {
+  transform: scale(1.02);
+}
+
+.preview-tip {
+  margin-top: 8px;
+  color: #999;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.preview-footer {
+  text-align: center;
+}
+
 :deep(.image-preview-modal .ivu-modal-body) {
-  padding: 0;
+  padding: 16px;
+}
+
+:deep(.image-preview-modal .ivu-modal-header) {
+  border-bottom: 1px solid #e8eaec;
+}
+
+:deep(.image-preview-modal .ivu-modal-footer) {
+  border-top: 1px solid #e8eaec;
+  text-align: center;
+}
+
+.add-moment-button {
+  position: relative;
+  top: 3px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>
