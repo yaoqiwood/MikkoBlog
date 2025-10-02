@@ -6,6 +6,7 @@
 import {
   getAttachmentUrl,
   getAuthUrl,
+  getColumnUrl,
   getCommentUrl,
   getHealthUrl,
   getPostUrl,
@@ -576,6 +577,92 @@ export const attachmentApi = {
 };
 
 /**
+ * 专栏相关API
+ */
+export const columnsApi = {
+  /**
+   * 获取专栏列表
+   * @param {Object} params - 查询参数
+   * @returns {Promise} 专栏列表
+   */
+  async getColumns(params = {}) {
+    const url = getColumnUrl('LIST');
+    const queryParams = new URLSearchParams();
+
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.is_visible !== undefined) queryParams.append('is_visible', params.is_visible);
+    if (params.user_id) queryParams.append('user_id', params.user_id);
+
+    const fullUrl = queryParams.toString() ? `${url}?${queryParams}` : url;
+    return get(fullUrl);
+  },
+
+  /**
+   * 获取单个专栏详情
+   * @param {number} columnId - 专栏ID
+   * @returns {Promise} 专栏详情
+   */
+  async getColumnById(columnId) {
+    return get(getColumnUrl('DETAIL', columnId));
+  },
+
+  /**
+   * 创建专栏
+   * @param {Object} columnData - 专栏数据
+   * @returns {Promise} 创建结果
+   */
+  async createColumn(columnData) {
+    return post(getColumnUrl('CREATE'), columnData);
+  },
+
+  /**
+   * 更新专栏
+   * @param {number} columnId - 专栏ID
+   * @param {Object} columnData - 更新数据
+   * @returns {Promise} 更新结果
+   */
+  async updateColumn(columnId, columnData) {
+    return put(getColumnUrl('UPDATE', columnId), columnData);
+  },
+
+  /**
+   * 删除专栏
+   * @param {number} columnId - 专栏ID
+   * @returns {Promise} 删除结果
+   */
+  async deleteColumn(columnId) {
+    return del(getColumnUrl('DELETE', columnId));
+  },
+
+  /**
+   * 将文章添加到专栏
+   * @param {number} columnId - 专栏ID
+   * @param {number} postId - 文章ID
+   * @param {number} sortOrder - 排序顺序
+   * @returns {Promise} 添加结果
+   */
+  async addPostToColumn(columnId, postId, sortOrder = 0) {
+    const url = getColumnUrl('ADD_POST', columnId, postId);
+    const queryParams = new URLSearchParams();
+    if (sortOrder) queryParams.append('sort_order', sortOrder);
+
+    const fullUrl = queryParams.toString() ? `${url}?${queryParams}` : url;
+    return post(fullUrl);
+  },
+
+  /**
+   * 从专栏移除文章
+   * @param {number} columnId - 专栏ID
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 移除结果
+   */
+  async removePostFromColumn(columnId, postId) {
+    return del(getColumnUrl('REMOVE_POST', columnId, postId));
+  },
+};
+
+/**
  * 混合内容API（博客+说说）
  */
 export const mixedContentApi = {
@@ -657,6 +744,7 @@ export default {
   system: systemApi,
   homepage: homepageApi,
   moments: momentsApi,
+  columns: columnsApi,
   mixedContent: mixedContentApi,
   attachment: attachmentApi,
 };

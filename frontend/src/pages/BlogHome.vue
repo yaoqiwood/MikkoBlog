@@ -7,8 +7,20 @@
           <h1>{{ homepageSettings.header_title || userProfile.blog_title || 'MikkoBlog' }}</h1>
         </div>
         <nav class="main-nav">
-          <a href="#" class="nav-item">首页</a>
-          <a href="#" class="nav-item">归档</a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'home' }"
+            @click="switchView('home')"
+            >首页</a
+          >
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'columns' }"
+            @click="switchView('columns')"
+            >专栏</a
+          >
           <a href="#" class="nav-item">关于我</a>
         </nav>
         <div class="search-box">
@@ -129,126 +141,186 @@
 
         <!-- 主内容区 -->
         <main class="main-area">
-          <div class="content-nav">
-            <a
-              href="#"
-              class="content-nav-item"
-              :class="{ active: activeContentType === 'all' }"
-              @click.prevent="switchContentType('all')"
-            >
-              全部
-            </a>
-            <a
-              href="#"
-              class="content-nav-item"
-              :class="{ active: activeContentType === 'blog' }"
-              @click.prevent="switchContentType('blog')"
-            >
-              博客
-            </a>
-            <a
-              href="#"
-              class="content-nav-item"
-              :class="{ active: activeContentType === 'moments' }"
-              @click.prevent="switchContentType('moments')"
-            >
-              说说
-            </a>
+          <!-- 首页内容 -->
+          <div v-if="currentView === 'home'" class="home-content">
+            <div class="content-nav">
+              <a
+                href="#"
+                class="content-nav-item"
+                :class="{ active: activeContentType === 'all' }"
+                @click.prevent="switchContentType('all')"
+              >
+                全部
+              </a>
+              <a
+                href="#"
+                class="content-nav-item"
+                :class="{ active: activeContentType === 'blog' }"
+                @click.prevent="switchContentType('blog')"
+              >
+                博客
+              </a>
+              <a
+                href="#"
+                class="content-nav-item"
+                :class="{ active: activeContentType === 'moments' }"
+                @click.prevent="switchContentType('moments')"
+              >
+                说说
+              </a>
+            </div>
+            <div class="posts-wrapper">
+              <!-- 错误提示 -->
+              <div v-if="error" class="error-message">
+                <div class="error-content">
+                  <i class="error-icon">⚠️</i>
+                  <span>{{ error }}</span>
+                  <button @click="reloadPosts" class="retry-btn">重新加载</button>
+                </div>
+              </div>
+
+              <div class="posts-container" @scroll="handleScroll">
+                <!-- 内容列表 -->
+                <article
+                  class="blog-post"
+                  v-for="(item, index) in displayedContent"
+                  :key="`${item.type}-${item.id}`"
+                >
+                  <div class="post-header">
+                    <div class="post-avatar">
+                      <img :src="getFullUrl(item.author_avatar)" :alt="item.author_name" />
+                      <div class="post-meta">
+                        <div class="author-name">{{ item.author_name }}</div>
+                      </div>
+                    </div>
+                    <div class="content-type-badge" :class="item.type">
+                      {{ item.type === 'blog' ? '博客' : '说说' }}
+                    </div>
+                  </div>
+                  <div class="post-content">
+                    <!-- 博客文章内容 -->
+                    <template v-if="item.type === 'blog'">
+                      <h3 class="post-title">{{ item.title }}</h3>
+                      <p>{{ item.content }}</p>
+                      <div v-if="item.image" class="post-image">
+                        <img :src="item.image" :alt="item.title" />
+                      </div>
+                    </template>
+
+                    <!-- 说说内容 -->
+                    <template v-else-if="item.type === 'moment'">
+                      <p class="moment-content">{{ item.content }}</p>
+                      <!-- 说说图片 -->
+                      <div v-if="item.images && item.images.length > 0" class="moment-images">
+                        <div class="images-grid" :class="getImageGridClass(item.images.length)">
+                          <div
+                            v-for="(image, imgIndex) in item.images"
+                            :key="image.id"
+                            class="moment-image-item"
+                            @click="previewImage(item.images, imgIndex)"
+                          >
+                            <img :src="getFullUrl(image.url)" :alt="image.filename" />
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="post-stats">
+                    <div class="stat-item">
+                      <i class="stat-icon">👁️</i>
+                      <span>{{ item.views }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <i class="stat-icon">💬</i>
+                      <span>{{ item.comments }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <i class="stat-icon">👍</i>
+                      <span>{{ item.likes }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <i class="stat-icon">📤</i>
+                      <span>{{ item.shares }}</span>
+                    </div>
+                    <div class="post-time-info">
+                      {{ item.create_or_update_time }}
+                    </div>
+                  </div>
+                  <div v-if="index < displayedContent.length - 1" class="post-divider"></div>
+                </article>
+
+                <!-- 空状态 -->
+                <div v-if="!loading && displayedContent.length === 0 && !error" class="empty-state">
+                  <div class="empty-content">
+                    <i class="empty-icon">📝</i>
+                    <h3>暂无内容</h3>
+                    <p>还没有发布任何内容，请稍后再来查看</p>
+                  </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div v-if="loading" class="loading-indicator">
+                  <div class="loading-spinner"></div>
+                  <span>加载中...</span>
+                </div>
+
+                <!-- 没有更多数据提示 -->
+                <div v-if="!hasMore && displayedContent.length > 0" class="no-more-data">
+                  <span>没有更多内容了</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="posts-wrapper">
-            <!-- 错误提示 -->
-            <div v-if="error" class="error-message">
-              <div class="error-content">
-                <i class="error-icon">⚠️</i>
-                <span>{{ error }}</span>
-                <button @click="reloadPosts" class="retry-btn">重新加载</button>
+
+          <!-- 专栏展示 -->
+          <div v-if="currentView === 'columns'" class="columns-content">
+            <div class="columns-header">
+              <h2>📚 博主专栏</h2>
+              <p>探索不同技术领域的深度内容</p>
+            </div>
+
+            <div v-if="columnsLoading" class="loading-indicator">
+              <div class="loading-spinner"></div>
+              <span>加载中...</span>
+            </div>
+
+            <div v-else class="columns-grid">
+              <div
+                v-for="column in columnsList"
+                :key="column.id"
+                class="column-card"
+                @click="viewColumnDetail(column)"
+              >
+                <div class="column-cover">
+                  <img
+                    v-if="column.cover_image_url"
+                    :src="getFullImageUrl(column.cover_image_url)"
+                    :alt="column.name"
+                  />
+                  <div v-else class="default-cover">
+                    <span>{{ column.name.charAt(0) }}</span>
+                  </div>
+                </div>
+                <div class="column-info">
+                  <h3 class="column-name">{{ column.name }}</h3>
+                  <p class="column-description">{{ column.description }}</p>
+                  <div class="column-stats">
+                    <span class="stat-item">
+                      <Icon type="ios-document" />
+                      {{ column.post_count }} 篇文章
+                    </span>
+                    <span class="stat-item">
+                      <Icon type="ios-eye" />
+                      {{ column.view_count }} 浏览
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="posts-container" @scroll="handleScroll">
-              <!-- 内容列表 -->
-              <article
-                class="blog-post"
-                v-for="(item, index) in displayedContent"
-                :key="`${item.type}-${item.id}`"
-              >
-                <div class="post-header">
-                  <div class="post-avatar">
-                    <img :src="getFullUrl(item.author_avatar)" :alt="item.author_name" />
-                    <div class="post-meta">
-                      <div class="author-name">{{ item.author_name }}</div>
-                    </div>
-                  </div>
-                  <div class="content-type-badge" :class="item.type">
-                    {{ item.type === 'blog' ? '博客' : '说说' }}
-                  </div>
-                </div>
-                <div class="post-content">
-                  <!-- 博客文章内容 -->
-                  <template v-if="item.type === 'blog'">
-                    <h3 class="post-title">{{ item.title }}</h3>
-                    <p>{{ item.content }}</p>
-                    <div v-if="item.image" class="post-image">
-                      <img :src="item.image" :alt="item.title" />
-                    </div>
-                  </template>
-
-                  <!-- 说说内容 -->
-                  <template v-else-if="item.type === 'moment'">
-                    <p class="moment-content">{{ item.content }}</p>
-                    <!-- 说说图片 -->
-                    <div v-if="item.images && item.images.length > 0" class="moment-images">
-                      <div class="images-grid" :class="getImageGridClass(item.images.length)">
-                        <div v-for="image in item.images" :key="image.id" class="moment-image-item">
-                          <img :src="getFullUrl(image.url)" :alt="image.filename" />
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-                <div class="post-stats">
-                  <div class="stat-item">
-                    <i class="stat-icon">👁️</i>
-                    <span>{{ item.views }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <i class="stat-icon">💬</i>
-                    <span>{{ item.comments }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <i class="stat-icon">👍</i>
-                    <span>{{ item.likes }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <i class="stat-icon">📤</i>
-                    <span>{{ item.shares }}</span>
-                  </div>
-                  <div class="post-time-info">
-                    {{ item.create_or_update_time }}
-                  </div>
-                </div>
-                <div v-if="index < displayedContent.length - 1" class="post-divider"></div>
-              </article>
-
-              <!-- 空状态 -->
-              <div v-if="!loading && displayedContent.length === 0 && !error" class="empty-state">
-                <div class="empty-content">
-                  <i class="empty-icon">📝</i>
-                  <h3>暂无内容</h3>
-                  <p>还没有发布任何内容，请稍后再来查看</p>
-                </div>
-              </div>
-
-              <!-- 加载状态 -->
-              <div v-if="loading" class="loading-indicator">
-                <div class="loading-spinner"></div>
-                <span>加载中...</span>
-              </div>
-
-              <!-- 没有更多数据提示 -->
-              <div v-if="!hasMore && displayedContent.length > 0" class="no-more-data">
-                <span>没有更多内容了</span>
-              </div>
+            <div v-if="!columnsLoading && columnsList.length === 0" class="empty-columns">
+              <Icon type="ios-folder-open" size="48" />
+              <p>暂无专栏内容</p>
             </div>
           </div>
         </main>
@@ -316,13 +388,101 @@
     <div class="fullscreen-tip" v-if="showFullscreenTip">
       <div class="tip-content">按 F11 即可退出全屏模式</div>
     </div>
+
+    <!-- 图片预览 -->
+    <Modal
+      v-model="showImagePreview"
+      width="90%"
+      class-name="image-preview-modal"
+      :mask-closable="true"
+      :closable="true"
+    >
+      <template #header>
+        <div class="preview-header">
+          <span
+            >图片预览 ({{ previewIndex + 1 }} / {{ previewImages.length }}) -
+            {{ Math.round(imageScale * 100) }}%</span
+          >
+          <div class="preview-actions">
+            <Button type="text" @click="zoomOut" size="small" title="缩小 (-)">
+              <Icon type="ios-remove" />
+            </Button>
+            <Button type="text" @click="resetZoom" size="small" title="重置 (0)">
+              {{ Math.round(imageScale * 100) }}%
+            </Button>
+            <Button type="text" @click="zoomIn" size="small" title="放大 (+)">
+              <Icon type="ios-add" />
+            </Button>
+            <Button type="text" @click="prevImage" :disabled="previewIndex === 0" size="small">
+              <Icon type="ios-arrow-back" />
+              上一张
+            </Button>
+            <Button
+              type="text"
+              @click="nextImage"
+              :disabled="previewIndex === previewImages.length - 1"
+              size="small"
+            >
+              下一张
+              <Icon type="ios-arrow-forward" />
+            </Button>
+          </div>
+        </div>
+      </template>
+      <div
+        class="image-preview-container"
+        @wheel="handleWheel"
+        @mousemove="onDrag"
+        @mouseup="endDrag"
+        @mouseleave="endDrag"
+      >
+        <!-- 左侧箭头 -->
+        <div v-if="previewIndex > 0" class="nav-arrow nav-arrow-left" @click="prevImage">
+          <Icon type="ios-arrow-back" size="32" />
+        </div>
+
+        <!-- 右侧箭头 -->
+        <div
+          v-if="previewIndex < previewImages.length - 1"
+          class="nav-arrow nav-arrow-right"
+          @click="nextImage"
+        >
+          <Icon type="ios-arrow-forward" size="32" />
+        </div>
+
+        <img
+          :src="previewImageUrl"
+          alt="预览图片"
+          :style="imageStyle"
+          @mousedown="startDrag"
+          @click="imageScale > 1 ? null : closeImagePreview()"
+          @dragstart.prevent
+        />
+        <div class="preview-tip">
+          {{ imageScale > 1 ? '拖拽移动图片 | 滚轮缩放' : '点击图片关闭预览' }} | 使用 ← →
+          键切换图片 | +/- 键缩放 | 0 键重置 | ESC 键关闭
+        </div>
+      </div>
+      <template #footer>
+        <div class="preview-footer">
+          <Button @click="closeImagePreview">关闭</Button>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup>
-import { authApi, homepageApi, mixedContentApi, momentsApi, postApi } from '@/utils/apiService';
+import {
+  authApi,
+  columnsApi,
+  homepageApi,
+  mixedContentApi,
+  momentsApi,
+  postApi,
+} from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 // 响应式数据
 const showFullscreenTip = ref(false);
@@ -336,6 +496,23 @@ const error = ref('');
 
 // 内容类型切换
 const activeContentType = ref('all'); // 'all', 'blog', 'moments'
+
+// 视图切换
+const currentView = ref('home'); // 'home', 'columns'
+
+// 专栏相关数据
+const columnsList = ref([]);
+const columnsLoading = ref(false);
+
+// 图片预览
+const showImagePreview = ref(false);
+const previewImages = ref([]);
+const previewIndex = ref(0);
+const previewImageUrl = ref('');
+const imageScale = ref(1);
+const imagePosition = ref({ x: 0, y: 0 });
+const isDragging = ref(false);
+const dragStart = ref({ x: 0, y: 0 });
 
 // 用户资料数据
 const userProfile = ref({
@@ -384,6 +561,145 @@ const getImageGridClass = count => {
   if (count === 4) return 'images-grid-4';
   return 'images-grid-9';
 };
+
+// 预览图片
+const previewImage = (images, index) => {
+  previewImages.value = images;
+  previewIndex.value = index;
+  previewImageUrl.value = getFullUrl(images[index].url);
+  showImagePreview.value = true;
+
+  // 添加键盘事件监听
+  document.addEventListener('keydown', handleKeydown);
+};
+
+// 键盘导航
+const handleKeydown = event => {
+  if (!showImagePreview.value) return;
+
+  switch (event.key) {
+    case 'ArrowLeft':
+      event.preventDefault();
+      prevImage();
+      break;
+    case 'ArrowRight':
+      event.preventDefault();
+      nextImage();
+      break;
+    case 'Escape':
+      event.preventDefault();
+      closeImagePreview();
+      break;
+    case '=':
+    case '+':
+      event.preventDefault();
+      zoomIn();
+      break;
+    case '-':
+      event.preventDefault();
+      zoomOut();
+      break;
+    case '0':
+      event.preventDefault();
+      resetZoom();
+      break;
+  }
+};
+
+// 关闭图片预览
+const closeImagePreview = () => {
+  showImagePreview.value = false;
+  document.removeEventListener('keydown', handleKeydown);
+  // 重置缩放和位置
+  imageScale.value = 1;
+  imagePosition.value = { x: 0, y: 0 };
+};
+
+// 上一张图片
+const prevImage = () => {
+  if (previewIndex.value > 0) {
+    previewIndex.value--;
+    previewImageUrl.value = getFullUrl(previewImages.value[previewIndex.value].url);
+    // 重置缩放和位置
+    imageScale.value = 1;
+    imagePosition.value = { x: 0, y: 0 };
+  }
+};
+
+// 下一张图片
+const nextImage = () => {
+  if (previewIndex.value < previewImages.value.length - 1) {
+    previewIndex.value++;
+    previewImageUrl.value = getFullUrl(previewImages.value[previewIndex.value].url);
+    // 重置缩放和位置
+    imageScale.value = 1;
+    imagePosition.value = { x: 0, y: 0 };
+  }
+};
+
+// 图片缩放功能
+const zoomIn = () => {
+  if (imageScale.value < 3) {
+    imageScale.value = Math.min(imageScale.value + 0.2, 3);
+  }
+};
+
+const zoomOut = () => {
+  if (imageScale.value > 0.5) {
+    imageScale.value = Math.max(imageScale.value - 0.2, 0.5);
+    // 如果缩放到1，重置位置
+    if (imageScale.value === 1) {
+      imagePosition.value = { x: 0, y: 0 };
+    }
+  }
+};
+
+const resetZoom = () => {
+  imageScale.value = 1;
+  imagePosition.value = { x: 0, y: 0 };
+};
+
+// 鼠标滚轮缩放
+const handleWheel = event => {
+  event.preventDefault();
+  if (event.deltaY < 0) {
+    zoomIn();
+  } else {
+    zoomOut();
+  }
+};
+
+// 拖拽功能
+const startDrag = event => {
+  if (imageScale.value > 1) {
+    isDragging.value = true;
+    dragStart.value = {
+      x: event.clientX - imagePosition.value.x,
+      y: event.clientY - imagePosition.value.y,
+    };
+    event.preventDefault();
+  }
+};
+
+const onDrag = event => {
+  if (isDragging.value && imageScale.value > 1) {
+    imagePosition.value = {
+      x: event.clientX - dragStart.value.x,
+      y: event.clientY - dragStart.value.y,
+    };
+  }
+};
+
+const endDrag = () => {
+  isDragging.value = false;
+};
+
+// 计算图片样式
+const imageStyle = computed(() => ({
+  transform: `scale(${imageScale.value}) translate(${imagePosition.value.x / imageScale.value}px, ${imagePosition.value.y / imageScale.value}px)`,
+  cursor: imageScale.value > 1 ? (isDragging.value ? 'grabbing' : 'grab') : 'pointer',
+  transition: isDragging.value ? 'none' : 'transform 0.2s ease',
+}));
 
 // 计算背景图URL
 const backgroundImageUrl = computed(() => {
@@ -598,6 +914,51 @@ const loadMoments = async () => {
   }
 };
 
+// 加载专栏列表
+const loadColumns = async () => {
+  columnsLoading.value = true;
+  try {
+    const response = await columnsApi.getColumns({
+      is_visible: true,
+      limit: 50, // 加载更多专栏
+    });
+
+    if (response && response.items) {
+      columnsList.value = response.items;
+    }
+  } catch (err) {
+    console.error('加载专栏失败:', err);
+    Message.error('加载专栏失败，请稍后重试');
+  } finally {
+    columnsLoading.value = false;
+  }
+};
+
+// 视图切换
+const switchView = view => {
+  if (currentView.value === view) return;
+
+  currentView.value = view;
+
+  if (view === 'columns' && columnsList.value.length === 0) {
+    loadColumns();
+  }
+};
+
+// 查看专栏详情
+const viewColumnDetail = column => {
+  // 这里可以跳转到专栏详情页面或者展开专栏文章列表
+  Message.info(`查看专栏: ${column.name}`);
+  // 未来可以实现专栏详情页面
+};
+
+// 获取完整图片URL
+const getFullImageUrl = url => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `http://localhost:8000${url}`;
+};
+
 // 计算当前显示的内容
 const displayedContent = computed(() => {
   let allContent = [];
@@ -788,6 +1149,11 @@ onMounted(() => {
   loadUserProfile();
   loadAllContent(); // 默认加载所有内容
   loadHomepageSettings();
+});
+
+onUnmounted(() => {
+  // 清理键盘事件监听器
+  document.removeEventListener('keydown', handleKeydown);
 });
 </script>
 
@@ -1696,6 +2062,242 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* 图片预览样式 */
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-right: 20px;
+}
+
+.image-preview-container {
+  text-align: center;
+  position: relative;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 300px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.image-preview-container img {
+  max-width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform-origin: center center;
+}
+
+/* 导航箭头 */
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60px;
+  height: 60px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: all 0.3s ease;
+  z-index: 20;
+  opacity: 0.7;
+}
+
+.nav-arrow:hover {
+  background: rgba(0, 0, 0, 0.7);
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.nav-arrow-left {
+  left: 20px;
+}
+
+.nav-arrow-right {
+  right: 20px;
+}
+
+.preview-tip {
+  margin-top: 8px;
+  color: #999;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.preview-footer {
+  text-align: center;
+}
+
+:deep(.image-preview-modal .ivu-modal-body) {
+  padding: 16px;
+}
+
+:deep(.image-preview-modal .ivu-modal-header) {
+  border-bottom: 1px solid #e8eaec;
+}
+
+:deep(.image-preview-modal .ivu-modal-footer) {
+  border-top: 1px solid #e8eaec;
+  text-align: center;
+}
+
+/* 导航激活状态 */
+.nav-item.active {
+  color: #2d8cf0;
+  font-weight: 600;
+  border-bottom: 2px solid #2d8cf0;
+}
+
+/* 专栏展示样式 */
+.columns-content {
+  padding: 20px;
+}
+
+.columns-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.columns-header h2 {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 10px;
+  background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.columns-header p {
+  color: #666;
+  font-size: 16px;
+}
+
+.columns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.column-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid #f0f0f0;
+}
+
+.column-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.column-cover {
+  height: 180px;
+  overflow: hidden;
+  position: relative;
+}
+
+.column-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.column-card:hover .column-cover img {
+  transform: scale(1.05);
+}
+
+.default-cover {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.column-info {
+  padding: 20px;
+}
+
+.column-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
+.column-description {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 15px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.column-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #999;
+  font-size: 13px;
+}
+
+.stat-item i {
+  font-size: 14px;
+}
+
+.empty-columns {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.empty-columns i {
+  margin-bottom: 15px;
+  color: #ddd;
+}
+
+.empty-columns p {
+  font-size: 16px;
 }
 
 /* 响应式设计 */

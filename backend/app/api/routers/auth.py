@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
@@ -74,6 +74,39 @@ def get_current_admin(user: UserRead = Depends(get_current_user)) -> UserRead:
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return user
+
+
+def get_current_user_optional(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> Optional[UserRead]:
+    """获取当前用户（可选），如果没有token或token无效则返回None"""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization.split(" ")[1]
+
+    try:
+        # 解码token，获取payload
+        payload = decode_token(token, secret_key=settings.jwt_secret, algorithm=settings.jwt_algorithm)
+        if payload is None:
+            return None
+
+        # 从payload中获取用户id
+        user_id: Optional[int] = int(payload.get("sub")) if payload.get("sub") else None
+        if user_id is None:
+            return None
+
+        # 根据用户id从数据库获取用户
+        user = db.get(User, user_id)
+        if not user:
+            return None
+
+        # 使用 UserRead 模型，自动排除 hashed_password 字段
+        return UserRead.model_validate(user)
+    except Exception:
+        # 任何异常都返回None，不抛出错误
+        return None
 
 
 # 获取当前用户信息的接口

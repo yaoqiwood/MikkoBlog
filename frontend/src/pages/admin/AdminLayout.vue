@@ -65,6 +65,15 @@
               <span v-show="!sidebarCollapsed">说说管理</span>
             </router-link>
             <router-link
+              to="/admin/columns"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/columns' }"
+              :title="sidebarCollapsed ? '专栏管理' : ''"
+            >
+              <Icon type="ios-folder" />
+              <span v-show="!sidebarCollapsed">专栏管理</span>
+            </router-link>
+            <router-link
               to="/admin/profile"
               class="menu-item"
               :class="{ active: $route.path === '/admin/profile' }"
@@ -181,7 +190,7 @@
       </div>
 
       <!-- 页面内容 -->
-      <div class="admin-content">
+      <div class="admin-content" :class="{ 'moments-page': $route.path === '/admin/moments' }">
         <router-view />
       </div>
     </div>
@@ -217,6 +226,7 @@ const pageTitles = {
   '/admin/comments': '评论管理',
   '/admin/posts': '文章管理',
   '/admin/moments': '说说管理',
+  '/admin/columns': '专栏管理',
   '/admin/profile': '个人信息设置',
   '/admin/attachments': '附件管理',
   '/admin/settings': '系统设置',
@@ -780,6 +790,11 @@ onMounted(() => {
   padding: 0;
   overflow-y: auto;
   background: #f5f7fa;
+}
+
+/* 为除说说管理外的其他管理页面添加20px间距 */
+.admin-content:not(.moments-page) {
+  padding: 20px;
 }
 
 /* 响应式设计 */

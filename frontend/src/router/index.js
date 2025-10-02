@@ -39,6 +39,11 @@ const router = createRouter({
           component: () => import('@/pages/admin/MomentsManagement.vue'),
         },
         {
+          path: 'columns',
+          name: 'admin-columns',
+          component: () => import('@/pages/admin/ColumnsManagement.vue'),
+        },
+        {
           path: 'posts',
           name: 'admin-posts',
           component: () => import('@/pages/admin/PostManagement.vue'),

@@ -21,3 +21,8 @@ jwt:
 admin:
   email: "admin@example.com"
   password: "admin123"
+
+image_search:
+  # Unsplash API密钥 (可选，不填写将使用备用图片源)
+  # 获取地址: https://unsplash.com/developers
+  unsplash_access_key: "demo_key"

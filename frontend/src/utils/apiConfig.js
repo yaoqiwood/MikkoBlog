@@ -95,6 +95,17 @@ const API_CONFIG = {
     HEALTH: {
       CHECK: '/healthz',
     },
+
+    // 专栏管理
+    COLUMNS: {
+      LIST: '/columns/',
+      CREATE: '/columns/',
+      UPDATE: '/columns/',
+      DELETE: '/columns/',
+      DETAIL: '/columns/',
+      ADD_POST: '/columns/',
+      REMOVE_POST: '/columns/',
+    },
   },
 };
 
@@ -274,6 +285,32 @@ export function getAttachmentUrl(action, id = null) {
  */
 export function getHealthUrl() {
   return getApiUrl(API_CONFIG.ENDPOINTS.HEALTH.CHECK);
+}
+
+/**
+ * 获取专栏管理相关的URL
+ * @param {string} action - 专栏操作类型
+ * @param {string|number} columnId - 专栏ID（可选）
+ * @param {string|number} postId - 文章ID（可选）
+ * @returns {string} 专栏接口URL
+ */
+export function getColumnUrl(action, columnId = null, postId = null) {
+  const endpoint = API_CONFIG.ENDPOINTS.COLUMNS[action.toUpperCase()];
+  if (!endpoint) {
+    throw new Error(`Invalid column action: ${action}`);
+  }
+
+  let url = getApiUrl(endpoint);
+
+  if (columnId && ['UPDATE', 'DELETE', 'DETAIL'].includes(action.toUpperCase())) {
+    url += `${columnId}`;
+  } else if (columnId && postId && action.toUpperCase() === 'ADD_POST') {
+    url += `${columnId}/posts/${postId}`;
+  } else if (columnId && postId && action.toUpperCase() === 'REMOVE_POST') {
+    url += `${columnId}/posts/${postId}`;
+  }
+
+  return url;
 }
 
 export default API_CONFIG;

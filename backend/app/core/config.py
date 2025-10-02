@@ -23,6 +23,7 @@ class Settings:
         cors_cfg = raw.get("cors", {})
         jwt_cfg = raw.get("jwt", {})
         admin_cfg = raw.get("admin", {})
+        image_cfg = raw.get("image_search", {})
 
         self.environment: str = server_cfg.get("environment", "development")
         self.port: int = int(server_cfg.get("port", 8000))
@@ -49,6 +50,11 @@ class Settings:
         )
         self.default_admin_password: str = admin_cfg.get(
             "password", "admin123"
+        )
+
+        # 图片搜索配置
+        self.unsplash_access_key: str = image_cfg.get(
+            "unsplash_access_key", "demo_key"
         )
 
 

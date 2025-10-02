@@ -1,0 +1,829 @@
+<template>
+  <div class="columns-management">
+    <!-- 筛选和操作区域 -->
+    <div class="filter-controls">
+      <div class="filter-item">
+        <Input
+          v-model="searchForm.name"
+          placeholder="搜索专栏名称"
+          style="width: 200px"
+          clearable
+          @on-enter="loadColumns"
+        />
+      </div>
+      <div class="filter-item">
+        <Select v-model="searchForm.is_visible" placeholder="可见性" style="width: 120px" clearable>
+          <Option :value="true">可见</Option>
+          <Option :value="false">隐藏</Option>
+        </Select>
+      </div>
+      <div class="filter-buttons">
+        <Button type="primary" @click="loadColumns">
+          <Icon type="ios-search" />
+          搜索
+        </Button>
+        <Button @click="resetSearch">
+          <Icon type="ios-refresh" />
+          重置
+        </Button>
+      </div>
+    </div>
+
+    <!-- 新建专栏按钮 -->
+    <div class="action-bar">
+      <Button type="primary" class="add-column-button" @click="showCreateModal = true">
+        <Icon type="ios-add" />
+        创建专栏
+      </Button>
+    </div>
+
+    <!-- 专栏列表 -->
+    <Card>
+      <Table :columns="tableColumns" :data="columns" :loading="loading" stripe border>
+        <!-- 封面图片 -->
+        <template #cover_image="{ row }">
+          <div class="cover-image">
+            <img
+              v-if="row.cover_image_url"
+              :src="getFullImageUrl(row.cover_image_url)"
+              alt="专栏封面"
+              @click="previewImage(row.cover_image_url)"
+            />
+            <span v-else class="no-image">无封面</span>
+          </div>
+        </template>
+
+        <!-- 可见性状态 -->
+        <template #is_visible="{ row }">
+          <Switch v-model="row.is_visible" @on-change="toggleVisibility(row)">
+            <template #open>
+              <span>显示</span>
+            </template>
+            <template #close>
+              <span>隐藏</span>
+            </template>
+          </Switch>
+        </template>
+
+        <!-- 操作按钮 -->
+        <template #action="{ row }">
+          <Button type="primary" size="small" @click="editColumn(row)"> 编辑 </Button>
+          <Button type="info" size="small" @click="manageColumnPosts(row)" style="margin-left: 5px">
+            管理文章
+          </Button>
+          <Button type="error" size="small" @click="deleteColumn(row)" style="margin-left: 5px">
+            删除
+          </Button>
+        </template>
+      </Table>
+
+      <!-- 分页 -->
+      <div class="pagination-wrapper">
+        <Page
+          :total="total"
+          :current="currentPage"
+          :page-size="pageSize"
+          show-total
+          show-sizer
+          show-elevator
+          @on-change="handlePageChange"
+          @on-page-size-change="handlePageSizeChange"
+        />
+      </div>
+    </Card>
+
+    <!-- 创建/编辑专栏弹窗 -->
+    <Modal
+      v-model="showCreateModal"
+      :title="isEditing ? '编辑专栏' : '创建专栏'"
+      width="600"
+      :mask-closable="false"
+    >
+      <Form ref="columnFormRef" :model="columnForm" :rules="columnRules" :label-width="80">
+        <FormItem label="专栏名称" prop="name">
+          <Input
+            v-model="columnForm.name"
+            placeholder="请输入专栏名称"
+            maxlength="100"
+            show-word-limit
+          />
+        </FormItem>
+
+        <FormItem label="专栏描述" prop="description">
+          <Input
+            v-model="columnForm.description"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入专栏描述"
+            maxlength="500"
+            show-word-limit
+          />
+        </FormItem>
+
+        <FormItem label="封面图片">
+          <div class="cover-upload">
+            <div v-if="columnForm.cover_image_url" class="cover-preview">
+              <img
+                :src="getFullImageUrl(columnForm.cover_image_url)"
+                alt="封面预览"
+                @click="previewImage(columnForm.cover_image_url)"
+              />
+              <Button
+                type="error"
+                size="small"
+                class="remove-cover"
+                @click="columnForm.cover_image_url = ''"
+              >
+                <Icon type="ios-close" />
+              </Button>
+            </div>
+            <Upload
+              v-else
+              :action="uploadUrl"
+              :headers="uploadHeaders"
+              :on-success="handleCoverUpload"
+              :on-error="handleUploadError"
+              :show-upload-list="false"
+              accept="image/*"
+            >
+              <Button icon="ios-cloud-upload-outline"> 上传封面图片 </Button>
+            </Upload>
+          </div>
+        </FormItem>
+
+        <FormItem label="排序顺序" prop="sort_order">
+          <InputNumber
+            v-model="columnForm.sort_order"
+            :min="0"
+            :max="9999"
+            placeholder="数字越小越靠前"
+          />
+        </FormItem>
+
+        <FormItem label="是否可见">
+          <Switch v-model="columnForm.is_visible">
+            <template #open>
+              <span>显示</span>
+            </template>
+            <template #close>
+              <span>隐藏</span>
+            </template>
+          </Switch>
+        </FormItem>
+      </Form>
+
+      <template #footer>
+        <Button @click="showCreateModal = false">取消</Button>
+        <Button type="primary" :loading="saving" @click="saveColumn">
+          {{ isEditing ? '更新' : '创建' }}
+        </Button>
+      </template>
+    </Modal>
+
+    <!-- 管理专栏文章弹窗 -->
+    <Modal v-model="showPostsModal" title="管理专栏文章" width="800" :mask-closable="false">
+      <div class="posts-management">
+        <div class="posts-search">
+          <Input
+            v-model="postSearchKeyword"
+            placeholder="搜索文章标题"
+            style="width: 300px"
+            @on-enter="searchPosts"
+          />
+          <Button type="primary" @click="searchPosts" style="margin-left: 10px"> 搜索文章 </Button>
+        </div>
+
+        <div class="posts-section">
+          <h4>专栏文章 ({{ selectedColumn?.post_count || 0 }}篇)</h4>
+          <Table
+            :columns="columnPostsColumns"
+            :data="columnPosts"
+            :loading="postsLoading"
+            size="small"
+          >
+            <template #action="{ row }">
+              <Button type="error" size="small" @click="removePostFromColumn(row.id)">
+                移除
+              </Button>
+            </template>
+          </Table>
+        </div>
+
+        <div class="posts-section" style="margin-top: 20px">
+          <h4>可添加文章</h4>
+          <Table
+            :columns="availablePostsColumns"
+            :data="availablePosts"
+            :loading="postsLoading"
+            size="small"
+          >
+            <template #action="{ row }">
+              <Button type="primary" size="small" @click="addPostToColumn(row.id)"> 添加 </Button>
+            </template>
+          </Table>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button @click="showPostsModal = false">关闭</Button>
+      </template>
+    </Modal>
+
+    <!-- 图片预览弹窗 -->
+    <Modal v-model="showImagePreview" title="图片预览" width="80%" class="image-preview-modal">
+      <div class="image-preview-container">
+        <img v-if="previewImageUrl" :src="getFullImageUrl(previewImageUrl)" alt="图片预览" />
+      </div>
+      <template #footer>
+        <Button @click="showImagePreview = false">关闭</Button>
+      </template>
+    </Modal>
+  </div>
+</template>
+
+<script>
+import apiService from '@/utils/apiService';
+import { Modal as IModal, Message } from 'view-ui-plus';
+import { computed, onMounted, reactive, ref } from 'vue';
+
+export default {
+  name: 'ColumnsManagement',
+  setup() {
+    // 响应式数据
+    const loading = ref(false);
+    const saving = ref(false);
+    const postsLoading = ref(false);
+    const columns = ref([]);
+    const total = ref(0);
+    const currentPage = ref(1);
+    const pageSize = ref(10);
+
+    // 搜索表单
+    const searchForm = reactive({
+      name: '',
+      is_visible: null,
+    });
+
+    // 专栏表单
+    const columnForm = reactive({
+      name: '',
+      description: '',
+      cover_image_url: '',
+      sort_order: 0,
+      is_visible: true,
+    });
+
+    // 弹窗状态
+    const showCreateModal = ref(false);
+    const showPostsModal = ref(false);
+    const showImagePreview = ref(false);
+    const isEditing = ref(false);
+    const editingColumnId = ref(null);
+
+    // 图片预览
+    const previewImageUrl = ref('');
+
+    // 专栏文章管理
+    const selectedColumn = ref(null);
+    const columnPosts = ref([]);
+    const availablePosts = ref([]);
+    const postSearchKeyword = ref('');
+
+    // 表单验证规则
+    const columnRules = {
+      name: [
+        { required: true, message: '请输入专栏名称', trigger: 'blur' },
+        { min: 1, max: 100, message: '专栏名称长度在1到100个字符', trigger: 'blur' },
+      ],
+      description: [{ max: 500, message: '专栏描述不能超过500个字符', trigger: 'blur' }],
+      sort_order: [
+        { type: 'number', min: 0, max: 9999, message: '排序顺序必须在0-9999之间', trigger: 'blur' },
+      ],
+    };
+
+    // 表格列定义
+    const tableColumns = [
+      {
+        title: '专栏名称',
+        key: 'name',
+        width: 200,
+      },
+      {
+        title: '描述',
+        key: 'description',
+        width: 300,
+        ellipsis: true,
+      },
+      {
+        title: '封面',
+        slot: 'cover_image',
+        width: 100,
+        align: 'center',
+      },
+      {
+        title: '文章数',
+        key: 'post_count',
+        width: 80,
+        align: 'center',
+      },
+      {
+        title: '浏览量',
+        key: 'view_count',
+        width: 80,
+        align: 'center',
+      },
+      {
+        title: '排序',
+        key: 'sort_order',
+        width: 80,
+        align: 'center',
+      },
+      {
+        title: '可见性',
+        slot: 'is_visible',
+        width: 100,
+        align: 'center',
+      },
+      {
+        title: '创建时间',
+        key: 'created_at',
+        width: 150,
+        render: (h, params) => {
+          return h('span', new Date(params.row.created_at).toLocaleString());
+        },
+      },
+      {
+        title: '操作',
+        slot: 'action',
+        width: 200,
+        align: 'center',
+      },
+    ];
+
+    // 专栏文章表格列
+    const columnPostsColumns = [
+      { title: '文章标题', key: 'title', width: 300 },
+      {
+        title: '创建时间',
+        key: 'created_at',
+        width: 150,
+        render: (h, params) => h('span', new Date(params.row.created_at).toLocaleString()),
+      },
+      { title: '操作', slot: 'action', width: 100, align: 'center' },
+    ];
+
+    // 可添加文章表格列
+    const availablePostsColumns = [
+      { title: '文章标题', key: 'title', width: 300 },
+      {
+        title: '创建时间',
+        key: 'created_at',
+        width: 150,
+        render: (h, params) => h('span', new Date(params.row.created_at).toLocaleString()),
+      },
+      { title: '操作', slot: 'action', width: 100, align: 'center' },
+    ];
+
+    // 计算属性
+    const uploadUrl = computed(() => 'http://localhost:8000/api/attachments/upload');
+    const uploadHeaders = computed(() => ({
+      Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+    }));
+
+    // 方法
+    const getFullImageUrl = url => {
+      if (!url) return '';
+      if (url.startsWith('http')) return url;
+      return `http://localhost:8000${url}`;
+    };
+
+    const loadColumns = async () => {
+      loading.value = true;
+      try {
+        const params = {
+          page: currentPage.value,
+          limit: pageSize.value,
+        };
+
+        if (searchForm.name) {
+          // 注意：后端可能不支持按名称搜索，这里先保留接口
+          // params.name = searchForm.name;
+        }
+        if (searchForm.is_visible !== null) {
+          params.is_visible = searchForm.is_visible;
+        }
+
+        const response = await apiService.columns.getColumns(params);
+        columns.value = response.items || [];
+        total.value = response.total || 0;
+      } catch (error) {
+        console.error('加载专栏列表失败:', error);
+        Message.error('加载专栏列表失败');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const resetSearch = () => {
+      searchForm.name = '';
+      searchForm.is_visible = null;
+      currentPage.value = 1;
+      loadColumns();
+    };
+
+    const resetForm = () => {
+      columnForm.name = '';
+      columnForm.description = '';
+      columnForm.cover_image_url = '';
+      columnForm.sort_order = 0;
+      columnForm.is_visible = true;
+      isEditing.value = false;
+      editingColumnId.value = null;
+    };
+
+    const editColumn = column => {
+      isEditing.value = true;
+      editingColumnId.value = column.id;
+      columnForm.name = column.name;
+      columnForm.description = column.description || '';
+      columnForm.cover_image_url = column.cover_image_url || '';
+      columnForm.sort_order = column.sort_order;
+      columnForm.is_visible = column.is_visible;
+      showCreateModal.value = true;
+    };
+
+    const saveColumn = async () => {
+      // 表单验证
+      if (!columnForm.name.trim()) {
+        Message.error('请输入专栏名称');
+        return;
+      }
+
+      saving.value = true;
+      try {
+        const data = {
+          name: columnForm.name.trim(),
+          description: columnForm.description.trim(),
+          cover_image_url: columnForm.cover_image_url,
+          sort_order: columnForm.sort_order,
+          is_visible: columnForm.is_visible,
+          user_id: 1, // 假设当前用户ID为1
+        };
+
+        if (isEditing.value) {
+          await apiService.columns.updateColumn(editingColumnId.value, data);
+          Message.success('专栏更新成功');
+        } else {
+          await apiService.columns.createColumn(data);
+          Message.success('专栏创建成功');
+        }
+
+        showCreateModal.value = false;
+        resetForm();
+        loadColumns();
+      } catch (error) {
+        console.error('保存专栏失败:', error);
+        const errorMsg = error.response?.data?.detail || '保存专栏失败';
+        Message.error(errorMsg);
+      } finally {
+        saving.value = false;
+      }
+    };
+
+    const toggleVisibility = async column => {
+      try {
+        await apiService.columns.updateColumn(column.id, {
+          is_visible: column.is_visible,
+        });
+        Message.success(`专栏已${column.is_visible ? '显示' : '隐藏'}`);
+      } catch (error) {
+        console.error('更新专栏可见性失败:', error);
+        Message.error('更新专栏可见性失败');
+        // 恢复原状态
+        column.is_visible = !column.is_visible;
+      }
+    };
+
+    const deleteColumn = column => {
+      IModal.confirm({
+        title: '确认删除',
+        content: `确定要删除专栏"${column.name}"吗？此操作不可恢复。`,
+        onOk: async () => {
+          try {
+            await apiService.columns.deleteColumn(column.id);
+            Message.success('专栏删除成功');
+            loadColumns();
+          } catch (error) {
+            console.error('删除专栏失败:', error);
+            Message.error('删除专栏失败');
+          }
+        },
+      });
+    };
+
+    const manageColumnPosts = async column => {
+      selectedColumn.value = column;
+      showPostsModal.value = true;
+      await loadColumnPosts();
+      await loadAvailablePosts();
+    };
+
+    const loadColumnPosts = async () => {
+      if (!selectedColumn.value) return;
+
+      postsLoading.value = true;
+      try {
+        const response = await apiService.columns.getColumnById(selectedColumn.value.id);
+        columnPosts.value = response.posts || [];
+      } catch (error) {
+        console.error('加载专栏文章失败:', error);
+        Message.error('加载专栏文章失败');
+      } finally {
+        postsLoading.value = false;
+      }
+    };
+
+    const loadAvailablePosts = async () => {
+      postsLoading.value = true;
+      try {
+        // 获取所有文章
+        const response = await apiService.post.getPosts({ limit: 100 });
+        const allPosts = response || [];
+
+        // 过滤掉已经在专栏中的文章
+        const columnPostIds = columnPosts.value.map(post => post.id);
+        availablePosts.value = allPosts.filter(
+          post =>
+            !columnPostIds.includes(post.id) &&
+            (!postSearchKeyword.value || post.title.includes(postSearchKeyword.value))
+        );
+      } catch (error) {
+        console.error('加载可用文章失败:', error);
+        Message.error('加载可用文章失败');
+      } finally {
+        postsLoading.value = false;
+      }
+    };
+
+    const searchPosts = () => {
+      loadAvailablePosts();
+    };
+
+    const addPostToColumn = async postId => {
+      try {
+        await apiService.columns.addPostToColumn(selectedColumn.value.id, postId);
+        Message.success('文章添加成功');
+        await loadColumnPosts();
+        await loadAvailablePosts();
+        // 更新专栏列表中的文章数量
+        const columnIndex = columns.value.findIndex(c => c.id === selectedColumn.value.id);
+        if (columnIndex !== -1) {
+          columns.value[columnIndex].post_count++;
+        }
+      } catch (error) {
+        console.error('添加文章到专栏失败:', error);
+        Message.error('添加文章到专栏失败');
+      }
+    };
+
+    const removePostFromColumn = async postId => {
+      try {
+        await apiService.columns.removePostFromColumn(selectedColumn.value.id, postId);
+        Message.success('文章移除成功');
+        await loadColumnPosts();
+        await loadAvailablePosts();
+        // 更新专栏列表中的文章数量
+        const columnIndex = columns.value.findIndex(c => c.id === selectedColumn.value.id);
+        if (columnIndex !== -1) {
+          columns.value[columnIndex].post_count = Math.max(
+            0,
+            columns.value[columnIndex].post_count - 1
+          );
+        }
+      } catch (error) {
+        console.error('从专栏移除文章失败:', error);
+        Message.error('从专栏移除文章失败');
+      }
+    };
+
+    const handleCoverUpload = response => {
+      if (response && response.file_url) {
+        columnForm.cover_image_url = response.file_url;
+        Message.success('封面上传成功');
+      } else {
+        Message.error('封面上传失败');
+      }
+    };
+
+    const handleUploadError = error => {
+      console.error('上传失败:', error);
+      Message.error('封面上传失败');
+    };
+
+    const previewImage = imageUrl => {
+      previewImageUrl.value = imageUrl;
+      showImagePreview.value = true;
+    };
+
+    const handlePageChange = page => {
+      currentPage.value = page;
+      loadColumns();
+    };
+
+    const handlePageSizeChange = size => {
+      pageSize.value = size;
+      currentPage.value = 1;
+      loadColumns();
+    };
+
+    // 生命周期
+    onMounted(() => {
+      loadColumns();
+    });
+
+    return {
+      // 响应式数据
+      loading,
+      saving,
+      postsLoading,
+      columns,
+      total,
+      currentPage,
+      pageSize,
+      searchForm,
+      columnForm,
+      showCreateModal,
+      showPostsModal,
+      showImagePreview,
+      isEditing,
+      editingColumnId,
+      previewImageUrl,
+      selectedColumn,
+      columnPosts,
+      availablePosts,
+      postSearchKeyword,
+      columnRules,
+      tableColumns,
+      columnPostsColumns,
+      availablePostsColumns,
+      uploadUrl,
+      uploadHeaders,
+
+      // 方法
+      getFullImageUrl,
+      loadColumns,
+      resetSearch,
+      resetForm,
+      editColumn,
+      saveColumn,
+      toggleVisibility,
+      deleteColumn,
+      manageColumnPosts,
+      loadColumnPosts,
+      loadAvailablePosts,
+      searchPosts,
+      addPostToColumn,
+      removePostFromColumn,
+      handleCoverUpload,
+      handleUploadError,
+      previewImage,
+      handlePageChange,
+      handlePageSizeChange,
+    };
+  },
+};
+</script>
+
+<style scoped>
+.columns-management {
+  padding: 0;
+}
+
+.filter-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-bar {
+  margin-bottom: 16px;
+  text-align: right;
+}
+
+.add-column-button {
+  position: relative;
+  top: 3px;
+}
+
+.pagination-wrapper {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.cover-image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cover-image img {
+  max-width: 60px;
+  max-height: 40px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.cover-image img:hover {
+  transform: scale(1.1);
+}
+
+.no-image {
+  color: #999;
+  font-size: 12px;
+}
+
+.cover-upload {
+  position: relative;
+}
+
+.cover-preview {
+  position: relative;
+  display: inline-block;
+}
+
+.cover-preview img {
+  max-width: 200px;
+  max-height: 120px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.remove-cover {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  border-radius: 50%;
+}
+
+.posts-management {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.posts-search {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.posts-section {
+  margin-bottom: 16px;
+}
+
+.posts-section h4 {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.image-preview-container {
+  text-align: center;
+  min-height: 300px;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 16px;
+}
+
+.image-preview-container img {
+  max-width: 100%;
+  max-height: 50vh;
+  border-radius: 4px;
+}
+
+:deep(.image-preview-modal .ivu-modal-body) {
+  padding: 0;
+}
+
+:deep(.image-preview-modal .ivu-modal-header) {
+  text-align: center;
+}
+
+:deep(.image-preview-modal .ivu-modal-footer) {
+  text-align: center;
+}
+</style>
