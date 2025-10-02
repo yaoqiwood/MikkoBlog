@@ -1,26 +1,99 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select
 
 from app.db.session import get_db
 from app.models.post import Post, PostCreate, PostRead, PostUpdate
+from app.models.user import UserProfile
 
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
 @router.get("/", response_model=List[PostRead])
-def list_posts(db: Session = Depends(get_db)) -> List[PostRead]:
-    # 只返回未删除的文章
-    statement = select(Post).where(Post.is_deleted == 0).order_by(Post.created_at.desc())
-    posts = db.exec(statement).all()
-    return [PostRead.model_validate(post) for post in posts]
+def list_posts(
+    page: int = Query(1, ge=1, description="页码"),
+    limit: int = Query(10, ge=1, le=100, description="每页数量"),
+    is_visible: Optional[bool] = Query(None, description="是否可见"),
+    is_deleted: Optional[bool] = Query(None, description="是否已删除"),
+    db: Session = Depends(get_db)
+) -> List[PostRead]:
+    """
+    获取文章列表接口
+
+    支持分页、可见性和删除状态筛选，返回文章及其作者信息。
+
+    参数:
+        page (int): 页码，从1开始，默认1
+        limit (int): 每页数量，默认10，最大100
+        is_visible (Optional[bool]): 是否可见筛选（可选）
+        is_deleted (Optional[bool]): 是否已删除筛选（可选）
+        db (Session): 数据库会话（依赖注入）
+
+    返回:
+        List[PostRead]: 文章列表，每项包含文章和作者信息
+    """
+    # 构建查询，联表获取文章和用户资料
+    statement = (
+        select(Post, UserProfile)
+        .join(UserProfile, Post.user_id == UserProfile.user_id)
+    )
+
+    # 处理删除状态过滤
+    if is_deleted is not None:
+        statement = statement.where(Post.is_deleted == is_deleted)
+    else:
+        # 默认只显示未删除的文章
+        statement = statement.where(Post.is_deleted.is_(False))
+
+    # 处理可见性过滤
+    if is_visible is not None:
+        statement = statement.where(Post.is_visible == is_visible)
+
+    # 按创建时间倒序排序，并分页
+    statement = statement.order_by(Post.created_at.desc())
+    statement = statement.offset((page - 1) * limit).limit(limit)
+
+    # 执行查询
+    results = db.exec(statement).all()
+
+    # 构建响应数据列表
+    result = []
+    for post, user_profile in results:
+        # 组装包含文章和作者信息的字典
+        post_dict = {
+            'id': post.id,
+            'title': post.title,
+            'content': post.content,
+            'summary': post.summary,
+            'cover_image_url': post.cover_image_url,
+            'is_published': post.is_published,
+            'is_deleted': post.is_deleted,
+            'is_visible': post.is_visible,
+            'user_id': post.user_id,
+            'created_at': post.created_at,
+            'updated_at': post.updated_at,
+            'user_nickname': user_profile.nickname,
+            'user_avatar': user_profile.avatar
+        }
+
+        # 校验并转换为响应模型
+        post_data = PostRead.model_validate(post_dict)
+        result.append(post_data)
+
+        # 打印调试信息
+        print(f"Post {post.id}: user_nickname={user_profile.nickname}, "
+              f"user_avatar={user_profile.avatar}")
+
+    return result
 
 
 @router.post("/", response_model=PostRead, status_code=status.HTTP_201_CREATED)
-def create_post(payload: PostCreate, db: Session = Depends(get_db)) -> PostRead:
+def create_post(
+    payload: PostCreate, db: Session = Depends(get_db)
+) -> PostRead:
     post = Post.model_validate(payload)
     db.add(post)
     db.commit()
@@ -37,7 +110,9 @@ def read_post(post_id: int, db: Session = Depends(get_db)) -> PostRead:
 
 
 @router.put("/{post_id}", response_model=PostRead)
-def update_post(post_id: int, payload: PostUpdate, db: Session = Depends(get_db)) -> PostRead:
+def update_post(
+    post_id: int, payload: PostUpdate, db: Session = Depends(get_db)
+) -> PostRead:
     post = db.get(Post, post_id)
     if not post or post.is_deleted:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -66,7 +141,9 @@ def delete_post(post_id: int, db: Session = Depends(get_db)) -> None:
 
 
 @router.patch("/{post_id}/toggle-visibility", response_model=PostRead)
-def toggle_post_visibility(post_id: int, db: Session = Depends(get_db)) -> PostRead:
+def toggle_post_visibility(
+    post_id: int, db: Session = Depends(get_db)
+) -> PostRead:
     post = db.get(Post, post_id)
     if not post or post.is_deleted:
         raise HTTPException(status_code=404, detail="Post not found")
