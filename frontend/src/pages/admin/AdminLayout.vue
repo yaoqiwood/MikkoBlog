@@ -111,30 +111,6 @@
             </router-link>
           </div>
         </div>
-
-        <div class="menu-section">
-          <div class="menu-title" v-show="!sidebarCollapsed">工具</div>
-          <div class="menu-items">
-            <router-link
-              to="/admin/test-viewui"
-              class="menu-item"
-              :class="{ active: $route.path === '/admin/test-viewui' }"
-              :title="sidebarCollapsed ? '组件测试' : ''"
-            >
-              <Icon type="ios-flask" />
-              <span v-show="!sidebarCollapsed">组件测试</span>
-            </router-link>
-            <router-link
-              to="/admin/fullscreen-test"
-              class="menu-item"
-              :class="{ active: $route.path === '/admin/fullscreen-test' }"
-              :title="sidebarCollapsed ? '全屏测试' : ''"
-            >
-              <Icon type="ios-expand" />
-              <span v-show="!sidebarCollapsed">全屏测试</span>
-            </router-link>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -231,8 +207,6 @@ const pageTitles = {
   '/admin/attachments': '附件管理',
   '/admin/settings': '系统设置',
   '/admin/system': '系统默认参数设置',
-  '/admin/test-viewui': '组件测试',
-  '/admin/fullscreen-test': '全屏测试',
   '/admin/homepage': '主页设置',
 };
 

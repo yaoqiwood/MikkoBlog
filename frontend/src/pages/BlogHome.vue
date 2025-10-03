@@ -330,21 +330,29 @@
           <!-- 博主专栏 -->
           <div class="blogger-column">
             <h3>📚 博主专栏</h3>
-            <div class="column-list">
-              <div class="column-item">
-                <img src="https://via.placeholder.com/80x80/ffb6c1/ffffff?text=Redis" alt="Redis" />
-                <div class="column-title">Redis源码分析</div>
-              </div>
-              <div class="column-item">
-                <img src="https://via.placeholder.com/80x80/98fb98/ffffff?text=Java" alt="Java" />
-                <div class="column-title">Java源码分析</div>
-              </div>
-              <div class="column-item">
+            <div v-if="sidebarColumnsLoading" class="column-loading">
+              <div class="loading-spinner"></div>
+              <span>加载中...</span>
+            </div>
+            <div v-else-if="sidebarColumnsList.length === 0" class="empty-columns">
+              <p>暂无专栏</p>
+            </div>
+            <div v-else class="column-list">
+              <div
+                v-for="column in sidebarColumnsList.slice(0, 6)"
+                :key="column.id"
+                class="column-item"
+                @click="viewColumnDetail(column)"
+              >
                 <img
-                  src="https://via.placeholder.com/80x80/ffa07a/ffffff?text=Tomcat"
-                  alt="Tomcat"
+                  v-if="column.cover_image_url"
+                  :src="getFullImageUrl(column.cover_image_url)"
+                  :alt="column.name"
                 />
-                <div class="column-title">Tomcat源码</div>
+                <div v-else class="default-column-cover">
+                  <span>{{ column.name.charAt(0) }}</span>
+                </div>
+                <div class="column-title">{{ column.name }}</div>
               </div>
             </div>
           </div>
@@ -503,6 +511,10 @@ const currentView = ref('home'); // 'home', 'columns'
 // 专栏相关数据
 const columnsList = ref([]);
 const columnsLoading = ref(false);
+
+// 右侧边栏专栏数据
+const sidebarColumnsList = ref([]);
+const sidebarColumnsLoading = ref(false);
 
 // 图片预览
 const showImagePreview = ref(false);
@@ -934,6 +946,26 @@ const loadColumns = async () => {
   }
 };
 
+// 加载右侧边栏专栏列表
+const loadSidebarColumns = async () => {
+  sidebarColumnsLoading.value = true;
+  try {
+    const response = await columnsApi.getColumns({
+      is_visible: true,
+      limit: 6, // 只加载前6个专栏用于侧边栏显示
+    });
+
+    if (response && response.items) {
+      sidebarColumnsList.value = response.items;
+    }
+  } catch (err) {
+    console.error('加载侧边栏专栏失败:', err);
+    // 静默失败，不显示错误提示
+  } finally {
+    sidebarColumnsLoading.value = false;
+  }
+};
+
 // 视图切换
 const switchView = view => {
   if (currentView.value === view) return;
@@ -1149,6 +1181,7 @@ onMounted(() => {
   loadUserProfile();
   loadAllContent(); // 默认加载所有内容
   loadHomepageSettings();
+  loadSidebarColumns(); // 加载右侧边栏专栏
 });
 
 onUnmounted(() => {
@@ -1834,9 +1867,9 @@ onUnmounted(() => {
 }
 
 .column-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .column-item {
@@ -2298,6 +2331,78 @@ onUnmounted(() => {
 
 .empty-columns p {
   font-size: 16px;
+}
+
+/* 右侧边栏专栏样式 */
+.column-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+.column-loading .loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f0f0f0;
+  border-top: 2px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+.column-item {
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.column-item:hover {
+  background: rgba(255, 107, 107, 0.05);
+  transform: translateY(-2px);
+}
+
+.column-item img {
+  width: 70px;
+  height: 70px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin: 0 auto 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: block;
+}
+
+.default-column-cover {
+  width: 70px;
+  height: 70px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+  margin: 0 auto 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.column-title {
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+  text-align: center;
+  word-wrap: break-word;
+  max-width: 100%;
+  line-height: 1.3;
 }
 
 /* 响应式设计 */

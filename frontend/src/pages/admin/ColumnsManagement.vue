@@ -47,7 +47,7 @@
         </Button>
       </div>
       <div class="create-actions">
-        <Button type="primary" class="add-column-button" @click="showCreateModal = true">
+        <Button type="primary" class="add-column-button" @click="createNewColumn">
           <Icon type="ios-add" />
           创建专栏
         </Button>
@@ -91,13 +91,11 @@
 
         <!-- 操作按钮 -->
         <template #action="{ row }">
-          <Button type="primary" size="small" @click="editColumn(row)"> 编辑 </Button>
-          <Button type="info" size="small" @click="manageColumnPosts(row)" style="margin-left: 5px">
-            管理文章
-          </Button>
-          <Button type="error" size="small" @click="deleteColumn(row)" style="margin-left: 5px">
-            删除
-          </Button>
+          <div class="action-buttons">
+            <Button type="primary" size="small" @click="editColumn(row)"> 编辑 </Button>
+            <Button type="info" size="small" @click="manageColumnPosts(row)"> 管理文章 </Button>
+            <Button type="error" size="small" @click="deleteColumn(row)"> 删除 </Button>
+          </div>
         </template>
       </Table>
 
@@ -225,6 +223,9 @@
             @on-enter="searchPosts"
           />
           <Button type="primary" @click="searchPosts" style="margin-left: 10px"> 搜索文章 </Button>
+          <Button type="success" @click="showCreatePostModalHandler" style="margin-left: 10px">
+            创建专栏文章
+          </Button>
         </div>
 
         <div class="posts-section">
@@ -332,16 +333,79 @@
         </Button>
       </template>
     </Modal>
+
+    <!-- 创建专栏文章弹窗 -->
+    <Modal v-model="showCreatePostModal" title="创建专栏文章" width="90%" :mask-closable="false">
+      <div class="create-post-container">
+        <Form ref="postForm" :model="postForm" :rules="postRules" :label-width="100">
+          <FormItem label="文章标题" prop="title">
+            <Input v-model="postForm.title" placeholder="请输入文章标题" />
+          </FormItem>
+
+          <FormItem label="文章摘要" prop="summary">
+            <Input
+              v-model="postForm.summary"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入文章摘要"
+            />
+          </FormItem>
+
+          <FormItem label="封面图片" prop="cover_image_url">
+            <div class="cover-upload">
+              <Upload
+                :action="uploadUrl"
+                :headers="uploadHeaders"
+                :on-success="handleCoverUpload"
+                :show-upload-list="false"
+                accept="image/*"
+              >
+                <div class="upload-area">
+                  <img
+                    v-if="postForm.cover_image_url"
+                    :src="postForm.cover_image_url"
+                    alt="封面预览"
+                  />
+                  <div v-else class="upload-placeholder">
+                    <Icon type="ios-cloud-upload" size="48" />
+                    <p>点击上传封面图片</p>
+                  </div>
+                </div>
+              </Upload>
+            </div>
+          </FormItem>
+
+          <FormItem label="文章内容" prop="content">
+            <MarkdownEditor v-model="postForm.content" />
+          </FormItem>
+
+          <FormItem label="文章状态">
+            <RadioGroup v-model="postForm.is_visible">
+              <Radio :label="true">公开</Radio>
+              <Radio :label="false">草稿</Radio>
+            </RadioGroup>
+          </FormItem>
+        </Form>
+      </div>
+      <template #footer>
+        <Button @click="showCreatePostModal = false">取消</Button>
+        <Button type="primary" @click="createPost" :loading="creatingPost">创建文章</Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script>
+import MarkdownEditor from '@/components/MarkdownEditor.vue';
 import apiService from '@/utils/apiService';
 import { Modal as IModal, Message } from 'view-ui-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 export default {
   name: 'ColumnsManagement',
+  components: {
+    MarkdownEditor,
+  },
   setup() {
     // 响应式数据
     const loading = ref(false);
@@ -387,6 +451,21 @@ export default {
     const showImagePreview = ref(false);
     const isEditing = ref(false);
     const editingColumnId = ref(null);
+
+    // 创建文章相关数据
+    const showCreatePostModal = ref(false);
+    const creatingPost = ref(false);
+    const postForm = reactive({
+      title: '',
+      summary: '',
+      content: '',
+      cover_image_url: '',
+      is_visible: true,
+    });
+    const postRules = {
+      title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
+      content: [{ required: true, message: '请输入文章内容', trigger: 'blur' }],
+    };
 
     // 图片预览
     const previewImageUrl = ref('');
@@ -475,26 +554,40 @@ export default {
 
     // 专栏文章表格列
     const columnPostsColumns = [
-      { title: '文章标题', key: 'title', width: 300 },
+      { title: '文章标题', key: 'title' },
       {
         title: '创建时间',
         key: 'created_at',
-        width: 150,
-        render: (h, params) => h('span', new Date(params.row.created_at).toLocaleString()),
+        width: 180,
+        render: (h, params) =>
+          h(
+            'span',
+            {
+              style: { whiteSpace: 'nowrap' },
+            },
+            new Date(params.row.created_at).toLocaleString()
+          ),
       },
-      { title: '操作', slot: 'action', width: 100, align: 'center' },
+      { title: '操作', slot: 'action', width: 80, align: 'center' },
     ];
 
     // 可添加文章表格列
     const availablePostsColumns = [
-      { title: '文章标题', key: 'title', width: 300 },
+      { title: '文章标题', key: 'title' },
       {
         title: '创建时间',
         key: 'created_at',
-        width: 150,
-        render: (h, params) => h('span', new Date(params.row.created_at).toLocaleString()),
+        width: 180,
+        render: (h, params) =>
+          h(
+            'span',
+            {
+              style: { whiteSpace: 'nowrap' },
+            },
+            new Date(params.row.created_at).toLocaleString()
+          ),
       },
-      { title: '操作', slot: 'action', width: 100, align: 'center' },
+      { title: '操作', slot: 'action', width: 80, align: 'center' },
     ];
 
     // 计算属性
@@ -560,6 +653,11 @@ export default {
       columnForm.is_visible = true;
       isEditing.value = false;
       editingColumnId.value = null;
+    };
+
+    const createNewColumn = () => {
+      resetForm();
+      showCreateModal.value = true;
     };
 
     const editColumn = column => {
@@ -724,6 +822,60 @@ export default {
       } catch (error) {
         console.error('从专栏移除文章失败:', error);
         Message.error('从专栏移除文章失败');
+      }
+    };
+
+    // 显示创建文章弹窗
+    const showCreatePostModalHandler = () => {
+      // 重置表单
+      Object.assign(postForm, {
+        title: '',
+        summary: '',
+        content: '',
+        cover_image_url: '',
+        is_visible: true,
+      });
+      showCreatePostModal.value = true;
+    };
+
+    // 创建文章
+    const createPost = async () => {
+      try {
+        creatingPost.value = true;
+
+        // 创建文章
+        const postData = {
+          title: postForm.title,
+          summary: postForm.summary,
+          content: postForm.content,
+          cover_image_url: postForm.cover_image_url,
+          is_visible: postForm.is_visible,
+        };
+
+        const newPost = await apiService.post.createPost(postData);
+
+        // 将文章添加到当前专栏
+        if (selectedColumn.value) {
+          await apiService.columns.addPostToColumn(selectedColumn.value.id, newPost.id);
+        }
+
+        Message.success('文章创建成功');
+        showCreatePostModal.value = false;
+
+        // 刷新列表
+        await loadColumnPosts();
+        await loadAvailablePosts();
+
+        // 更新专栏列表中的文章数量
+        const columnIndex = columns.value.findIndex(c => c.id === selectedColumn.value.id);
+        if (columnIndex !== -1) {
+          columns.value[columnIndex].post_count++;
+        }
+      } catch (error) {
+        console.error('创建文章失败:', error);
+        Message.error('创建文章失败');
+      } finally {
+        creatingPost.value = false;
       }
     };
 
@@ -982,6 +1134,12 @@ export default {
       columnPosts,
       availablePosts,
       postSearchKeyword,
+
+      // 创建文章相关
+      showCreatePostModal,
+      creatingPost,
+      postForm,
+      postRules,
       columnRules,
       tableColumns,
       columnPostsColumns,
@@ -1002,6 +1160,7 @@ export default {
       loadColumns,
       resetSearch,
       resetForm,
+      createNewColumn,
       editColumn,
       saveColumn,
       toggleVisibility,
@@ -1012,6 +1171,8 @@ export default {
       searchPosts,
       addPostToColumn,
       removePostFromColumn,
+      showCreatePostModalHandler,
+      createPost,
       handleCoverUpload,
       handleUploadError,
       previewImage,
@@ -1221,6 +1382,46 @@ export default {
   font-weight: 500;
 }
 
+/* 创建文章弹窗样式 */
+.create-post-container {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.upload-area {
+  width: 200px;
+  height: 120px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.upload-area:hover {
+  border-color: #2d8cf0;
+}
+
+.upload-area img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.upload-placeholder {
+  text-align: center;
+  color: #999;
+}
+
+.upload-placeholder p {
+  margin: 8px 0 0 0;
+  font-size: 14px;
+}
+
 .stat-item.success {
   background: #f6ffed;
   color: #52c41a;
@@ -1337,6 +1538,15 @@ export default {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* 操作按钮样式 */
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 /* 进度弹窗的模态框样式 */
