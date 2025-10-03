@@ -1,10 +1,11 @@
 <template>
   <div class="system-settings">
     <div class="page-header">
-      <h2>系统默认参数设置</h2>
-      <p>管理系统默认配置和参数</p>
+      <h2>系统默认参数管理</h2>
+      <p>管理系统默认配置参数，包括分类、键值对等</p>
     </div>
 
+    <!-- 系统参数管理 -->
     <div class="settings-container">
       <!-- 分类筛选 -->
       <div class="filter-section">
@@ -30,7 +31,7 @@
 
       <!-- 参数列表 -->
       <div class="table-section">
-        <Table :columns="columns" :data="defaults" :loading="loading" stripe border height="600">
+        <Table :columns="columns" :data="paginatedDefaults" :loading="loading" stripe border>
           <template #action="{ row }">
             <div class="action-buttons">
               <Button
@@ -53,62 +54,82 @@
             </div>
           </template>
         </Table>
-      </div>
-    </div>
 
-    <!-- 创建/编辑模态框 -->
-    <Modal
-      v-model="showCreateModal"
-      :title="editingDefault ? '编辑参数' : '新增参数'"
-      width="600"
-      @on-cancel="cancelEdit"
-    >
-      <Form :model="formData" :rules="formRules" ref="formRef" :label-width="120">
-        <FormItem label="分类" prop="category">
-          <Input v-model="formData.category" placeholder="请输入分类" />
-        </FormItem>
-        <FormItem label="键名" prop="key_name">
-          <Input v-model="formData.key_name" placeholder="请输入键名" />
-        </FormItem>
-        <FormItem label="键值" prop="key_value">
-          <Input v-model="formData.key_value" type="textarea" :rows="3" placeholder="请输入键值" />
-        </FormItem>
-        <FormItem label="描述" prop="description">
-          <Input v-model="formData.description" placeholder="请输入描述" />
-        </FormItem>
-        <FormItem label="数据类型" prop="data_type">
-          <Select v-model="formData.data_type" placeholder="选择数据类型">
-            <Option value="string">字符串</Option>
-            <Option value="number">数字</Option>
-            <Option value="boolean">布尔值</Option>
-            <Option value="json">JSON</Option>
-            <Option value="url">URL</Option>
-          </Select>
-        </FormItem>
-        <FormItem label="是否可编辑">
-          <Switch v-model="formData.is_editable" />
-        </FormItem>
-        <FormItem label="是否公开">
-          <Switch v-model="formData.is_public" />
-        </FormItem>
-        <FormItem label="排序">
-          <InputNumber v-model="formData.sort_order" :min="0" />
-        </FormItem>
-      </Form>
-      <template #footer>
-        <Button @click="cancelEdit">取消</Button>
-        <Button type="primary" :loading="saving" @click="saveDefault">
-          {{ editingDefault ? '更新' : '创建' }}
-        </Button>
-      </template>
-    </Modal>
+        <!-- 分页器 -->
+        <div class="pagination-section">
+          <Page
+            :total="totalCount"
+            :current="currentPage"
+            :page-size="pageSize"
+            :page-size-opts="[10, 20, 50, 100]"
+            show-sizer
+            show-elevator
+            show-total
+            @on-change="handlePageChange"
+            @on-page-size-change="handlePageSizeChange"
+          />
+        </div>
+      </div>
+
+      <!-- 创建/编辑模态框 -->
+      <Modal
+        v-model="showCreateModal"
+        :title="editingDefault ? '编辑参数' : '新增参数'"
+        width="600"
+        @on-cancel="cancelEdit"
+      >
+        <Form :model="formData" :rules="formRules" ref="formRef" :label-width="120">
+          <FormItem label="分类" prop="category">
+            <Input v-model="formData.category" placeholder="请输入分类" />
+          </FormItem>
+          <FormItem label="键名" prop="key_name">
+            <Input v-model="formData.key_name" placeholder="请输入键名" />
+          </FormItem>
+          <FormItem label="键值" prop="key_value">
+            <Input
+              v-model="formData.key_value"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入键值"
+            />
+          </FormItem>
+          <FormItem label="描述" prop="description">
+            <Input v-model="formData.description" placeholder="请输入描述" />
+          </FormItem>
+          <FormItem label="数据类型" prop="data_type">
+            <Select v-model="formData.data_type" placeholder="选择数据类型">
+              <Option value="string">字符串</Option>
+              <Option value="number">数字</Option>
+              <Option value="boolean">布尔值</Option>
+              <Option value="json">JSON</Option>
+              <Option value="url">URL</Option>
+            </Select>
+          </FormItem>
+          <FormItem label="是否可编辑">
+            <Switch v-model="formData.is_editable" />
+          </FormItem>
+          <FormItem label="是否公开">
+            <Switch v-model="formData.is_public" />
+          </FormItem>
+          <FormItem label="排序">
+            <InputNumber v-model="formData.sort_order" :min="0" />
+          </FormItem>
+        </Form>
+        <template #footer>
+          <Button @click="cancelEdit">取消</Button>
+          <Button type="primary" :loading="saving" @click="saveDefault">
+            {{ editingDefault ? '更新' : '创建' }}
+          </Button>
+        </template>
+      </Modal>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { systemApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 // 响应式数据
 const loading = ref(false);
@@ -119,6 +140,11 @@ const defaults = ref([]);
 const showCreateModal = ref(false);
 const editingDefault = ref(null);
 const formRef = ref(null);
+
+// 分页相关
+const currentPage = ref(1);
+const pageSize = ref(20);
+const totalCount = ref(0);
 
 // 表单数据
 const formData = reactive({
@@ -214,6 +240,13 @@ const columns = [
   },
 ];
 
+// 分页计算属性
+const paginatedDefaults = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return defaults.value.slice(start, end);
+});
+
 // 加载分类列表
 const loadCategories = async () => {
   try {
@@ -238,6 +271,7 @@ const loadDefaults = async () => {
 
     const response = await systemApi.getDefaults(params);
     defaults.value = response.data || response;
+    totalCount.value = defaults.value.length;
   } catch (error) {
     console.error('加载参数失败:', error);
     Message.error('加载参数失败!');
@@ -249,7 +283,18 @@ const loadDefaults = async () => {
 // 分类变化处理
 const handleCategoryChange = value => {
   console.log('分类变化:', value, 'selectedCategory:', selectedCategory.value);
+  currentPage.value = 1; // 重置到第一页
   loadDefaults();
+};
+
+// 分页处理
+const handlePageChange = page => {
+  currentPage.value = page;
+};
+
+const handlePageSizeChange = size => {
+  pageSize.value = size;
+  currentPage.value = 1; // 重置到第一页
 };
 
 // 编辑参数
@@ -278,6 +323,7 @@ const deleteDefault = async defaultItem => {
   try {
     await systemApi.deleteDefault(defaultItem.id);
     Message.success('删除成功!');
+    currentPage.value = 1; // 重置到第一页
     loadDefaults();
   } catch (error) {
     console.error('删除失败:', error);
@@ -302,6 +348,7 @@ const saveDefault = async () => {
 
     showCreateModal.value = false;
     resetForm();
+    currentPage.value = 1; // 重置到第一页
     loadDefaults();
   } catch (error) {
     console.error('保存失败:', error);
@@ -385,6 +432,12 @@ onMounted(() => {
 .action-buttons {
   display: flex;
   gap: 5px;
+}
+
+.pagination-section {
+  margin-top: 16px;
+  text-align: right;
+  padding: 16px 0;
 }
 
 /* 响应式设计 */

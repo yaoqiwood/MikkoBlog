@@ -16,9 +16,9 @@ router = APIRouter()
 
 class ImageSearchRequest(BaseModel):
     """图片搜索请求"""
-    tags: List[str]
-    count: Optional[int] = 10
-    orientation: Optional[str] = "landscape"
+    tags: Optional[List[str]] = None
+    count: Optional[int] = None
+    orientation: Optional[str] = None
 
 
 class ImageSearchResponse(BaseModel):
@@ -37,7 +37,7 @@ class ImageSearchResponse(BaseModel):
 
 class RandomCoverRequest(BaseModel):
     """随机封面请求"""
-    tags: List[str]
+    tags: Optional[List[str]] = None
 
 
 class RandomCoverResponse(BaseModel):
@@ -135,5 +135,22 @@ async def get_available_tags():
             {"name": "音乐", "english": "music"},
             {"name": "食物", "english": "food"},
             {"name": "旅行", "english": "travel"}
-        ]
+        ],
+        "default_tags": image_search_service.default_tags,
+        "column_cover_tags": image_search_service.column_cover_tags,
+        "auto_generate_tags": image_search_service.auto_generate_tags
+    }
+
+
+@router.get("/config")
+async def get_image_search_config():
+    """获取图片搜索配置"""
+    return {
+        "default_tags": image_search_service.default_tags,
+        "default_orientation": image_search_service.default_orientation,
+        "column_cover_tags": image_search_service.column_cover_tags,
+        "search_count": image_search_service.search_count,
+        "enable_unsplash": image_search_service.enable_unsplash,
+        "auto_generate_tags": image_search_service.auto_generate_tags,
+        "tag_mapping": image_search_service.tag_mapping
     }

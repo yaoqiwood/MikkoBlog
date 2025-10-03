@@ -29,17 +29,41 @@
       </div>
     </div>
 
-    <!-- 新建专栏按钮 -->
+    <!-- 操作按钮区域 -->
     <div class="action-bar">
-      <Button type="primary" class="add-column-button" @click="showCreateModal = true">
-        <Icon type="ios-add" />
-        创建专栏
-      </Button>
+      <div class="batch-actions" v-if="selectedColumns.length > 0">
+        <span class="selection-info">已选择 {{ selectedColumns.length }} 个专栏</span>
+        <Button
+          type="warning"
+          icon="ios-images"
+          :loading="batchGenerating"
+          @click="batchGenerateCovers"
+          style="margin-left: 8px; margin-right: 8px"
+        >
+          为选中专栏生成封面 ({{ selectedColumns.length }})
+        </Button>
+        <Button type="default" icon="ios-close" @click="clearSelection" size="small">
+          取消选择
+        </Button>
+      </div>
+      <div class="create-actions">
+        <Button type="primary" class="add-column-button" @click="showCreateModal = true">
+          <Icon type="ios-add" />
+          创建专栏
+        </Button>
+      </div>
     </div>
 
     <!-- 专栏列表 -->
     <Card>
-      <Table :columns="tableColumns" :data="columns" :loading="loading" stripe border>
+      <Table
+        :columns="tableColumns"
+        :data="columns"
+        :loading="loading"
+        stripe
+        border
+        @on-selection-change="handleSelectionChange"
+      >
         <!-- 封面图片 -->
         <template #cover_image="{ row }">
           <div class="cover-image">
@@ -137,17 +161,27 @@
                 <Icon type="ios-close" />
               </Button>
             </div>
-            <Upload
-              v-else
-              :action="uploadUrl"
-              :headers="uploadHeaders"
-              :on-success="handleCoverUpload"
-              :on-error="handleUploadError"
-              :show-upload-list="false"
-              accept="image/*"
-            >
-              <Button icon="ios-cloud-upload-outline"> 上传封面图片 </Button>
-            </Upload>
+            <div v-else class="upload-options">
+              <Upload
+                :action="uploadUrl"
+                :headers="uploadHeaders"
+                :on-success="handleCoverUpload"
+                :on-error="handleUploadError"
+                :show-upload-list="false"
+                accept="image/*"
+              >
+                <Button icon="ios-cloud-upload-outline"> 上传封面图片 </Button>
+              </Upload>
+              <Button
+                type="success"
+                icon="ios-images"
+                :loading="generatingCover"
+                @click="generateRandomCover"
+                style="margin-left: 8px"
+              >
+                随机生成封面
+              </Button>
+            </div>
           </div>
         </FormItem>
 
@@ -238,6 +272,66 @@
         <Button @click="showImagePreview = false">关闭</Button>
       </template>
     </Modal>
+
+    <!-- 批量生成进度弹窗 -->
+    <Modal
+      v-model="showProgressModal"
+      title="批量生成封面进度"
+      width="600"
+      :mask-closable="false"
+      :closable="false"
+    >
+      <div class="progress-container">
+        <div class="progress-header">
+          <h4>正在为 {{ selectedColumns.length }} 个专栏生成封面...</h4>
+          <div class="progress-stats">
+            <span class="stat-item success">✅ 成功: {{ progressStats.success }}</span>
+            <span class="stat-item failed">❌ 失败: {{ progressStats.failed }}</span>
+            <span class="stat-item pending">⏳ 待处理: {{ progressStats.pending }}</span>
+          </div>
+        </div>
+
+        <div class="progress-bar-container">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: `${progressPercentage}%` }"></div>
+          </div>
+          <span class="progress-text">{{ progressPercentage }}%</span>
+        </div>
+
+        <div class="progress-list">
+          <div
+            v-for="item in progressItems"
+            :key="item.id"
+            class="progress-item"
+            :class="item.status"
+          >
+            <div class="item-info">
+              <span class="item-name">{{ item.name }}</span>
+              <span class="item-tags">{{ item.tags.join(', ') }}</span>
+            </div>
+            <div class="item-status">
+              <Icon v-if="item.status === 'processing'" type="ios-loading" class="loading-icon" />
+              <Icon
+                v-else-if="item.status === 'success'"
+                type="ios-checkmark-circle"
+                color="#52c41a"
+              />
+              <Icon v-else-if="item.status === 'failed'" type="ios-close-circle" color="#ff4d4f" />
+              <Icon v-else type="ios-time" color="#999" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button v-if="progressStats.pending === 0" type="primary" @click="closeProgressModal">
+          完成
+        </Button>
+        <Button v-else @click="cancelBatchGeneration" :disabled="cancelling">
+          {{ cancelling ? '正在取消...' : '取消' }}
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -253,10 +347,24 @@ export default {
     const loading = ref(false);
     const saving = ref(false);
     const postsLoading = ref(false);
+    const generatingCover = ref(false);
+    const batchGenerating = ref(false);
     const columns = ref([]);
+    const selectedColumns = ref([]);
     const total = ref(0);
     const currentPage = ref(1);
     const pageSize = ref(10);
+
+    // 进度相关数据
+    const showProgressModal = ref(false);
+    const progressItems = ref([]);
+    const progressStats = reactive({
+      success: 0,
+      failed: 0,
+      pending: 0,
+    });
+    const cancelling = ref(false);
+    const shouldCancel = ref(false);
 
     // 搜索表单
     const searchForm = reactive({
@@ -303,6 +411,11 @@ export default {
 
     // 表格列定义
     const tableColumns = [
+      {
+        type: 'selection',
+        width: 60,
+        align: 'center',
+      },
       {
         title: '专栏名称',
         key: 'name',
@@ -389,6 +502,14 @@ export default {
     const uploadHeaders = computed(() => ({
       Authorization: `Bearer ${localStorage.getItem('access_token')}`,
     }));
+
+    // 进度百分比
+    const progressPercentage = computed(() => {
+      const total = progressItems.value.length;
+      if (total === 0) return 0;
+      const completed = progressStats.success + progressStats.failed;
+      return Math.round((completed / total) * 100);
+    });
 
     // 方法
     const getFullImageUrl = url => {
@@ -636,6 +757,202 @@ export default {
       loadColumns();
     };
 
+    // 生成随机封面
+    const generateRandomCover = async () => {
+      generatingCover.value = true;
+      try {
+        // 根据专栏名称生成标签
+        const tags = generateTagsFromName(columnForm.name);
+        console.log('生成封面标签:', tags);
+
+        const response = await apiService.imageSearch.getRandomCover(tags);
+        console.log('API响应:', response);
+
+        if (response && response.cover_url) {
+          columnForm.cover_image_url = response.cover_url;
+          Message.success('随机封面生成成功');
+        } else {
+          console.error('API响应无效:', response);
+          Message.error('生成随机封面失败：API响应无效');
+        }
+      } catch (error) {
+        console.error('生成随机封面失败:', error);
+        console.error('错误详情:', error.response?.data);
+
+        if (error.response?.status === 401) {
+          Message.error('权限不足，请重新登录');
+        } else if (error.response?.status === 403) {
+          Message.error('需要管理员权限才能生成封面');
+        } else {
+          Message.error(`生成随机封面失败: ${error.response?.data?.detail || error.message}`);
+        }
+      } finally {
+        generatingCover.value = false;
+      }
+    };
+
+    // 批量生成封面
+    const batchGenerateCovers = async () => {
+      if (selectedColumns.value.length === 0) {
+        Message.warning('请先选择要生成封面的专栏');
+        return;
+      }
+
+      // 初始化进度数据
+      initializeProgress();
+      showProgressModal.value = true;
+      batchGenerating.value = true;
+      shouldCancel.value = false;
+
+      try {
+        for (let i = 0; i < selectedColumns.value.length; i++) {
+          // 检查是否需要取消
+          if (shouldCancel.value) {
+            break;
+          }
+
+          const column = selectedColumns.value[i];
+          const progressItem = progressItems.value[i];
+
+          // 更新当前项状态为处理中
+          progressItem.status = 'processing';
+          progressStats.pending--;
+
+          try {
+            console.log(`正在为专栏 "${column.name}" 生成封面...`);
+            const tags = generateTagsFromName(column.name);
+
+            const response = await apiService.imageSearch.getRandomCover(tags);
+
+            if (response && response.cover_url) {
+              // 更新专栏封面
+              await apiService.columns.updateColumn(column.id, {
+                cover_image_url: response.cover_url,
+              });
+
+              // 更新进度状态
+              progressItem.status = 'success';
+              progressStats.success++;
+              console.log(`专栏 "${column.name}" 封面更新成功`);
+            } else {
+              progressItem.status = 'failed';
+              progressStats.failed++;
+              console.error(`专栏 "${column.name}" API响应无效:`, response);
+            }
+          } catch (error) {
+            progressItem.status = 'failed';
+            progressStats.failed++;
+            console.error(`为专栏 ${column.name} 生成封面失败:`, error);
+
+            if (error.response?.status === 401) {
+              Message.error('权限不足，请重新登录');
+              break; // 停止批量处理
+            } else if (error.response?.status === 403) {
+              Message.error('需要管理员权限才能生成封面');
+              break; // 停止批量处理
+            }
+          }
+
+          // 添加小延迟，让用户看到进度变化
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+
+        // 处理完成后的反馈
+        if (progressStats.success > 0) {
+          loadColumns(); // 重新加载列表
+        }
+      } catch (error) {
+        console.error('批量生成封面失败:', error);
+        Message.error('批量生成封面失败');
+      } finally {
+        batchGenerating.value = false;
+      }
+    };
+
+    // 根据专栏名称生成搜索标签
+    const generateTagsFromName = name => {
+      if (!name) return ['设计'];
+
+      const tagMap = {
+        技术: ['科技', '编程'],
+        编程: ['编程', '代码'],
+        开发: ['开发', '科技'],
+        设计: ['设计', '艺术'],
+        艺术: ['艺术', '设计'],
+        摄影: ['艺术', '自然'],
+        旅行: ['旅行', '风景'],
+        美食: ['食物'],
+        音乐: ['音乐', '艺术'],
+        运动: ['运动'],
+        教育: ['教育'],
+        商务: ['商务'],
+        医疗: ['医疗'],
+        建筑: ['建筑', '城市'],
+        自然: ['自然', '风景'],
+      };
+
+      // 检查专栏名称中是否包含关键词
+      for (const [keyword, tags] of Object.entries(tagMap)) {
+        if (name.includes(keyword)) {
+          return tags;
+        }
+      }
+
+      // 默认标签
+      return ['设计', '艺术'];
+    };
+
+    // 处理表格选择变化
+    const handleSelectionChange = selection => {
+      selectedColumns.value = selection;
+    };
+
+    // 清除选择
+    const clearSelection = () => {
+      selectedColumns.value = [];
+    };
+
+    // 初始化进度数据
+    const initializeProgress = () => {
+      progressItems.value = selectedColumns.value.map(column => ({
+        id: column.id,
+        name: column.name,
+        tags: generateTagsFromName(column.name),
+        status: 'pending', // pending, processing, success, failed
+      }));
+
+      progressStats.success = 0;
+      progressStats.failed = 0;
+      progressStats.pending = selectedColumns.value.length;
+    };
+
+    // 关闭进度弹窗
+    const closeProgressModal = () => {
+      showProgressModal.value = false;
+      clearSelection(); // 清除选择
+
+      // 显示最终结果
+      const { success, failed } = progressStats;
+      if (success > 0 && failed === 0) {
+        Message.success(`✅ 成功为 ${success} 个专栏生成封面`);
+      } else if (success > 0 && failed > 0) {
+        Message.info(`✅ 成功: ${success} 个，❌ 失败: ${failed} 个`);
+      } else if (failed > 0) {
+        Message.warning(`❌ ${failed} 个专栏封面生成失败`);
+      }
+    };
+
+    // 取消批量生成
+    const cancelBatchGeneration = () => {
+      cancelling.value = true;
+      shouldCancel.value = true;
+
+      setTimeout(() => {
+        cancelling.value = false;
+        closeProgressModal();
+      }, 1000);
+    };
+
     // 生命周期
     onMounted(() => {
       loadColumns();
@@ -646,7 +963,10 @@ export default {
       loading,
       saving,
       postsLoading,
+      generatingCover,
+      batchGenerating,
       columns,
+      selectedColumns,
       total,
       currentPage,
       pageSize,
@@ -669,6 +989,14 @@ export default {
       uploadUrl,
       uploadHeaders,
 
+      // 进度相关
+      showProgressModal,
+      progressItems,
+      progressStats,
+      progressPercentage,
+      cancelling,
+      shouldCancel,
+
       // 方法
       getFullImageUrl,
       loadColumns,
@@ -689,6 +1017,14 @@ export default {
       previewImage,
       handlePageChange,
       handlePageSizeChange,
+      generateRandomCover,
+      batchGenerateCovers,
+      generateTagsFromName,
+      handleSelectionChange,
+      clearSelection,
+      initializeProgress,
+      closeProgressModal,
+      cancelBatchGeneration,
     };
   },
 };
@@ -722,7 +1058,31 @@ export default {
 
 .action-bar {
   margin-bottom: 16px;
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 40px;
+}
+
+.batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0f8ff;
+  border: 1px solid #d4edda;
+  border-radius: 4px;
+}
+
+.selection-info {
+  color: #155724;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.create-actions {
+  display: flex;
+  align-items: center;
 }
 
 .add-column-button {
@@ -760,6 +1120,12 @@ export default {
 
 .cover-upload {
   position: relative;
+}
+
+.upload-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cover-preview {
@@ -825,5 +1191,160 @@ export default {
 
 :deep(.image-preview-modal .ivu-modal-footer) {
   text-align: center;
+}
+
+/* 进度弹窗样式 */
+.progress-container {
+  padding: 16px 0;
+}
+
+.progress-header {
+  margin-bottom: 20px;
+}
+
+.progress-header h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.progress-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.stat-item.success {
+  background: #f6ffed;
+  color: #52c41a;
+  border: 1px solid #b7eb8f;
+}
+
+.stat-item.failed {
+  background: #fff2f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+}
+
+.stat-item.pending {
+  background: #f0f8ff;
+  color: #1890ff;
+  border: 1px solid #91d5ff;
+}
+
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1890ff 0%, #52c41a 100%);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-weight: 500;
+  color: #333;
+  min-width: 40px;
+}
+
+.progress-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.progress-item:last-child {
+  border-bottom: none;
+}
+
+.progress-item.processing {
+  background: #f0f8ff;
+  border-left: 3px solid #1890ff;
+}
+
+.progress-item.success {
+  background: #f6ffed;
+  border-left: 3px solid #52c41a;
+}
+
+.progress-item.failed {
+  background: #fff2f0;
+  border-left: 3px solid #ff4d4f;
+}
+
+.item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.item-tags {
+  font-size: 12px;
+  color: #999;
+}
+
+.item-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 进度弹窗的模态框样式 */
+:deep(.ivu-modal-mask) {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+:deep(.ivu-modal-wrap) {
+  backdrop-filter: blur(2px);
 }
 </style>

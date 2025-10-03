@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 from enum import Enum
 
 from sqlmodel import Field, SQLModel, Column
@@ -46,8 +46,9 @@ class SystemDefaultRead(SystemDefaultBase):
 
 
 class SystemDefaultUpdate(SQLModel):
-    key_value: Optional[str] = None
+    key_value: Optional[Any] = None
     description: Optional[str] = None
+    data_type: Optional[DataType] = None
     is_editable: Optional[int] = None
     is_public: Optional[int] = None
     sort_order: Optional[int] = None

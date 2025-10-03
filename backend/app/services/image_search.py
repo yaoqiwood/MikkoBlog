@@ -2,7 +2,6 @@
 随机图片搜索服务
 支持根据标签搜索相关图片并下载保存到本地
 """
-import hashlib
 import os
 import random
 import uuid
@@ -14,6 +13,7 @@ from typing import List, Optional, Dict, Any
 from app.core.config import settings
 from app.db.session import get_session
 from app.models.attachment import Attachment, AttachmentCreate
+from app.models.system import SystemDefault
 
 
 class ImageSearchService:
@@ -25,6 +25,9 @@ class ImageSearchService:
             settings, 'unsplash_access_key', 'demo_key'
         )
         self.unsplash_base_url = "https://api.unsplash.com"
+
+        # 从系统配置加载设置
+        self._load_config_from_db()
 
         # 备用图片源（如果Unsplash不可用）
         self.fallback_images = {
@@ -50,8 +53,8 @@ class ImageSearchService:
             ]
         }
 
-        # 标签映射（中文到英文）
-        self.tag_mapping = {
+        # 默认标签映射（中文到英文）
+        self.default_tag_mapping = {
             "二次元": "anime",
             "风景": "landscape",
             "美女": "portrait",
@@ -74,24 +77,116 @@ class ImageSearchService:
             "旅行": "travel"
         }
 
+        # 从配置加载的标签映射
+        self.tag_mapping = self.default_tag_mapping.copy()
+
+        # 配置参数
+        self.default_tags = ["nature", "landscape"]
+        self.default_orientation = "landscape"
+        self.column_cover_tags = ["minimal", "modern", "geometric"]
+        self.search_count = 10
+        self.enable_unsplash = True
+        self.auto_generate_tags = True
+        self.tag_mapping_rules = ""
+
+    def _load_config_from_db(self):
+        """从数据库加载配置"""
+        try:
+            with next(get_session()) as session:
+                # 查询ImageSearch分类的所有配置
+                configs = session.query(SystemDefault).filter(
+                    SystemDefault.category == 'ImageSearch'
+                ).all()
+
+                for config in configs:
+                    key = config.key_name
+                    value = config.key_value
+
+                    # 根据数据类型转换值
+                    if config.data_type == 'boolean':
+                        value = value.lower() in ('true', '1', 'yes')
+                    elif config.data_type == 'integer':
+                        try:
+                            value = int(value)
+                        except ValueError:
+                            continue
+                    elif config.data_type == 'json':
+                        try:
+                            import json
+                            value = json.loads(value)
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+
+                    # 设置配置值
+                    if hasattr(self, key):
+                        setattr(self, key, value)
+
+                    # 特殊处理标签字段 - 支持中文逗号分割
+                    if key in ['default_tags', 'column_cover_tags'] and value:
+                        # 分割标签字符串，支持英文逗号和中文逗号
+                        import re
+                        tags = [
+                            tag.strip()
+                            for tag in re.split(r'[,，]', value)
+                            if tag.strip()
+                        ]
+                        setattr(self, key, tags)
+
+                    # 特殊处理标签映射规则
+                    if key == 'tag_mapping_rules' and value:
+                        self._parse_tag_mapping_rules(value)
+        except Exception as e:
+            print(f"加载图片搜索配置失败: {e}")
+            # 使用默认配置
+
+    def _parse_tag_mapping_rules(self, rules_text: str):
+        """解析标签映射规则"""
+        try:
+            lines = rules_text.strip().split('\n')
+            for line in lines:
+                line = line.strip()
+                if ':' in line:
+                    keyword, tags = line.split(':', 1)
+                    keyword = keyword.strip()
+                    # 支持中文逗号分割
+                    import re
+                    tag_list = [
+                        tag.strip()
+                        for tag in re.split(r'[,，]', tags)
+                        if tag.strip()
+                    ]
+                    self.tag_mapping[keyword] = (
+                        tag_list[0] if tag_list else keyword
+                    )
+        except Exception as e:
+            print(f"解析标签映射规则失败: {e}")
+
     def search_images(
         self,
-        tags: List[str],
-        count: int = 10,
-        orientation: str = "landscape"
+        tags: List[str] = None,
+        count: int = None,
+        orientation: str = None
     ) -> List[Dict[str, Any]]:
         """
         搜索图片
 
         Args:
-            tags: 搜索标签列表
-            count: 返回图片数量
-            orientation: 图片方向 (landscape, portrait, squarish)
+            tags: 搜索标签列表，如果为None则使用默认标签
+            count: 返回图片数量，如果为None则使用配置的默认值
+            orientation: 图片方向 (landscape, portrait, squarish)，如果为None则使用配置的默认值
 
         Returns:
             图片信息列表
         """
         try:
+            # 使用配置的默认值
+            if tags is None:
+                tags = self.default_tags
+            if count is None:
+                count = self.search_count
+            if orientation is None:
+                orientation = self.default_orientation
+
             # 转换中文标签为英文
             english_tags = []
             for tag in tags:
@@ -103,18 +198,22 @@ class ImageSearchService:
             # 构建搜索查询
             query = " ".join(english_tags) if english_tags else "nature"
 
-            # 尝试使用Unsplash API
-            images = self._search_unsplash(query, count, orientation)
+            # 尝试使用Unsplash API（如果启用）
+            images = []
+            if self.enable_unsplash:
+                images = self._search_unsplash(query, count, orientation)
 
             if not images:
-                # 如果Unsplash失败，使用备用图片
+                # 如果Unsplash失败或未启用，使用备用图片
                 images = self._get_fallback_images(tags, count)
 
             return images
 
         except Exception as e:
             print(f"图片搜索失败: {e}")
-            return self._get_fallback_images(tags, count)
+            fallback_tags = tags or self.default_tags
+            fallback_count = count or self.search_count
+            return self._get_fallback_images(fallback_tags, fallback_count)
 
     def _search_unsplash(
         self,
@@ -133,7 +232,9 @@ class ImageSearchService:
             print(f"Unsplash搜索失败: {e}")
             return []
 
-    def _get_fallback_images(self, tags: List[str], count: int) -> List[Dict[str, Any]]:
+    def _get_fallback_images(
+        self, tags: List[str], count: int
+    ) -> List[Dict[str, Any]]:
         """获取备用图片"""
         # 根据标签选择对应的备用图片
         selected_images = []
@@ -204,21 +305,20 @@ class ImageSearchService:
 
             with open(file_path, 'wb') as f:
                 f.write(image_data)
-            # 计算文件大小和哈希
+            # 计算文件大小
             file_size = len(image_data)
-            file_hash = hashlib.md5(image_data).hexdigest()
 
             # 创建附件记录
             desc = image_info.get('description', 'random_image')
             attachment_data = AttachmentCreate(
+                filename=filename,
                 original_name=f"{desc}{file_extension}",
-                file_name=filename,
                 file_path=file_path,
                 file_url=f"/{file_path}",
                 file_size=file_size,
                 file_type=f"image/{file_extension[1:]}",
-                file_hash=file_hash,
-                user_id=user_id,
+                file_extension=file_extension,
+                uploaded_by=user_id,
                 description=f"自动生成 - {desc}",
                 tags=f"source:{image_info['source']},"
                      f"author:{image_info['author']}"
@@ -239,7 +339,13 @@ class ImageSearchService:
     def _download_image(self, url: str) -> Optional[bytes]:
         """下载图片数据"""
         try:
-            with urllib.request.urlopen(url) as response:
+            import ssl
+            # 创建不验证SSL证书的上下文
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            with urllib.request.urlopen(url, context=ssl_context) as response:
                 if response.status == 200:
                     return response.read()
                 else:
@@ -267,20 +373,24 @@ class ImageSearchService:
 
     def get_random_cover_image(
         self,
-        tags: List[str],
+        tags: List[str] = None,
         user_id: int = 1
     ) -> Optional[str]:
         """
         获取随机封面图片URL
 
         Args:
-            tags: 搜索标签
+            tags: 搜索标签，如果为None则使用专栏封面专用标签
             user_id: 用户ID
 
         Returns:
             图片URL
         """
         try:
+            # 如果没有提供标签，使用专栏封面专用标签
+            if tags is None:
+                tags = self.column_cover_tags
+
             # 搜索图片
             images = self.search_images(tags, count=5)
             if not images:
@@ -299,6 +409,33 @@ class ImageSearchService:
         except Exception as e:
             print(f"获取随机封面图片失败: {e}")
             return None
+
+    def generate_tags_from_name(self, name: str) -> List[str]:
+        """
+        根据名称自动生成标签
+
+        Args:
+            name: 名称
+
+        Returns:
+            生成的标签列表
+        """
+        if not self.auto_generate_tags:
+            return self.column_cover_tags
+
+        generated_tags = []
+        name_lower = name.lower()
+
+        # 遍历标签映射规则
+        for keyword, tag in self.tag_mapping.items():
+            if keyword in name_lower:
+                generated_tags.append(tag)
+
+        # 如果没有匹配的标签，使用默认标签
+        if not generated_tags:
+            generated_tags = self.column_cover_tags
+
+        return generated_tags
 
 
 # 创建全局实例

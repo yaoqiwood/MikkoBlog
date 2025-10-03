@@ -400,6 +400,21 @@ export const systemApi = {
   },
 
   /**
+   * 按分类和键名更新系统默认参数
+   * @param {string} category - 分类
+   * @param {string} keyName - 键名
+   * @param {any} value - 新值
+   * @param {string} dataType - 数据类型
+   * @returns {Promise} 更新结果
+   */
+  async updateDefaultByKey(category, keyName, value, dataType = 'string') {
+    return put(getSystemUrl('BY_KEY', category, keyName), {
+      key_value: value,
+      data_type: dataType,
+    });
+  },
+
+  /**
    * 删除系统默认参数（管理员）
    * @param {number} id - 参数ID
    * @returns {Promise} 删除结果
@@ -733,6 +748,45 @@ export const mixedContentApi = {
   },
 };
 
+/**
+ * 图片搜索API
+ */
+export const imageSearchApi = {
+  /**
+   * 搜索图片
+   * @param {Array} tags - 搜索标签
+   * @param {number} count - 图片数量
+   * @param {string} orientation - 图片方向
+   * @returns {Promise} 图片列表
+   */
+  async searchImages(tags, count = 10, orientation = 'landscape') {
+    return post('http://localhost:8000/api/image-search/search', {
+      tags,
+      count,
+      orientation,
+    });
+  },
+
+  /**
+   * 获取随机封面图片
+   * @param {Array} tags - 搜索标签
+   * @returns {Promise} 封面图片URL
+   */
+  async getRandomCover(tags) {
+    return post('http://localhost:8000/api/image-search/random-cover', {
+      tags,
+    });
+  },
+
+  /**
+   * 获取可用标签
+   * @returns {Promise} 标签列表
+   */
+  async getTags() {
+    return get('http://localhost:8000/api/image-search/tags');
+  },
+};
+
 // 导出所有API
 export default {
   auth: authApi,
@@ -747,4 +801,5 @@ export default {
   columns: columnsApi,
   mixedContent: mixedContentApi,
   attachment: attachmentApi,
+  imageSearch: imageSearchApi,
 };

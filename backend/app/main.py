@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(post_stats_router, prefix="/api")
     app.include_router(moments_router, prefix="/api")
     app.include_router(columns_router, prefix="/api/columns", tags=["columns"])
-    app.include_router(image_search_router, prefix="/api/images", tags=["images"])
+    app.include_router(image_search_router, prefix="/api/image-search", tags=["image-search"])
 
     # 静态文件服务
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

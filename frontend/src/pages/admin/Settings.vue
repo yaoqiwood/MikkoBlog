@@ -69,6 +69,11 @@
       </Card>
     </div>
 
+    <!-- 图片搜索配置 -->
+    <Card title="图片搜索配置" style="margin-bottom: 1.5rem">
+      <ImageSearchSettings ref="imageSearchRef" @refresh="loadDefaults" />
+    </Card>
+
     <div class="settings-actions">
       <Button type="primary" size="large" @click="saveSettings">保存设置</Button>
       <Button type="default" size="large" @click="resetSettings">重置设置</Button>
@@ -83,8 +88,10 @@
 import { Message } from 'view-ui-plus';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import ImageSearchSettings from './ImageSearchSettings.vue';
 
 const router = useRouter();
+const imageSearchRef = ref(null);
 
 const settings = ref({
   siteName: 'MikkoBlog',
@@ -101,8 +108,21 @@ const settings = ref({
   smtpEmail: 'noreply@example.com',
 });
 
-function saveSettings() {
-  Message.success('设置保存成功');
+async function saveSettings() {
+  try {
+    // 保存图片搜索配置
+    if (imageSearchRef.value) {
+      await imageSearchRef.value.saveSettings();
+    }
+
+    // 这里可以添加其他设置的保存逻辑
+    // 例如：保存基本设置、用户设置等
+
+    Message.success('所有设置保存成功');
+  } catch (error) {
+    console.error('保存设置失败:', error);
+    Message.error('保存设置失败');
+  }
 }
 
 function resetSettings() {
@@ -111,6 +131,12 @@ function resetSettings() {
 
 function goToSystemDefaults() {
   router.push('/admin/system');
+}
+
+function loadDefaults() {
+  // 这个方法用于ImageSearchSettings组件的@refresh事件
+  // 如果需要的话可以在这里添加刷新逻辑
+  console.log('Settings refreshed');
 }
 </script>
 

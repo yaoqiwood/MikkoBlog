@@ -134,8 +134,7 @@ def get_default_by_key(
     default = db.exec(
         select(SystemDefault).where(
             SystemDefault.category == category,
-            SystemDefault.key_name == key_name,
-            SystemDefault.is_public == 1,
+            SystemDefault.key_name == key_name
         )
     ).first()
 
@@ -187,6 +186,87 @@ def update_default(
         raise HTTPException(status_code=400, detail="该参数不可编辑")
 
     update_data = default_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(default, key, value)
+
+    db.add(default)
+    db.commit()
+    db.refresh(default)
+
+    return SystemDefaultRead.model_validate(default)
+
+
+@router.put(
+    "/defaults/key/{category}/{key_name}", response_model=SystemDefaultRead
+)
+def update_default_by_key(
+    category: str,
+    key_name: str,
+    default_data: SystemDefaultUpdate,
+    _: SystemDefaultRead = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+) -> SystemDefaultRead:
+    """根据分类和键名更新系统默认参数（需要管理员权限）"""
+    default = db.exec(
+        select(SystemDefault).where(
+            SystemDefault.category == category,
+            SystemDefault.key_name == key_name
+        )
+    ).first()
+
+    if not default:
+        raise HTTPException(status_code=404, detail="参数不存在")
+
+    if not default.is_editable:
+        raise HTTPException(status_code=400, detail="该参数不可编辑")
+
+    update_data = default_data.model_dump(exclude_unset=True)
+
+    # 根据数据类型验证和转换key_value
+    if 'key_value' in update_data and update_data['key_value'] is not None:
+        value = update_data['key_value']
+
+        # 如果同时更新了data_type，使用新的data_type，否则使用现有的
+        target_data_type = update_data.get('data_type', default.data_type)
+
+        try:
+            if target_data_type == 'number':
+                # 确保数值类型
+                if isinstance(value, (int, float)):
+                    value = str(value)
+                elif isinstance(value, str):
+                    # 验证字符串是否为有效数字
+                    float(value)
+                else:
+                    raise ValueError("Invalid number format")
+            elif target_data_type == 'boolean':
+                # 确保布尔类型
+                if isinstance(value, bool):
+                    value = str(value).lower()
+                elif isinstance(value, str):
+                    valid_bools = ['true', 'false', '1', '0', 'yes', 'no']
+                    if value.lower() not in valid_bools:
+                        raise ValueError("Invalid boolean format")
+                    value = value.lower()
+                else:
+                    raise ValueError("Invalid boolean format")
+            elif target_data_type == 'json':
+                # 确保JSON格式
+                if isinstance(value, str):
+                    import json
+                    json.loads(value)  # 验证JSON格式
+                else:
+                    import json
+                    value = json.dumps(value)
+            # string 和 url 类型不需要特殊处理
+
+            update_data['key_value'] = value
+
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=422,
+                detail=f"数据类型验证失败: {str(e)}"
+            )
     for key, value in update_data.items():
         setattr(default, key, value)
 

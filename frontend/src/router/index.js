@@ -77,7 +77,7 @@ const router = createRouter({
         {
           path: 'system',
           name: 'admin-system',
-          component: () => import('@/pages/admin/SystemSettings.vue'),
+          component: () => import('@/pages/admin/SystemDefaultSettings.vue'),
           meta: {
             title: '系统默认参数设置',
           },
