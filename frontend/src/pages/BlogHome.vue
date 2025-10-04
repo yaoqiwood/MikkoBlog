@@ -360,21 +360,20 @@
           <!-- 标签云 -->
           <div class="tag-cloud">
             <h3>🏷️ 标签云</h3>
-            <div class="tags">
-              <span class="tag large">都是时辰的错!</span>
-              <span class="tag medium">生化危机</span>
-              <span class="tag small">java</span>
-              <span class="tag medium">惊悚恐怖</span>
-              <span class="tag small">LO</span>
-              <span class="tag large">蕾姆</span>
-              <span class="tag medium">二次元</span>
-              <span class="tag small">游戏</span>
-              <span class="tag medium">Tomcat</span>
-              <span class="tag small">Redis</span>
-              <span class="tag medium">寂静</span>
-              <span class="tag small">Mysql</span>
-              <span class="tag medium">开发</span>
-              <span class="tag small">生</span>
+            <div v-if="tagCloudLoading" class="tag-loading">
+              <div class="loading-spinner"></div>
+              <span>加载中...</span>
+            </div>
+            <div v-else class="tags">
+              <span
+                v-for="tag in tagCloudList"
+                :key="tag.name"
+                class="tag"
+                :class="tag.size"
+                :style="{ backgroundColor: tag.color }"
+              >
+                {{ tag.name }}
+              </span>
             </div>
             <div class="tag-decoration">
               <img src="https://via.placeholder.com/100x100/ffb6c1/ffffff?text=Rem" alt="Rem" />
@@ -485,9 +484,9 @@ import {
   authApi,
   columnsApi,
   homepageApi,
-  mixedContentApi,
   momentsApi,
   postApi,
+  tagCloudApi,
 } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -515,6 +514,10 @@ const columnsLoading = ref(false);
 // 右侧边栏专栏数据
 const sidebarColumnsList = ref([]);
 const sidebarColumnsLoading = ref(false);
+
+// 标签云数据
+const tagCloudList = ref([]);
+const tagCloudLoading = ref(false);
 
 // 图片预览
 const showImagePreview = ref(false);
@@ -946,21 +949,42 @@ const loadColumns = async () => {
   }
 };
 
-// 加载右侧边栏专栏列表
+// 加载标签云
+const loadTagCloud = async () => {
+  tagCloudLoading.value = true;
+  try {
+    const response = await tagCloudApi.getActiveTags(20);
+    tagCloudList.value = response;
+  } catch (err) {
+    console.error('加载标签云失败:', err);
+    // 静默失败，使用默认标签
+    tagCloudList.value = [
+      { name: 'Vue.js', size: 'large', color: '#4fc08d' },
+      { name: 'JavaScript', size: 'large', color: '#f7df1e' },
+      { name: 'Python', size: 'medium', color: '#3776ab' },
+      { name: 'React', size: 'medium', color: '#61dafb' },
+      { name: 'Node.js', size: 'small', color: '#339933' },
+    ];
+  } finally {
+    tagCloudLoading.value = false;
+  }
+};
+
+// 加载右侧边栏专栏
 const loadSidebarColumns = async () => {
   sidebarColumnsLoading.value = true;
   try {
     const response = await columnsApi.getColumns({
       is_visible: true,
-      limit: 6, // 只加载前6个专栏用于侧边栏显示
+      limit: 6, // 限制显示6个专栏
     });
 
     if (response && response.items) {
       sidebarColumnsList.value = response.items;
     }
   } catch (err) {
-    console.error('加载侧边栏专栏失败:', err);
-    // 静默失败，不显示错误提示
+    console.error('加载右侧边栏专栏失败:', err);
+    // 静默失败，不显示错误
   } finally {
     sidebarColumnsLoading.value = false;
   }
@@ -1039,36 +1063,81 @@ const loadAllContent = async () => {
   error.value = '';
 
   try {
-    const response = await mixedContentApi.getMixedContent({
-      page: currentPage.value,
-      limit: pageSize,
-    });
+    // 并行加载博客和说说
+    const [postsResponse, momentsResponse] = await Promise.all([
+      postApi.getPosts({
+        page: currentPage.value,
+        limit: Math.ceil(pageSize / 2), // 博客占一半
+        is_visible: true,
+        is_deleted: false,
+      }),
+      momentsApi.getMoments({
+        page: currentPage.value,
+        limit: Math.ceil(pageSize / 2), // 说说占一半
+        is_visible: true,
+      }),
+    ]);
 
-    if (response && response.items && response.items.length > 0) {
-      // 添加格式化的时间信息
-      const formattedItems = response.items.map(item => ({
-        ...item,
-        time: formatTime(item.created_at),
-        display_time: formatTime(item.updated_at || item.created_at),
-        create_or_update_time: formatCreateOrUpdateTime(item.created_at, item.updated_at),
-        author_name: item.author_name || userProfile.value.nickname || '',
+    let hasMorePosts = false;
+    let hasMoreMoments = false;
+
+    // 处理博客文章
+    if (postsResponse && postsResponse.length > 0) {
+      const formattedPosts = postsResponse.map(post => ({
+        id: post.id,
+        type: 'blog',
+        title: post.title,
+        content: post.summary || post.content.substring(0, 200) + '...',
+        time: formatTime(post.created_at),
+        display_time: formatTime(post.updated_at || post.created_at),
+        create_or_update_time: formatCreateOrUpdateTime(post.created_at, post.updated_at),
+        views: post.view_count || 0,
+        comments: post.comment_count || 0,
+        likes: post.like_count || 0,
+        shares: post.share_count || 0,
+        image: post.cover_image_url,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        author_name: post.user_nickname || userProfile.value.nickname || '',
         author_avatar:
-          item.author_avatar ||
+          post.user_avatar ||
           userProfile.value.avatar ||
           'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
       }));
+      blogPosts.value.push(...formattedPosts);
+      hasMorePosts = postsResponse.length >= Math.ceil(pageSize / 2);
+    }
 
-      // 分别添加到对应数组
-      blogPosts.value.push(...formattedItems.filter(item => item.type === 'blog'));
-      moments.value.push(...formattedItems.filter(item => item.type === 'moment'));
+    // 处理说说
+    if (momentsResponse && momentsResponse.items && momentsResponse.items.length > 0) {
+      const formattedMoments = momentsResponse.items.map(moment => ({
+        id: moment.id,
+        type: 'moment',
+        content: moment.content,
+        time: formatTime(moment.created_at),
+        display_time: formatTime(moment.updated_at || moment.created_at),
+        create_or_update_time: formatCreateOrUpdateTime(moment.created_at, moment.updated_at),
+        views: 0,
+        comments: 0,
+        likes: 0,
+        shares: 0,
+        images: moment.images || [],
+        created_at: moment.created_at,
+        updated_at: moment.updated_at,
+        author_name: moment.user_nickname || userProfile.value.nickname || '',
+        author_avatar:
+          moment.user_avatar ||
+          userProfile.value.avatar ||
+          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+      }));
+      moments.value.push(...formattedMoments);
+      hasMoreMoments = momentsResponse.has_more;
+    }
 
-      currentPage.value++;
+    currentPage.value++;
 
-      // 检查是否还有更多数据
-      if (!response.has_more) {
-        hasMore.value = false;
-      }
-    } else {
+    // 如果博客和说说都没有更多数据，则停止加载
+    if (!hasMorePosts && !hasMoreMoments) {
       hasMore.value = false;
     }
   } catch (err) {
@@ -1182,6 +1251,7 @@ onMounted(() => {
   loadAllContent(); // 默认加载所有内容
   loadHomepageSettings();
   loadSidebarColumns(); // 加载右侧边栏专栏
+  loadTagCloud(); // 加载标签云
 });
 
 onUnmounted(() => {
@@ -1925,6 +1995,27 @@ onUnmounted(() => {
 .tag.large {
   font-size: 15px;
   padding: 8px 15px;
+}
+
+/* 标签云加载状态 */
+.tag-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+.tag-loading .loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f0f0f0;
+  border-top: 2px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
 }
 
 .tag-decoration {

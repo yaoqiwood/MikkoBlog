@@ -437,6 +437,143 @@ export const homepageApi = {
 };
 
 /**
+ * 标签云管理API
+ */
+export const tagCloudApi = {
+  /**
+   * 获取标签云列表
+   * @param {object} params - 查询参数
+   * @returns {Promise} 标签列表
+   */
+  async getTags(params = {}) {
+    return get('http://localhost:8000/api/tag-cloud/tags', params);
+  },
+
+  /**
+   * 获取活跃标签（用于前端显示）
+   * @param {number} limit - 限制数量
+   * @returns {Promise} 活跃标签列表
+   */
+  async getActiveTags(limit = 50) {
+    return get('http://localhost:8000/api/tag-cloud/tags/active', { limit });
+  },
+
+  /**
+   * 创建标签（管理员）
+   * @param {object} tagData - 标签数据
+   * @returns {Promise} 创建结果
+   */
+  async createTag(tagData) {
+    return post('http://localhost:8000/api/tag-cloud/tags', tagData);
+  },
+
+  /**
+   * 更新标签（管理员）
+   * @param {number} tagId - 标签ID
+   * @param {object} tagData - 标签数据
+   * @returns {Promise} 更新结果
+   */
+  async updateTag(tagId, tagData) {
+    return put(`http://localhost:8000/api/tag-cloud/tags/${tagId}`, tagData);
+  },
+
+  /**
+   * 删除标签（管理员）
+   * @param {number} tagId - 标签ID
+   * @returns {Promise} 删除结果
+   */
+  async deleteTag(tagId) {
+    return del(`http://localhost:8000/api/tag-cloud/tags/${tagId}`);
+  },
+
+  /**
+   * 切换标签状态（管理员）
+   * @param {number} tagId - 标签ID
+   * @returns {Promise} 切换结果
+   */
+  async toggleTagStatus(tagId) {
+    return patch(`http://localhost:8000/api/tag-cloud/tags/${tagId}/toggle`);
+  },
+
+  /**
+   * 立即获取标签（管理员）
+   * @returns {Promise} 获取结果
+   */
+  async fetchTagsNow() {
+    return post('http://localhost:8000/api/tag-cloud/tags/fetch');
+  },
+
+  /**
+   * 获取标签获取历史（管理员）
+   * @param {number} limit - 限制数量
+   * @returns {Promise} 获取历史
+   */
+  async getFetchHistory(limit = 30) {
+    return get('http://localhost:8000/api/tag-cloud/tags/fetch-history', { limit });
+  },
+
+  /**
+   * 获取标签统计信息（管理员）
+   * @returns {Promise} 统计信息
+   */
+  async getStats() {
+    return get('http://localhost:8000/api/tag-cloud/tags/stats');
+  },
+
+  /**
+   * 获取调度时间信息
+   * @returns {Promise} 调度时间信息
+   */
+  async getScheduleTime() {
+    return get('http://localhost:8000/api/tag-cloud/schedule/time');
+  },
+
+  /**
+   * 获取调度配置信息
+   * @returns {Promise} 调度配置信息
+   */
+  async getScheduleConfig() {
+    return get('http://localhost:8000/api/tag-cloud/schedule/config');
+  },
+
+  /**
+   * 更新调度时间（管理员）
+   * @param {string} time - 时间 (HH:MM格式)
+   * @returns {Promise} 更新结果
+   */
+  async updateScheduleTime(time) {
+    return put('http://localhost:8000/api/tag-cloud/schedule/time', { time });
+  },
+
+  /**
+   * 更新调度配置（管理员）
+   * @param {object} config - 调度配置 {frequency, time, day}
+   * @returns {Promise} 更新结果
+   */
+  async updateScheduleConfig(config) {
+    return put('http://localhost:8000/api/tag-cloud/schedule/config', config);
+  },
+
+  /**
+   * 更新搜索关键词（管理员）
+   * @param {array|string} keywords - 搜索关键词数组或逗号分隔的字符串
+   * @returns {Promise} 更新结果
+   */
+  async updateSearchKeywords(keywords) {
+    return put('http://localhost:8000/api/tag-cloud/search/keywords', { keywords });
+  },
+
+  /**
+   * 立即根据关键词获取标签（管理员）
+   * @param {array|string} keywords - 搜索关键词数组或逗号分隔的字符串
+   * @returns {Promise} 任务启动结果
+   */
+  async fetchTagsByKeywords(keywords) {
+    return post('http://localhost:8000/api/tag-cloud/search/fetch', { keywords });
+  },
+};
+
+/**
  * 说说管理API
  */
 export const momentsApi = {

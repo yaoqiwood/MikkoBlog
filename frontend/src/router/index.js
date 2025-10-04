@@ -1,6 +1,7 @@
 import AdminLayout from '@/pages/admin/AdminLayout.vue';
 import CommentManagement from '@/pages/admin/CommentManagement.vue';
 import Dashboard from '@/pages/admin/Dashboard.vue';
+import TagCloudManagement from '@/pages/admin/TagCloudManagement.vue';
 import UserManagement from '@/pages/admin/UserManagement.vue';
 import BlogHome from '@/pages/BlogHome.vue';
 import CookieTest from '@/pages/CookieTest.vue';
@@ -42,6 +43,11 @@ const router = createRouter({
           path: 'columns',
           name: 'admin-columns',
           component: () => import('@/pages/admin/ColumnsManagement.vue'),
+        },
+        {
+          path: 'tag-cloud',
+          name: 'admin-tag-cloud',
+          component: TagCloudManagement,
         },
         {
           path: 'posts',

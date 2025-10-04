@@ -17,6 +17,11 @@ from app.api.routers.postStats import router as post_stats_router
 from app.api.routers.moments import router as moments_router
 from app.api.routers.columns import router as columns_router
 from app.api.routers.image_search import router as image_search_router
+from app.api.routers.tagCloud import router as tag_cloud_router
+from app.scheduler.tag_cloud_scheduler import (
+    start_tag_cloud_scheduler,
+    stop_tag_cloud_scheduler
+)
 
 
 def create_app() -> FastAPI:
@@ -44,10 +49,29 @@ def create_app() -> FastAPI:
     app.include_router(post_stats_router, prefix="/api")
     app.include_router(moments_router, prefix="/api")
     app.include_router(columns_router, prefix="/api/columns", tags=["columns"])
-    app.include_router(image_search_router, prefix="/api/image-search", tags=["image-search"])
+    app.include_router(
+        image_search_router,
+        prefix="/api/image-search",
+        tags=["image-search"]
+    )
+    app.include_router(
+        tag_cloud_router,
+        prefix="/api/tag-cloud",
+        tags=["tag-cloud"]
+    )
 
     # 静态文件服务
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+    # 启动定时任务
+    @app.on_event("startup")
+    async def startup_event():
+        initialize_database()
+        start_tag_cloud_scheduler()
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        stop_tag_cloud_scheduler()
 
     return app
 

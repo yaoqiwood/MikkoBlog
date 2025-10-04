@@ -101,6 +101,15 @@
               <span v-show="!sidebarCollapsed">主页设置</span>
             </router-link>
             <router-link
+              to="/admin/tag-cloud"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/tag-cloud' }"
+              :title="sidebarCollapsed ? '标签云管理' : ''"
+            >
+              <Icon type="ios-pricetags" />
+              <span v-show="!sidebarCollapsed">标签云管理</span>
+            </router-link>
+            <router-link
               to="/admin/settings"
               class="menu-item"
               :class="{ active: $route.path === '/admin/settings' }"
@@ -208,6 +217,7 @@ const pageTitles = {
   '/admin/settings': '系统设置',
   '/admin/system': '系统默认参数设置',
   '/admin/homepage': '主页设置',
+  '/admin/tag-cloud': '标签云管理',
 };
 
 // 当前页面标题
