@@ -10,12 +10,20 @@ logger = logging.getLogger(__name__)
 
 class TagCloudScheduler:
     def __init__(self):
-        self.tag_service = TagCloudService()
+        self.tag_service = None  # 延迟初始化
         self.is_running = False
         self.scheduled_time = "02:00"  # 默认时间
         self.schedule_frequency = "daily"  # 默认频度：daily, weekly, hourly
         self.schedule_day = "monday"  # 周频度时的星期几
         self.search_keywords = []  # 自定义搜索关键词
+
+    def _get_tag_service(self):
+        """获取TagCloudService实例"""
+        if self.tag_service is None:
+            from app.db.session import get_session
+            session = next(get_session())
+            self.tag_service = TagCloudService(session)
+        return self.tag_service
 
     async def daily_fetch_task(self):
         """每日标签获取任务"""
@@ -25,10 +33,10 @@ class TagCloudScheduler:
             # 如果有自定义搜索关键词，使用自定义搜索
             if self.search_keywords:
                 logger.info(f"Using custom search keywords: {self.search_keywords}")
-                result = await self.tag_service.fetch_tags_by_keywords(self.search_keywords)
+                result = await self._get_tag_service().fetch_tags_by_keywords(self.search_keywords)
             else:
                 # 使用默认的多源获取
-                result = await self.tag_service.fetch_and_update_tags()
+                result = await self._get_tag_service().fetch_and_update_tags()
 
             logger.info(f"Daily fetch completed: {result}")
         except Exception as e:

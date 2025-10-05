@@ -149,8 +149,8 @@
 
         <FormItem label="标签状态">
           <RadioGroup v-model="tagForm.is_active">
-            <Radio :label="true">活跃</Radio>
-            <Radio :label="false">禁用</Radio>
+            <Radio label="true">活跃</Radio>
+            <Radio label="false">禁用</Radio>
           </RadioGroup>
         </FormItem>
       </Form>
@@ -250,16 +250,18 @@
 
         <FormItem label="搜索关键词" prop="keywords">
           <Input
-            v-model="searchForm.keywords"
+            v-model="searchKeywords"
             type="textarea"
             :rows="4"
-            placeholder="请输入搜索关键词，多个关键词用逗号分隔&#10;例如：AI, 大模型, 机器学习, 深度学习, 神经网络"
+            placeholder="请输入搜索关键词，多个关键词用逗号分隔&#10;例如：AI，大模型，机器学习，深度学习，神经网络"
             style="width: 100%"
+            @input="validateKeywords"
           />
           <div class="search-help">
             <Icon type="ios-information-circle" />
             <span
-              >支持多个关键词，用逗号分隔。系统将从GitHub、Stack Overflow等平台搜索相关标签</span
+              >支持多个关键词，用中文逗号（，）或英文逗号（,）分隔。系统将从GitHub、Stack
+              Overflow等平台搜索相关标签</span
             >
           </div>
         </FormItem>
@@ -269,8 +271,9 @@
             <Tag
               v-for="example in keywordExamples"
               :key="example"
-              @click="addKeywordExample(example)"
+              @click.stop="addKeywordExample(example)"
               style="cursor: pointer; margin: 2px"
+              class="keyword-tag"
             >
               {{ example }}
             </Tag>
@@ -294,7 +297,7 @@
 <script>
 import { tagCloudApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
-import { onMounted, reactive, ref } from 'vue';
+import { nextTick, onMounted, reactive, ref } from 'vue';
 
 export default {
   name: 'TagCloudManagement',
@@ -336,13 +339,13 @@ export default {
     });
 
     // 表单数据
-    const tagForm = reactive({
+    const tagForm = ref({
       name: '',
       count: 1,
       size: 'medium',
       color: '#ff6b6b',
       category: 'general',
-      is_active: true,
+      is_active: 'true',
     });
 
     // 表单验证规则
@@ -363,7 +366,7 @@ export default {
       next_run: null,
       search_keywords: [],
     });
-    const scheduleForm = reactive({
+    const scheduleForm = ref({
       frequency: 'daily',
       time: '',
       day: 'monday',
@@ -377,7 +380,8 @@ export default {
     // 搜索相关数据
     const searchUpdating = ref(false);
     const searchFetching = ref(false);
-    const searchForm = reactive({
+    const searchKeywords = ref('');
+    const searchForm = ref({
       keywords: '',
     });
     const searchRules = {
@@ -484,26 +488,32 @@ export default {
         await tagCloudApi.fetchTagsNow();
         Message.success('标签获取任务已启动');
         // 延迟刷新数据
-        setTimeout(() => {
+        window.setTimeout(() => {
           loadTags();
           loadStats();
         }, 2000);
       } catch (error) {
         console.error('启动获取任务失败:', error);
-        Message.error('启动获取任务失败');
+        if (error.response?.status === 401) {
+          Message.error('请先登录管理员账户');
+        } else if (error.response?.status === 403) {
+          Message.error('权限不足，需要管理员权限');
+        } else {
+          Message.error('启动获取任务失败: ' + (error.message || '未知错误'));
+        }
       } finally {
         fetching.value = false;
       }
     };
 
     const resetForm = () => {
-      Object.assign(tagForm, {
+      Object.assign(tagForm.value, {
         name: '',
         count: 1,
         size: 'medium',
         color: '#ff6b6b',
         category: 'general',
-        is_active: true,
+        is_active: 'true',
       });
       isEditing.value = false;
       editingTagId.value = null;
@@ -512,13 +522,13 @@ export default {
     const editTag = tag => {
       isEditing.value = true;
       editingTagId.value = tag.id;
-      Object.assign(tagForm, {
+      Object.assign(tagForm.value, {
         name: tag.name,
         count: tag.count,
         size: tag.size,
         color: tag.color,
         category: tag.category,
-        is_active: tag.is_active,
+        is_active: tag.is_active ? 'true' : 'false',
       });
       showCreateModal.value = true;
     };
@@ -527,11 +537,17 @@ export default {
       try {
         saving.value = true;
 
+        // 转换数据格式
+        const tagData = {
+          ...tagForm.value,
+          is_active: tagForm.value.is_active === 'true',
+        };
+
         if (isEditing.value) {
-          await tagCloudApi.updateTag(editingTagId.value, tagForm);
+          await tagCloudApi.updateTag(editingTagId.value, tagData);
           Message.success('标签更新成功');
         } else {
-          await tagCloudApi.createTag(tagForm);
+          await tagCloudApi.createTag(tagData);
           Message.success('标签创建成功');
         }
 
@@ -598,9 +614,9 @@ export default {
         scheduleInfo.value = response;
 
         // 初始化表单数据
-        scheduleForm.frequency = response.frequency || 'daily';
-        scheduleForm.time = response.time || '';
-        scheduleForm.day = response.day || 'monday';
+        scheduleForm.value.frequency = response.frequency || 'daily';
+        scheduleForm.value.time = response.time || '';
+        scheduleForm.value.day = response.day || 'monday';
       } catch (error) {
         console.error('加载调度信息失败:', error);
         Message.error('加载调度信息失败');
@@ -611,34 +627,34 @@ export default {
       try {
         scheduleUpdating.value = true;
 
-        if (!scheduleForm.frequency) {
+        if (!scheduleForm.value.frequency) {
           Message.error('请选择调度频度');
           return;
         }
 
-        if (!scheduleForm.time) {
+        if (!scheduleForm.value.time) {
           Message.error('请选择调度时间');
           return;
         }
 
-        if (scheduleForm.frequency === 'weekly' && !scheduleForm.day) {
+        if (scheduleForm.value.frequency === 'weekly' && !scheduleForm.value.day) {
           Message.error('请选择星期几');
           return;
         }
 
         // 格式化时间为 HH:MM
         const timeStr =
-          scheduleForm.time instanceof Date
-            ? scheduleForm.time.toTimeString().slice(0, 5)
-            : scheduleForm.time;
+          scheduleForm.value.time instanceof Date
+            ? scheduleForm.value.time.toTimeString().slice(0, 5)
+            : scheduleForm.value.time;
 
         const config = {
-          frequency: scheduleForm.frequency,
+          frequency: scheduleForm.value.frequency,
           time: timeStr,
         };
 
-        if (scheduleForm.frequency === 'weekly') {
-          config.day = scheduleForm.day;
+        if (scheduleForm.value.frequency === 'weekly') {
+          config.day = scheduleForm.value.day;
         }
 
         await tagCloudApi.updateScheduleConfig(config);
@@ -701,15 +717,12 @@ export default {
       try {
         searchUpdating.value = true;
 
-        if (!searchForm.keywords.trim()) {
+        if (!searchKeywords.value.trim()) {
           Message.error('请输入搜索关键词');
           return;
         }
 
-        const keywords = searchForm.keywords
-          .split(',')
-          .map(k => k.trim())
-          .filter(k => k);
+        const keywords = parseKeywords(searchKeywords.value);
 
         if (keywords.length === 0) {
           Message.error('请输入有效的搜索关键词');
@@ -739,15 +752,12 @@ export default {
       try {
         searchFetching.value = true;
 
-        if (!searchForm.keywords.trim()) {
+        if (!searchKeywords.value.trim()) {
           Message.error('请输入搜索关键词');
           return;
         }
 
-        const keywords = searchForm.keywords
-          .split(',')
-          .map(k => k.trim())
-          .filter(k => k);
+        const keywords = parseKeywords(searchKeywords.value);
 
         if (keywords.length === 0) {
           Message.error('请输入有效的搜索关键词');
@@ -758,7 +768,7 @@ export default {
         Message.success('关键词搜索任务已启动，请稍后查看结果');
 
         // 延迟刷新数据
-        setTimeout(() => {
+        window.setTimeout(() => {
           loadTags();
           loadStats();
         }, 3000);
@@ -776,14 +786,53 @@ export default {
       if (!keywords || keywords.length === 0) {
         return '未设置搜索关键词';
       }
-      return keywords.join(', ');
+      return keywords.join('，');
     };
 
-    const addKeywordExample = example => {
-      if (searchForm.keywords) {
-        searchForm.keywords += ', ' + example;
-      } else {
-        searchForm.keywords = example;
+    const addKeywordExample = async example => {
+      console.log('点击示例关键词:', example);
+      console.log('当前输入框内容:', searchKeywords.value);
+
+      // 检查是否已存在该关键词
+      const currentKeywords = searchKeywords.value || '';
+      const existingKeywords = parseKeywords(currentKeywords);
+
+      if (existingKeywords.includes(example)) {
+        Message.warning(`关键词"${example}"已存在，无法重复添加`);
+        return;
+      }
+
+      // 添加新关键词
+      const newKeywords = currentKeywords + (currentKeywords ? '，' : '') + example;
+      searchKeywords.value = newKeywords;
+
+      console.log('更新后的输入框内容:', searchKeywords.value);
+
+      // 确保DOM更新
+      await nextTick();
+      console.log('DOM更新后的输入框内容:', searchKeywords.value);
+
+      // 显示成功消息
+      Message.success(`已添加关键词: ${example}`);
+    };
+
+    const parseKeywords = keywordsStr => {
+      // 支持中文逗号和英文逗号混写
+      return keywordsStr
+        .split(/[,，]/)
+        .map(k => k.trim())
+        .filter(k => k);
+    };
+
+    const validateKeywords = () => {
+      const keywords = parseKeywords(searchKeywords.value);
+      const uniqueKeywords = [...new Set(keywords)];
+
+      if (keywords.length !== uniqueKeywords.length) {
+        // 有重复关键词，自动去重
+        const deduplicatedText = uniqueKeywords.join('，');
+        searchKeywords.value = deduplicatedText;
+        Message.warning('检测到重复关键词，已自动去重');
       }
     };
 
@@ -865,6 +914,7 @@ export default {
       scheduleRules,
       searchUpdating,
       searchFetching,
+      searchKeywords,
       searchForm,
       searchRules,
       keywordExamples,
@@ -890,6 +940,8 @@ export default {
       fetchTagsByKeywords,
       getCurrentKeywordsText,
       addKeywordExample,
+      parseKeywords,
+      validateKeywords,
       formatDateTime,
       getSizeColor,
       getSizeText,
@@ -1026,17 +1078,31 @@ export default {
 
 .search-help {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   margin-top: 4px;
   font-size: 12px;
   color: #666;
 }
 
+.search-help .ivu-icon {
+  margin-top: 10px;
+}
+
 .keyword-examples {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.keyword-tag {
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.keyword-tag:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* 响应式设计 */

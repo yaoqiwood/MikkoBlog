@@ -69,6 +69,11 @@
       </Card>
     </div>
 
+    <!-- AI设置 -->
+    <Card title="AI设置" style="margin-bottom: 1.5rem">
+      <AISettings />
+    </Card>
+
     <!-- 图片搜索配置 -->
     <Card title="图片搜索配置" style="margin-bottom: 1.5rem">
       <ImageSearchSettings ref="imageSearchRef" @refresh="loadDefaults" />
@@ -89,6 +94,7 @@ import { Message } from 'view-ui-plus';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import ImageSearchSettings from './ImageSearchSettings.vue';
+import AISettings from './AISettings.vue';
 
 const router = useRouter();
 const imageSearchRef = ref(null);

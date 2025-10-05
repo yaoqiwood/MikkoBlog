@@ -1,6 +1,9 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select
+import aiohttp
+import ssl
+import json
 
 from app.api.routers.auth import get_current_admin
 from app.db.session import get_db
@@ -10,6 +13,7 @@ from app.models.system import (
     SystemDefaultUpdate,
     SystemDefaultCreate,
 )
+from app.models.user import User
 
 router = APIRouter(prefix="/system", tags=["system"])
 
@@ -295,3 +299,76 @@ def delete_default(
     db.commit()
 
     return {"message": "参数删除成功"}
+
+
+@router.post("/ai/test-connection")
+async def test_ai_connection(
+    ai_config: dict,
+    current_user: User = Depends(get_current_admin)
+):
+    """测试AI连接"""
+    try:
+        provider = ai_config.get("provider", "openai")
+        model = ai_config.get("model", "gpt-3.5-turbo")
+        api_key = ai_config.get("api_key", "")
+        base_url = ai_config.get("base_url", "https://api.openai.com/v1")
+        max_tokens = ai_config.get("max_tokens", 1000)
+        temperature = ai_config.get("temperature", 0.7)
+        prompt_template = ai_config.get("prompt_template", "")
+
+        if not api_key:
+            return {
+                "success": False,
+                "message": "API密钥不能为空"
+            }
+
+        # 构建请求数据
+        messages = [
+            {
+                "role": "user",
+                "content": prompt_template.replace("{keywords}", "AI,机器学习,深度学习")
+            }
+        ]
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        # 创建SSL上下文（禁用验证）
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+
+        async with aiohttp.ClientSession(connector=connector) as session:
+            url = f"{base_url}/chat/completions"
+            async with session.post(url, headers=headers, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return {
+                        "success": True,
+                        "message": "AI连接测试成功",
+                        "response": result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    }
+                else:
+                    error_text = await response.text()
+                    return {
+                        "success": False,
+                        "message": f"AI API返回错误: {response.status}",
+                        "response": error_text
+                    }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"连接测试失败: {str(e)}"
+        }

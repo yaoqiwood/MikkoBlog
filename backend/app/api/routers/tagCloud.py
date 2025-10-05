@@ -147,10 +147,20 @@ async def fetchTagsNow(
     session: Session = Depends(get_session)
 ):
     """立即获取标签（管理员）"""
-    tagService = TagCloudService()
+    tagService = TagCloudService(session)
+
+    # 创建同步包装器来处理异步任务
+    def sync_fetch_task():
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(tagService.fetch_and_update_tags())
+        finally:
+            loop.close()
 
     # 在后台任务中执行获取
-    backgroundTasks.add_task(tagService.fetch_and_update_tags)
+    backgroundTasks.add_task(sync_fetch_task)
 
     return {"message": "标签获取任务已启动"}
 
@@ -305,7 +315,9 @@ async def updateSearchKeywords(
 
     # 确保关键词是列表格式
     if isinstance(keywords, str):
-        keywords = [keyword.strip() for keyword in keywords.split(",") if keyword.strip()]
+        # 支持中文逗号和英文逗号混写
+        import re
+        keywords = [keyword.strip() for keyword in re.split(r'[,，]', keywords) if keyword.strip()]
     elif not isinstance(keywords, list):
         raise HTTPException(status_code=400, detail="关键词必须是字符串或列表格式")
 
@@ -336,7 +348,9 @@ async def fetchTagsByKeywords(
 
     # 确保关键词是列表格式
     if isinstance(keywords, str):
-        keywords = [keyword.strip() for keyword in keywords.split(",") if keyword.strip()]
+        # 支持中文逗号和英文逗号混写
+        import re
+        keywords = [keyword.strip() for keyword in re.split(r'[,，]', keywords) if keyword.strip()]
     elif not isinstance(keywords, list):
         raise HTTPException(status_code=400, detail="关键词必须是字符串或列表格式")
 
@@ -350,12 +364,18 @@ async def fetchTagsByKeywords(
     return {"message": f"关键词搜索任务已启动: {', '.join(keywords)}"}
 
 
-async def fetch_tags_by_keywords_task(keywords):
+def fetch_tags_by_keywords_task(keywords):
     """后台任务：根据关键词获取标签"""
     try:
-        with next(get_session()) as session:
-            tag_service = TagCloudService(session)
-            result = await tag_service.fetch_tags_by_keywords(keywords)
-            logger.info(f"Keywords fetch task completed: {result}")
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            with next(get_session()) as session:
+                tag_service = TagCloudService(session)
+                result = loop.run_until_complete(tag_service.fetch_tags_by_keywords(keywords))
+                logger.info(f"Keywords fetch task completed: {result}")
+        finally:
+            loop.close()
     except Exception as e:
         logger.error(f"Keywords fetch task failed: {e}", exc_info=True)

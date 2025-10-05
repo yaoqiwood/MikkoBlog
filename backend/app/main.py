@@ -18,6 +18,7 @@ from app.api.routers.moments import router as moments_router
 from app.api.routers.columns import router as columns_router
 from app.api.routers.image_search import router as image_search_router
 from app.api.routers.tagCloud import router as tag_cloud_router
+from app.api.routers.system_setting import router as system_setting_router
 from app.scheduler.tag_cloud_scheduler import (
     start_tag_cloud_scheduler,
     stop_tag_cloud_scheduler
@@ -58,6 +59,11 @@ def create_app() -> FastAPI:
         tag_cloud_router,
         prefix="/api/tag-cloud",
         tags=["tag-cloud"]
+    )
+    app.include_router(
+        system_setting_router,
+        prefix="/api/system-setting",
+        tags=["system-setting"]
     )
 
     # 静态文件服务

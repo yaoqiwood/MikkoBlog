@@ -415,12 +415,117 @@ export const systemApi = {
   },
 
   /**
+   * 测试AI连接
+   * @param {object} aiConfig - AI配置
+   * @returns {Promise} 测试结果
+   */
+  async testAIConnection(aiConfig) {
+    return post('/api/system/ai/test-connection', aiConfig);
+  },
+
+  /**
    * 删除系统默认参数（管理员）
    * @param {number} id - 参数ID
    * @returns {Promise} 删除结果
    */
   async deleteDefault(id) {
     return del(`${getSystemUrl('DEFAULTS')}/${id}`);
+  },
+};
+
+/**
+ * 系统设置 API
+ */
+export const systemSettingApi = {
+  /**
+   * 获取所有设置分类
+   * @returns {Promise} 分类列表
+   */
+  async getCategories() {
+    return get('/api/system-setting/categories');
+  },
+
+  /**
+   * 根据分类获取系统设置
+   * @param {string} category - 分类
+   * @returns {Promise} 设置列表
+   */
+  async getSettingsByCategory(category) {
+    return get(`/api/system-setting/category/${category}`);
+  },
+
+  /**
+   * 根据分类和键名获取单个设置
+   * @param {string} category - 分类
+   * @param {string} keyName - 键名
+   * @returns {Promise} 设置
+   */
+  async getSettingByKey(category, keyName) {
+    return get(`/api/system-setting/key/${category}/${keyName}`);
+  },
+
+  /**
+   * 更新单个设置
+   * @param {string} category - 分类
+   * @param {string} keyName - 键名
+   * @param {object} settingUpdate - 更新数据
+   * @returns {Promise} 更新结果
+   */
+  async updateSettingByKey(category, keyName, settingUpdate) {
+    return put(`/api/system-setting/key/${category}/${keyName}`, settingUpdate);
+  },
+
+  /**
+   * 批量更新设置
+   * @param {object} batchUpdate - 批量更新数据
+   * @returns {Promise} 更新结果
+   */
+  async batchUpdateSettings(batchUpdate) {
+    return post('/api/system-setting/batch-update', batchUpdate);
+  },
+
+  /**
+   * 获取AI配置
+   * @returns {Promise} AI配置
+   */
+  async getAIConfig() {
+    return get('/api/system-setting/ai/config');
+  },
+
+  /**
+   * 更新AI配置
+   * @param {object} aiConfig - AI配置
+   * @returns {Promise} 更新结果
+   */
+  async updateAIConfig(aiConfig) {
+    return put('/api/system-setting/ai/config', aiConfig);
+  },
+
+  /**
+   * 测试AI连接
+   * @param {object} aiConfig - AI配置
+   * @returns {Promise} 测试结果
+   */
+  async testAIConnection(aiConfig) {
+    return post('/api/system-setting/ai/test-connection', aiConfig);
+  },
+
+  /**
+   * 获取公开设置
+   * @param {string} category - 分类
+   * @returns {Promise} 公开设置列表
+   */
+  async getPublicSettings(category) {
+    return get(`/api/system-setting/public/${category}`);
+  },
+
+  /**
+   * 删除系统设置
+   * @param {number} settingId - 设置ID
+   * @returns {Promise} 删除结果
+   */
+  async deleteSetting(settingId) {
+    return del(`/api/system-setting/${settingId}`);
   },
 };
 
@@ -446,7 +551,7 @@ export const tagCloudApi = {
    * @returns {Promise} 标签列表
    */
   async getTags(params = {}) {
-    return get('http://localhost:8000/api/tag-cloud/tags', params);
+    return get('/api/tag-cloud/tags', params);
   },
 
   /**
@@ -455,7 +560,7 @@ export const tagCloudApi = {
    * @returns {Promise} 活跃标签列表
    */
   async getActiveTags(limit = 50) {
-    return get('http://localhost:8000/api/tag-cloud/tags/active', { limit });
+    return get('/api/tag-cloud/tags/active', { limit });
   },
 
   /**
@@ -464,7 +569,7 @@ export const tagCloudApi = {
    * @returns {Promise} 创建结果
    */
   async createTag(tagData) {
-    return post('http://localhost:8000/api/tag-cloud/tags', tagData);
+    return post('/api/tag-cloud/tags', tagData);
   },
 
   /**
@@ -474,7 +579,7 @@ export const tagCloudApi = {
    * @returns {Promise} 更新结果
    */
   async updateTag(tagId, tagData) {
-    return put(`http://localhost:8000/api/tag-cloud/tags/${tagId}`, tagData);
+    return put(`/api/tag-cloud/tags/${tagId}`, tagData);
   },
 
   /**
@@ -483,7 +588,7 @@ export const tagCloudApi = {
    * @returns {Promise} 删除结果
    */
   async deleteTag(tagId) {
-    return del(`http://localhost:8000/api/tag-cloud/tags/${tagId}`);
+    return del(`/api/tag-cloud/tags/${tagId}`);
   },
 
   /**
@@ -492,7 +597,7 @@ export const tagCloudApi = {
    * @returns {Promise} 切换结果
    */
   async toggleTagStatus(tagId) {
-    return patch(`http://localhost:8000/api/tag-cloud/tags/${tagId}/toggle`);
+    return patch(`/api/tag-cloud/tags/${tagId}/toggle`);
   },
 
   /**
@@ -500,7 +605,7 @@ export const tagCloudApi = {
    * @returns {Promise} 获取结果
    */
   async fetchTagsNow() {
-    return post('http://localhost:8000/api/tag-cloud/tags/fetch');
+    return post('/api/tag-cloud/tags/fetch');
   },
 
   /**
@@ -509,7 +614,7 @@ export const tagCloudApi = {
    * @returns {Promise} 获取历史
    */
   async getFetchHistory(limit = 30) {
-    return get('http://localhost:8000/api/tag-cloud/tags/fetch-history', { limit });
+    return get('/api/tag-cloud/tags/fetch-history', { limit });
   },
 
   /**
@@ -517,7 +622,7 @@ export const tagCloudApi = {
    * @returns {Promise} 统计信息
    */
   async getStats() {
-    return get('http://localhost:8000/api/tag-cloud/tags/stats');
+    return get('/api/tag-cloud/tags/stats');
   },
 
   /**
@@ -525,7 +630,7 @@ export const tagCloudApi = {
    * @returns {Promise} 调度时间信息
    */
   async getScheduleTime() {
-    return get('http://localhost:8000/api/tag-cloud/schedule/time');
+    return get('/api/tag-cloud/schedule/time');
   },
 
   /**
@@ -533,7 +638,7 @@ export const tagCloudApi = {
    * @returns {Promise} 调度配置信息
    */
   async getScheduleConfig() {
-    return get('http://localhost:8000/api/tag-cloud/schedule/config');
+    return get('/api/tag-cloud/schedule/config');
   },
 
   /**
@@ -542,7 +647,7 @@ export const tagCloudApi = {
    * @returns {Promise} 更新结果
    */
   async updateScheduleTime(time) {
-    return put('http://localhost:8000/api/tag-cloud/schedule/time', { time });
+    return put('/api/tag-cloud/schedule/time', { time });
   },
 
   /**
@@ -551,7 +656,7 @@ export const tagCloudApi = {
    * @returns {Promise} 更新结果
    */
   async updateScheduleConfig(config) {
-    return put('http://localhost:8000/api/tag-cloud/schedule/config', config);
+    return put('/api/tag-cloud/schedule/config', config);
   },
 
   /**
@@ -560,7 +665,7 @@ export const tagCloudApi = {
    * @returns {Promise} 更新结果
    */
   async updateSearchKeywords(keywords) {
-    return put('http://localhost:8000/api/tag-cloud/search/keywords', { keywords });
+    return put('/api/tag-cloud/search/keywords', { keywords });
   },
 
   /**
@@ -569,7 +674,7 @@ export const tagCloudApi = {
    * @returns {Promise} 任务启动结果
    */
   async fetchTagsByKeywords(keywords) {
-    return post('http://localhost:8000/api/tag-cloud/search/fetch', { keywords });
+    return post('/api/tag-cloud/search/fetch', { keywords });
   },
 };
 
