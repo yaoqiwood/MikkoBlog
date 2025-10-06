@@ -225,6 +225,16 @@ export const postApi = {
   async toggleVisibility(id) {
     return patch(getPostUrl('TOGGLE_VISIBILITY', id));
   },
+
+  /**
+   * 获取相关文章
+   * @param {string|number} id - 文章ID
+   * @param {object} params - 查询参数
+   * @returns {Promise} 相关文章列表
+   */
+  async getRelatedPosts(id, params = {}) {
+    return get(getPostUrl('RELATED', id), params);
+  },
 };
 
 /**

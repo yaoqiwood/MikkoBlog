@@ -1,6 +1,6 @@
 <template>
-  <div class="blog-detail" :style="{ '--bg-image': backgroundImageUrl }">
-    <!-- 头部导航 -->
+  <div class="blog-detail-page" :style="{ '--bg-image': backgroundImageUrl }">
+    <!-- 头部导航 - 与首页保持一致 -->
     <header class="blog-header">
       <div class="header-container">
         <div class="blog-title">
@@ -17,145 +17,89 @@
       </div>
     </header>
 
-    <!-- 主内容区域 -->
-    <div class="main-content">
-      <div class="content-container">
-        <!-- 左侧边栏 -->
-        <aside class="left-sidebar">
-          <!-- 用户信息卡片 -->
-          <div class="user-card">
-            <div class="profile-banner">
-              <img v-if="bannerImageUrl" :src="bannerImageUrl" alt="Profile Banner" />
-              <img
-                v-else
-                src="https://via.placeholder.com/300x120/ffb6c1/ffffff?text=Anime+Girl"
-                alt="Profile Banner"
-              />
-            </div>
-            <div class="profile-info">
-              <div v-if="profileLoading" class="profile-loading">
-                <div class="loading-spinner"></div>
-                <span>加载用户信息中...</span>
-              </div>
-              <div v-else>
-                <div class="avatar">
-                  <img :src="userProfile.avatar" :alt="userProfile.nickname" />
-                </div>
-                <div class="username">@{{ userProfile.nickname }}</div>
-                <div class="stats">
-                  <span class="stat-item">14 博客</span>
-                  <span class="stat-item">37 分享</span>
-                  <button class="share-btn">分享</button>
-                </div>
-                <div class="contact-info">
-                  <div v-if="userProfile.email" class="contact-item">
-                    <i class="contact-icon">✉️</i>
-                    <span>{{ userProfile.email }}</span>
-                  </div>
-                  <div v-if="userProfile.github_url" class="contact-item">
-                    <i class="contact-icon">🐙</i>
-                    <span>{{ userProfile.github_url }}</span>
-                  </div>
-                  <div v-if="userProfile.twitter_url" class="contact-item">
-                    <i class="contact-icon">🐦</i>
-                    <span>{{ userProfile.twitter_url }}</span>
-                  </div>
-                  <div v-if="userProfile.weibo_url" class="contact-item">
-                    <i class="contact-icon">🔴</i>
-                    <span>{{ userProfile.weibo_url }}</span>
-                  </div>
-                  <div v-if="userProfile.website_url" class="contact-item">
-                    <i class="contact-icon">🌐</i>
-                    <span>{{ userProfile.website_url }}</span>
-                  </div>
-                </div>
-                <div class="motto">
-                  <p>{{ userProfile.motto }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <!-- 主内容区 -->
-        <main class="main-area">
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+      <div class="content-layout">
+        <!-- 左侧内容区域 -->
+        <div class="content-wrapper">
           <!-- 返回按钮 -->
-          <div class="back-button">
-            <Button @click="goBack" type="primary" ghost>
+          <div class="back-section">
+            <Button @click="goBack" type="text" class="back-btn">
               <Icon type="ios-arrow-back" />
               返回首页
             </Button>
           </div>
 
-          <!-- 博文详情内容 -->
-          <div v-if="loading" class="loading-indicator">
+          <!-- 文章内容 -->
+          <article v-if="loading" class="loading-container">
             <div class="loading-spinner"></div>
             <span>加载中...</span>
-          </div>
+          </article>
 
-          <div v-else-if="error" class="error-message">
+          <article v-else-if="error" class="error-container">
             <div class="error-content">
-              <i class="error-icon">⚠️</i>
+              <Icon type="ios-warning" size="24" />
               <span>{{ error }}</span>
-              <button @click="loadBlogDetail" class="retry-btn">重新加载</button>
+              <Button @click="loadBlogDetail" type="primary" size="small">重新加载</Button>
             </div>
-          </div>
+          </article>
 
-          <article v-else-if="blogDetail" class="blog-detail-content">
-            <!-- 博文头部 -->
-            <header class="blog-header-info">
-              <h1 class="blog-title">{{ blogDetail.title }}</h1>
-              <div class="blog-meta">
-                <div class="author-info">
+          <article v-else-if="blogDetail" class="article-content">
+            <!-- 文章头部信息 -->
+            <header class="article-header">
+              <h1 class="article-title">{{ blogDetail.title }}</h1>
+              <div class="article-meta">
+                <div class="author-section">
                   <img
-                    :src="getFullUrl(blogDetail.author_avatar)"
-                    :alt="blogDetail.author_name"
+                    :src="getAuthorAvatar(blogDetail.user_avatar)"
+                    :alt="blogDetail.user_nickname"
                     class="author-avatar"
+                    @error="handleAvatarError"
                   />
-                  <div class="author-details">
-                    <div class="author-name">{{ blogDetail.author_name }}</div>
-                    <div class="publish-time">{{ formatTime(blogDetail.created_at) }}</div>
+                  <div class="author-info">
+                    <div class="author-name">{{ getAuthorName(blogDetail.user_nickname) }}</div>
+                    <div class="publish-info">
+                      <span class="publish-time">{{ formatTime(blogDetail.created_at) }}</span>
+                      <span class="read-time">阅读 {{ blogDetail.view_count || 0 }}</span>
+                    </div>
                   </div>
                 </div>
-                <div class="blog-stats">
-                  <div class="stat-item">
-                    <Icon type="ios-eye" />
-                    <span>{{ blogDetail.view_count || 0 }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <Icon type="ios-chatbubbles" />
-                    <span>{{ blogDetail.comment_count || 0 }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <Icon type="ios-heart" />
-                    <span>{{ blogDetail.like_count || 0 }}</span>
-                  </div>
-                  <div class="stat-item">
+                <div class="article-actions">
+                  <Button
+                    @click="likeBlog"
+                    :type="isLiked ? 'error' : 'default'"
+                    size="small"
+                    ghost
+                  >
+                    <Icon :type="isLiked ? 'ios-heart' : 'ios-heart-outline'" />
+                    {{ blogDetail.like_count || 0 }}
+                  </Button>
+                  <Button @click="shareBlog" type="primary" size="small" ghost>
                     <Icon type="ios-share" />
-                    <span>{{ blogDetail.share_count || 0 }}</span>
-                  </div>
+                    分享
+                  </Button>
                 </div>
               </div>
             </header>
 
-            <!-- 博文封面图 -->
-            <div v-if="blogDetail.cover_image_url" class="blog-cover">
+            <!-- 文章封面 -->
+            <div v-if="blogDetail.cover_image_url" class="article-cover">
               <img :src="getFullUrl(blogDetail.cover_image_url)" :alt="blogDetail.title" />
             </div>
 
-            <!-- 博文内容 -->
-            <div class="blog-body">
-              <div class="blog-content" v-html="blogDetail.content"></div>
+            <!-- 文章正文 -->
+            <div class="article-body">
+              <div class="article-text" v-html="parseMarkdown(blogDetail.content)"></div>
             </div>
 
-            <!-- 博文标签 -->
-            <div v-if="blogDetail.tags && blogDetail.tags.length > 0" class="blog-tags">
-              <h3>标签：</h3>
+            <!-- 文章标签 -->
+            <div v-if="blogDetail.tags && blogDetail.tags.length > 0" class="article-tags">
+              <span class="tags-label">标签：</span>
               <div class="tags-list">
                 <span
                   v-for="tag in blogDetail.tags"
                   :key="tag.id"
-                  class="tag"
+                  class="tag-item"
                   :style="{ backgroundColor: tag.color }"
                 >
                   {{ tag.name }}
@@ -163,74 +107,60 @@
               </div>
             </div>
 
-            <!-- 博文操作 -->
-            <div class="blog-actions">
-              <Button @click="likeBlog" :type="isLiked ? 'error' : 'default'" ghost>
-                <Icon :type="isLiked ? 'ios-heart' : 'ios-heart-outline'" />
-                {{ isLiked ? '已赞' : '点赞' }} ({{ blogDetail.like_count || 0 }})
-              </Button>
-              <Button @click="shareBlog" type="primary" ghost>
-                <Icon type="ios-share" />
-                分享
-              </Button>
-              <Button @click="collectBlog" :type="isCollected ? 'warning' : 'default'" ghost>
-                <Icon :type="isCollected ? 'ios-star' : 'ios-star-outline'" />
-                {{ isCollected ? '已收藏' : '收藏' }}
-              </Button>
-            </div>
+            <!-- 文章底部操作 -->
+            <footer class="article-footer">
+              <div class="footer-actions">
+                <Button @click="likeBlog" :type="isLiked ? 'error' : 'default'" size="large">
+                  <Icon :type="isLiked ? 'ios-heart' : 'ios-heart-outline'" />
+                  {{ isLiked ? '已赞' : '点赞' }} ({{ blogDetail.like_count || 0 }})
+                </Button>
+                <Button @click="shareBlog" type="primary" size="large">
+                  <Icon type="ios-share" />
+                  分享文章
+                </Button>
+                <Button
+                  @click="collectBlog"
+                  :type="isCollected ? 'warning' : 'default'"
+                  size="large"
+                >
+                  <Icon :type="isCollected ? 'ios-star' : 'ios-star-outline'" />
+                  {{ isCollected ? '已收藏' : '收藏' }}
+                </Button>
+              </div>
+            </footer>
           </article>
-        </main>
+        </div>
 
         <!-- 右侧边栏 -->
-        <aside class="right-sidebar">
-          <!-- 目录 -->
-          <div class="table-of-contents">
-            <h3>📋 目录</h3>
-            <div class="toc-content">
-              <div class="toc-item" v-for="(heading, index) in tableOfContents" :key="index">
-                <a :href="`#heading-${index}`" :class="`toc-level-${heading.level}`">
-                  {{ heading.text }}
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <!-- 相关推荐 -->
-          <div class="related-posts">
-            <h3>📚 相关推荐</h3>
+        <aside class="sidebar">
+          <div class="sidebar-content">
+            <h3 class="sidebar-title">相关博文</h3>
             <div v-if="relatedPostsLoading" class="related-loading">
               <div class="loading-spinner"></div>
               <span>加载中...</span>
             </div>
-            <div v-else-if="relatedPosts.length === 0" class="empty-related">
-              <p>暂无相关文章</p>
+            <div v-else-if="relatedPosts.length === 0" class="no-posts">
+              <div class="no-posts-content">
+                <Icon type="ios-book-outline" size="32" />
+                <p>博主很懒，还未更新博客</p>
+              </div>
             </div>
-            <div v-else class="related-list">
+            <div v-else class="related-posts">
               <div
                 v-for="post in relatedPosts"
                 :key="post.id"
-                class="related-item"
-                @click="viewRelatedPost(post.id)"
+                class="related-post-item"
+                @click="viewBlogDetail(post.id)"
               >
-                <img
-                  v-if="post.cover_image_url"
-                  :src="getFullUrl(post.cover_image_url)"
-                  :alt="post.title"
-                />
-                <div v-else class="default-cover">
-                  <span>{{ post.title.charAt(0) }}</span>
+                <div v-if="post.cover_image_url" class="post-cover">
+                  <img :src="getFullUrl(post.cover_image_url)" :alt="post.title" />
                 </div>
-                <div class="related-info">
-                  <h4 class="related-title">{{ post.title }}</h4>
-                  <div class="related-stats">
-                    <span class="stat-item">
-                      <Icon type="ios-eye" />
-                      {{ post.view_count || 0 }}
-                    </span>
-                    <span class="stat-item">
-                      <Icon type="ios-chatbubbles" />
-                      {{ post.comment_count || 0 }}
-                    </span>
+                <div class="post-info">
+                  <h4 class="post-title">{{ post.title }}</h4>
+                  <p v-if="post.summary" class="post-summary">{{ post.summary }}</p>
+                  <div class="post-meta">
+                    <span class="post-time">{{ formatTime(post.created_at) }}</span>
+                    <span class="post-views">{{ post.view_count || 0 }} 阅读</span>
                   </div>
                 </div>
               </div>
@@ -238,12 +168,13 @@
           </div>
         </aside>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <script setup>
 import { authApi, homepageApi, postApi } from '@/utils/apiService';
+import { marked } from 'marked';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -295,10 +226,6 @@ const backgroundImageUrl = computed(() => {
   return `url(${fullUrl})`;
 });
 
-const bannerImageUrl = computed(() => {
-  return getFullUrl(homepageSettings.value.banner_image_url);
-});
-
 // 工具方法
 const getFullUrl = url => {
   if (!url) return '';
@@ -306,6 +233,55 @@ const getFullUrl = url => {
     return `${window.location.origin}${url}`;
   }
   return url;
+};
+
+// 获取作者头像
+const getAuthorAvatar = avatarUrl => {
+  if (!avatarUrl) {
+    // 如果没有头像，尝试使用用户资料中的头像
+    const fallbackAvatar = userProfile.value.avatar;
+    if (fallbackAvatar) {
+      return getFullUrl(fallbackAvatar);
+    }
+    return 'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A';
+  }
+  return getFullUrl(avatarUrl);
+};
+
+// 获取作者名称
+const getAuthorName = nickname => {
+  if (!nickname) {
+    // 如果没有昵称，尝试使用用户资料中的昵称
+    const fallbackName = userProfile.value.nickname;
+    if (fallbackName) {
+      return fallbackName;
+    }
+    return '匿名用户';
+  }
+  return nickname;
+};
+
+// 处理头像加载错误
+const handleAvatarError = event => {
+  event.target.src = 'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A';
+};
+
+// 解析Markdown内容
+const parseMarkdown = content => {
+  if (!content) return '';
+
+  try {
+    // 配置marked选项
+    marked.setOptions({
+      breaks: true, // 支持换行
+      gfm: true, // 支持GitHub风格的Markdown
+    });
+
+    return marked(content);
+  } catch (error) {
+    console.error('Markdown解析失败:', error);
+    return content; // 如果解析失败，返回原始内容
+  }
 };
 
 const formatTime = dateString => {
@@ -354,16 +330,21 @@ const loadBlogDetail = async () => {
 const generateTableOfContents = () => {
   if (!blogDetail.value || !blogDetail.value.content) return;
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(blogDetail.value.content, 'text/html');
-  const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  try {
+    const parser = new window.DOMParser();
+    const doc = parser.parseFromString(blogDetail.value.content, 'text/html');
+    const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
 
-  tableOfContents.value = Array.from(headings).map((heading, index) => {
-    const level = parseInt(heading.tagName.charAt(1));
-    const text = heading.textContent.trim();
-    heading.id = `heading-${index}`;
-    return { level, text, index };
-  });
+    tableOfContents.value = Array.from(headings).map((heading, index) => {
+      const level = parseInt(heading.tagName.charAt(1));
+      const text = heading.textContent.trim();
+      heading.id = `heading-${index}`;
+      return { level, text, index };
+    });
+  } catch (error) {
+    console.warn('生成目录失败:', error);
+    tableOfContents.value = [];
+  }
 };
 
 // 加载相关文章
@@ -372,16 +353,11 @@ const loadRelatedPosts = async () => {
 
   relatedPostsLoading.value = true;
   try {
-    const posts = await postApi.getPosts({
-      limit: 5,
-      is_visible: true,
-      is_deleted: false,
-    });
-
-    // 过滤掉当前文章
-    relatedPosts.value = posts.filter(post => post.id !== blogDetail.value.id).slice(0, 4);
+    const posts = await postApi.getRelatedPosts(blogDetail.value.id, { limit: 5 });
+    relatedPosts.value = posts;
   } catch (err) {
     console.error('加载相关文章失败:', err);
+    relatedPosts.value = [];
   } finally {
     relatedPostsLoading.value = false;
   }
@@ -462,11 +438,6 @@ const collectBlog = () => {
   Message.success(isCollected.value ? '收藏成功' : '取消收藏');
 };
 
-// 查看相关文章
-const viewRelatedPost = postId => {
-  router.push(`/blog/${postId}`);
-};
-
 // 返回首页
 const goBack = () => {
   router.push('/');
@@ -491,7 +462,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.blog-detail {
+.blog-detail-page {
   min-height: 100vh;
   font-family: 'Microsoft YaHei', sans-serif;
   position: relative;
@@ -499,10 +470,11 @@ onMounted(() => {
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+  /* 使用CSS变量设置背景图，如果没有则使用默认渐变 */
   background-image: var(--bg-image, linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%));
 }
 
-/* 头部样式 */
+/* 头部样式 - 与首页保持一致 */
 .blog-header {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
@@ -556,6 +528,21 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
+.nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  transition: width 0.3s ease;
+}
+
+.nav-item:hover::after {
+  width: 100%;
+}
+
 .search-box {
   position: absolute;
   right: 20px;
@@ -571,503 +558,59 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-/* 主内容区域 */
+/* 主要内容区域 */
 .main-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px;
 }
 
-.content-container {
-  display: grid;
-  grid-template-columns: 280px 1fr 280px;
-  gap: 20px;
-  align-items: start;
-}
-
-/* 左侧边栏 */
-.left-sidebar {
+.content-layout {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  align-items: flex-start;
 }
 
-.user-card {
-  background: white;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.user-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-.profile-banner img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-}
-
-.profile-info {
-  padding: 20px;
-  text-align: center;
-}
-
-.avatar {
-  margin: -40px auto 15px;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 4px solid white;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.username {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.stats {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.stat-item {
-  font-size: 14px;
-  color: #666;
-}
-
-.share-btn {
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  color: white;
-  border: none;
-  padding: 5px 15px;
-  border-radius: 15px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.share-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-}
-
-.contact-info {
-  margin-bottom: 15px;
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #666;
-}
-
-.contact-icon {
-  font-size: 16px;
-}
-
-.motto p {
-  font-style: italic;
-  color: #888;
-  font-size: 14px;
-  margin: 0;
-}
-
-/* 主内容区 */
-.main-area {
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 30px;
-}
-
-.back-button {
-  margin-bottom: 20px;
-}
-
-/* 博文详情内容 */
-.blog-detail-content {
-  max-width: none;
-}
-
-.blog-header-info {
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #eee;
-}
-
-.blog-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20px;
-  line-height: 1.4;
-}
-
-.blog-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.author-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.author-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.author-name {
-  font-weight: bold;
-  color: #333;
-  font-size: 16px;
-}
-
-.publish-time {
-  color: #666;
-  font-size: 14px;
-}
-
-.blog-stats {
-  display: flex;
-  gap: 20px;
-}
-
-.blog-stats .stat-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #666;
-  font-size: 14px;
-}
-
-.blog-cover {
-  margin: 30px 0;
-  text-align: center;
-}
-
-.blog-cover img {
-  max-width: 100%;
-  max-height: 400px;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.blog-body {
-  margin: 30px 0;
-}
-
-.blog-content {
-  line-height: 1.8;
-  color: #333;
-  font-size: 16px;
-}
-
-.blog-content :deep(h1),
-.blog-content :deep(h2),
-.blog-content :deep(h3),
-.blog-content :deep(h4),
-.blog-content :deep(h5),
-.blog-content :deep(h6) {
-  margin: 30px 0 15px 0;
-  color: #333;
-  font-weight: bold;
-}
-
-.blog-content :deep(h1) {
-  font-size: 28px;
-}
-.blog-content :deep(h2) {
-  font-size: 24px;
-}
-.blog-content :deep(h3) {
-  font-size: 20px;
-}
-.blog-content :deep(h4) {
-  font-size: 18px;
-}
-.blog-content :deep(h5) {
-  font-size: 16px;
-}
-.blog-content :deep(h6) {
-  font-size: 14px;
-}
-
-.blog-content :deep(p) {
-  margin: 15px 0;
-}
-
-.blog-content :deep(img) {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin: 15px 0;
-}
-
-.blog-content :deep(blockquote) {
-  border-left: 4px solid #ff6b6b;
-  padding-left: 20px;
-  margin: 20px 0;
-  background: #f8f9fa;
-  padding: 15px 20px;
-  border-radius: 0 8px 8px 0;
-}
-
-.blog-content :deep(code) {
-  background: #f1f3f4;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-}
-
-.blog-content :deep(pre) {
-  background: #2d3748;
-  color: #e2e8f0;
-  padding: 20px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 20px 0;
-}
-
-.blog-content :deep(pre code) {
-  background: transparent;
-  padding: 0;
-  color: inherit;
-}
-
-.blog-tags {
-  margin: 30px 0;
-  padding: 20px 0;
-  border-top: 1px solid #eee;
-}
-
-.blog-tags h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.tags-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.tag {
-  padding: 6px 12px;
-  border-radius: 20px;
-  color: white;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.tag:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.blog-actions {
-  display: flex;
-  gap: 15px;
-  margin: 30px 0;
-  padding: 20px 0;
-  border-top: 1px solid #eee;
-}
-
-/* 右侧边栏 */
-.right-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.table-of-contents,
-.related-posts {
-  background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.table-of-contents h3,
-.related-posts h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.toc-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.toc-item a {
-  display: block;
-  padding: 8px 12px;
-  color: #666;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.toc-item a:hover {
-  background: rgba(255, 107, 107, 0.1);
-  color: #ff6b6b;
-}
-
-.toc-level-1 {
-  padding-left: 0;
-}
-.toc-level-2 {
-  padding-left: 16px;
-}
-.toc-level-3 {
-  padding-left: 32px;
-}
-.toc-level-4 {
-  padding-left: 48px;
-}
-.toc-level-5 {
-  padding-left: 64px;
-}
-.toc-level-6 {
-  padding-left: 80px;
-}
-
-.related-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.related-item {
-  display: flex;
-  gap: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.related-item:hover {
-  background: rgba(255, 107, 107, 0.05);
-  transform: translateX(5px);
-}
-
-.related-item img {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.default-cover {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.related-info {
+.content-wrapper {
   flex: 1;
-}
-
-.related-title {
-  font-size: 14px;
-  color: #333;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.related-stats {
-  display: flex;
-  gap: 10px;
+/* 返回按钮 */
+.back-section {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #f6f8fa;
 }
 
-.related-stats .stat-item {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  color: #999;
-  font-size: 12px;
-}
-
-.related-loading,
-.empty-related {
-  text-align: center;
-  padding: 20px;
-  color: #999;
-}
-
-.empty-related p {
-  margin: 0;
+.back-btn {
+  color: #586069;
   font-size: 14px;
+  padding: 0;
 }
 
-/* 加载状态 */
-.loading-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 60px 20px;
-  color: #666;
-  font-size: 16px;
+.back-btn:hover {
+  color: #0366d6;
+}
+
+/* 加载和错误状态 */
+.loading-container,
+.error-container {
+  padding: 60px 24px;
+  text-align: center;
 }
 
 .loading-spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid #f0f0f0;
-  border-top: 2px solid #ff6b6b;
+  border: 2px solid #e1e4e8;
+  border-top: 2px solid #0366d6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
 }
 
 @keyframes spin {
@@ -1079,114 +622,489 @@ onMounted(() => {
   }
 }
 
-/* 错误提示 */
-.error-message {
-  margin: 20px 0;
-}
-
 .error-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 15px 20px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  color: #dc2626;
-}
-
-.error-icon {
-  font-size: 18px;
-}
-
-.retry-btn {
-  background: #dc2626;
-  color: white;
-  border: none;
-  padding: 5px 15px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-}
-
-.retry-btn:hover {
-  background: #b91c1c;
-  transform: translateY(-1px);
-}
-
-/* 用户资料加载状态 */
-.profile-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  color: #666;
+  gap: 16px;
+  color: #d73a49;
 }
 
-.profile-loading .loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #f0f0f0;
-  border-top: 2px solid #ff6b6b;
+/* 文章内容 */
+.article-content {
+  padding: 0;
+}
+
+/* 文章头部 */
+.article-header {
+  padding: 32px 24px 24px;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.article-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #24292e;
+  line-height: 1.25;
+  margin: 0 0 16px 0;
+}
+
+.article-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.author-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.author-avatar {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
+  object-fit: cover;
+  border: 1px solid #e1e4e8;
 }
 
-.profile-loading span {
+.author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.author-name {
+  font-weight: 600;
+  color: #24292e;
   font-size: 14px;
-  color: #999;
+}
+
+.publish-info {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #586069;
+  margin-top: 2px;
+}
+
+.article-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 文章封面 */
+.article-cover {
+  margin: 0;
+}
+
+.article-cover img {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  display: block;
+}
+
+/* 文章正文 */
+.article-body {
+  padding: 24px;
+}
+
+.article-text {
+  line-height: 1.6;
+  color: #24292e;
+  font-size: 16px;
+}
+
+/* Markdown 内容样式 */
+.article-text :deep(h1),
+.article-text :deep(h2),
+.article-text :deep(h3),
+.article-text :deep(h4),
+.article-text :deep(h5),
+.article-text :deep(h6) {
+  margin: 24px 0 16px 0;
+  color: #24292e;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.article-text :deep(h1) {
+  font-size: 24px;
+}
+.article-text :deep(h2) {
+  font-size: 20px;
+}
+.article-text :deep(h3) {
+  font-size: 18px;
+}
+.article-text :deep(h4) {
+  font-size: 16px;
+}
+.article-text :deep(h5) {
+  font-size: 14px;
+}
+.article-text :deep(h6) {
+  font-size: 12px;
+}
+
+.article-text :deep(p) {
+  margin: 16px 0;
+}
+
+.article-text :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 16px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.article-text :deep(blockquote) {
+  border-left: 4px solid #0366d6;
+  padding: 0 16px;
+  margin: 16px 0;
+  background: #f6f8fa;
+  color: #586069;
+  font-style: italic;
+}
+
+.article-text :deep(code) {
+  background: #f6f8fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 85%;
+  color: #d73a49;
+}
+
+.article-text :deep(pre) {
+  background: #f6f8fa;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid #e1e4e8;
+}
+
+.article-text :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #24292e;
+}
+
+.article-text :deep(ul),
+.article-text :deep(ol) {
+  margin: 16px 0;
+  padding-left: 24px;
+}
+
+.article-text :deep(li) {
+  margin: 4px 0;
+}
+
+.article-text :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.article-text :deep(th),
+.article-text :deep(td) {
+  border: 1px solid #e1e4e8;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.article-text :deep(th) {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+/* 文章标签 */
+.article-tags {
+  padding: 16px 24px;
+  border-top: 1px solid #e1e4e8;
+  background: #f6f8fa;
+}
+
+.tags-label {
+  font-size: 14px;
+  color: #586069;
+  margin-right: 8px;
+}
+
+.tags-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-item {
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.tag-item:hover {
+  transform: translateY(-1px);
+}
+
+/* 文章底部操作 */
+.article-footer {
+  padding: 24px;
+  border-top: 1px solid #e1e4e8;
+  background: #f6f8fa;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* 右侧边栏 */
+.sidebar {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.sidebar-content {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  position: fixed;
+  top: 84px; /* 头部高度 + padding */
+  right: 100px; /* 减少与右侧边缘的距离 */
+  width: 300px;
+  max-height: calc(100vh - 84px - 48px); /* 视口高度 - 顶部 - 底部padding */
+  overflow-y: auto;
+}
+
+.sidebar-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #24292e;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f6f8fa;
+}
+
+/* 相关博文加载状态 */
+.related-loading {
+  text-align: center;
+  padding: 20px 0;
+  color: #586069;
+}
+
+.related-loading .loading-spinner {
+  width: 20px;
+  height: 20px;
+  margin: 0 auto 8px;
+}
+
+/* 无博文状态 */
+.no-posts {
+  text-align: center;
+  padding: 40px 20px;
+  color: #586069;
+}
+
+.no-posts-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.no-posts-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #8b949e;
+}
+
+/* 相关博文列表 */
+.related-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.related-post-item {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e1e4e8;
+}
+
+.related-post-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #0366d6;
+}
+
+.post-cover {
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+}
+
+.post-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.related-post-item:hover .post-cover img {
+  transform: scale(1.05);
+}
+
+.post-info {
+  padding: 12px;
+}
+
+.post-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #24292e;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.post-summary {
+  font-size: 12px;
+  color: #586069;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.post-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.post-time {
+  flex: 1;
+}
+
+.post-views {
+  color: #0366d6;
+  font-weight: 500;
 }
 
 /* 响应式设计 */
 @media (max-width: 1024px) {
-  .content-container {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .left-sidebar,
-  .right-sidebar {
-    order: 2;
-  }
-
-  .main-area {
-    order: 1;
+  .sidebar {
+    width: 280px;
   }
 }
 
 @media (max-width: 768px) {
-  .header-container {
+  .content-layout {
     flex-direction: column;
-    height: auto;
-    padding: 15px 20px;
+    gap: 12px;
   }
 
-  .main-nav {
-    margin: 10px 0;
+  .sidebar {
+    width: 100%;
+    order: -1; /* 在移动端将侧边栏放在顶部 */
   }
 
-  .content-container {
-    padding: 10px;
+  .sidebar-content {
+    position: static;
+    padding: 16px;
+    width: auto;
+    max-height: none;
+    right: auto;
+    top: auto;
   }
 
-  .main-area {
-    padding: 20px;
+  .main-content {
+    padding: 16px;
   }
 
-  .blog-title {
+  .article-header {
+    padding: 24px 16px 16px;
+  }
+
+  .article-title {
     font-size: 24px;
   }
 
-  .blog-meta {
+  .article-meta {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .blog-actions {
+  .article-body {
+    padding: 16px;
+  }
+
+  .article-text {
+    font-size: 15px;
+  }
+
+  .article-tags {
+    padding: 12px 16px;
+  }
+
+  .article-footer {
+    padding: 16px;
+  }
+
+  .footer-actions {
     flex-direction: column;
+  }
+
+  .related-posts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .related-post-item {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 12px;
+  }
+
+  .article-title {
+    font-size: 20px;
+  }
+
+  .article-body {
+    padding: 12px;
+  }
+
+  .article-text {
+    font-size: 14px;
   }
 }
 </style>

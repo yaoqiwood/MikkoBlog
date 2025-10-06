@@ -72,6 +72,7 @@ const API_CONFIG = {
       DELETE: '/posts/',
       DETAIL: '/posts/',
       TOGGLE_VISIBILITY: '/posts/',
+      RELATED: '/posts/',
     },
 
     // 评论管理
@@ -180,6 +181,8 @@ export function getPostUrl(action, id = null) {
     url += `${id}`;
   } else if (id && action.toUpperCase() === 'TOGGLE_VISIBILITY') {
     url += `${id}/toggle-visibility`;
+  } else if (id && action.toUpperCase() === 'RELATED') {
+    url += `${id}/related`;
   }
   return url;
 }

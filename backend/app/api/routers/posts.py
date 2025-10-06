@@ -163,3 +163,69 @@ def toggle_post_visibility(
     db.commit()
     db.refresh(post)
     return PostRead.model_validate(post)
+
+
+@router.get("/{post_id}/related", response_model=List[PostRead])
+def get_related_posts(
+    post_id: int,
+    limit: int = Query(5, ge=1, le=10, description="返回数量"),
+    db: Session = Depends(get_db)
+) -> List[PostRead]:
+    """
+    获取相关博文接口
+
+    返回除当前博文外的最近发布的博文列表
+
+    参数:
+        post_id (int): 当前博文ID
+        limit (int): 返回数量，默认5，最大10
+        db (Session): 数据库会话
+
+    返回:
+        List[PostRead]: 相关博文列表
+    """
+    # 构建查询，联表获取文章、用户资料和统计数据
+    statement = (
+        select(Post, UserProfile, PostStats)
+        .join(UserProfile, Post.user_id == UserProfile.user_id)
+        .outerjoin(PostStats, Post.id == PostStats.post_id)
+        .where(Post.is_deleted.is_(False))  # 只显示未删除的文章
+        .where(Post.is_visible.is_(True))  # 只显示可见的文章
+        .where(Post.id != post_id)  # 排除当前文章
+        .order_by(Post.created_at.desc())  # 按创建时间倒序
+        .limit(limit)
+    )
+
+    # 执行查询
+    results = db.exec(statement).all()
+
+    # 构建响应数据列表
+    result = []
+    for post, user_profile, post_stats in results:
+        # 组装包含文章、作者信息和统计数据的字典
+        post_dict = {
+            'id': post.id,
+            'title': post.title,
+            'content': post.content,
+            'summary': post.summary,
+            'cover_image_url': post.cover_image_url,
+            'is_published': post.is_published,
+            'is_deleted': post.is_deleted,
+            'is_visible': post.is_visible,
+            'user_id': post.user_id,
+            'created_at': post.created_at,
+            'updated_at': post.updated_at,
+            'user_nickname': user_profile.nickname,
+            'user_avatar': user_profile.avatar,
+            # 统计数据，如果不存在则默认为0
+            'view_count': post_stats.view_count if post_stats else 0,
+            'like_count': post_stats.like_count if post_stats else 0,
+            'share_count': post_stats.share_count if post_stats else 0,
+            'comment_count': post_stats.comment_count if post_stats else 0
+        }
+
+        # 校验并转换为响应模型
+        post_data = PostRead.model_validate(post_dict)
+        result.append(post_data)
+
+    return result
