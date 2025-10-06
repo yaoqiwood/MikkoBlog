@@ -11,10 +11,12 @@ import {
   getHealthUrl,
   getPostUrl,
   getProfileUrl,
+  getStatsUrl,
   getSystemUrl,
   getUploadUrl,
   getUserUrl,
 } from './apiConfig';
+import { authCookie } from './cookieUtils';
 import { del, get, patch, post, postForm, put } from './httpClient';
 
 /**
@@ -663,19 +665,37 @@ export const tagCloudApi = {
   /**
    * 更新搜索关键词（管理员）
    * @param {array|string} keywords - 搜索关键词数组或逗号分隔的字符串
+   * @param {string} promptTemplate - 提示词模板
    * @returns {Promise} 更新结果
    */
-  async updateSearchKeywords(keywords) {
-    return put('/api/tag-cloud/search/keywords', { keywords });
+  async updateSearchKeywords(keywords, promptTemplate) {
+    return put('/api/tag-cloud/search/keywords', { keywords, prompt_template: promptTemplate });
   },
 
   /**
    * 立即根据关键词获取标签（管理员）
    * @param {array|string} keywords - 搜索关键词数组或逗号分隔的字符串
+   * @param {string} promptTemplate - 提示词模板
    * @returns {Promise} 任务启动结果
    */
-  async fetchTagsByKeywords(keywords) {
-    return post('/api/tag-cloud/search/fetch', { keywords });
+  async fetchTagsByKeywords(keywords, promptTemplate) {
+    return post('/api/tag-cloud/search/fetch', { keywords, prompt_template: promptTemplate });
+  },
+  async fetchTagsByKeywordsStream(keywords, promptTemplate) {
+    return window.fetch('/api/tag-cloud/search/fetch/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authCookie.getAuth().token}`,
+      },
+      body: JSON.stringify({ keywords, prompt_template: promptTemplate }),
+    });
+  },
+  async applyTagsData(tags) {
+    return post('/api/tag-cloud/search/apply', { tags });
+  },
+  async reassignColors() {
+    return post('/api/tag-cloud/reassign-colors');
   },
 };
 
@@ -1030,6 +1050,19 @@ export const imageSearchApi = {
   },
 };
 
+/**
+ * 统计API
+ */
+export const statsApi = {
+  /**
+   * 获取系统总统计数据
+   * @returns {Promise} 统计数据
+   */
+  async getSummary() {
+    return get(getStatsUrl('SUMMARY'));
+  },
+};
+
 // 导出所有API
 export default {
   auth: authApi,
@@ -1045,4 +1078,5 @@ export default {
   mixedContent: mixedContentApi,
   attachment: attachmentApi,
   imageSearch: imageSearchApi,
+  stats: statsApi,
 };

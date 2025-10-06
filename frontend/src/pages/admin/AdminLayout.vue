@@ -136,7 +136,7 @@
         <div class="header-right">
           <div class="user-info">
             <Icon type="ios-person" />
-            <span>{{ userInfo.email || 'admin@example.com' }}</span>
+            <span>{{ displayUserInfo }}</span>
           </div>
           <Button type="error" icon="ios-log-out" @click="logout" class="logout-btn">
             退出登录
@@ -183,6 +183,7 @@
 </template>
 
 <script setup>
+import { authApi, profileApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
 import { Message } from 'view-ui-plus';
@@ -195,8 +196,26 @@ const sidebarCollapsed = ref(false);
 
 // 用户信息
 const userInfo = ref({
-  email: 'admin@example.com',
-  is_admin: true,
+  email: '',
+  username: '',
+  is_admin: false,
+});
+
+// 显示用户信息的计算属性
+const displayUserInfo = computed(() => {
+  // 优先显示昵称
+  if (userInfo.value.nickname && userInfo.value.nickname.trim()) {
+    return userInfo.value.nickname;
+  }
+  // 其次显示用户名
+  if (userInfo.value.username && userInfo.value.username.trim()) {
+    return userInfo.value.username;
+  }
+  // 最后显示邮箱
+  if (userInfo.value.email && userInfo.value.email.trim()) {
+    return userInfo.value.email;
+  }
+  return '用户';
 });
 
 // 标签页相关
@@ -398,7 +417,7 @@ async function logout() {
 }
 
 // 检查登录状态
-function checkAuth() {
+async function checkAuth() {
   const auth = authCookie.getAuth();
   if (!auth.token) {
     Message.warning('请先登录');
@@ -408,7 +427,32 @@ function checkAuth() {
 
   // 更新用户信息
   if (auth.userInfo) {
-    userInfo.value = auth.userInfo;
+    userInfo.value = { ...userInfo.value, ...auth.userInfo };
+  }
+
+  // 尝试获取更详细的用户信息
+  try {
+    // 先获取基本用户信息
+    const userData = await authApi.getMe();
+    if (userData) {
+      userInfo.value = {
+        ...userInfo.value,
+        ...userData,
+      };
+    }
+
+    // 再获取用户个人资料（包含昵称）
+    const profileData = await profileApi.getMyProfile();
+    if (profileData) {
+      userInfo.value = {
+        ...userInfo.value,
+        nickname: profileData.nickname,
+        username: profileData.nickname, // 使用昵称作为用户名显示
+      };
+    }
+  } catch (error) {
+    console.warn('获取用户详细信息失败:', error);
+    // 如果获取详细信息失败，使用cookie中的基本信息
   }
 
   return true;
@@ -427,9 +471,9 @@ watch(
   }
 );
 
-onMounted(() => {
+onMounted(async () => {
   // 检查登录状态
-  if (!checkAuth()) {
+  if (!(await checkAuth())) {
     return;
   }
 
@@ -683,6 +727,7 @@ onMounted(() => {
   background: white;
   border-bottom: 1px solid #e8eaec;
   padding: 0 1.5rem;
+  padding-left: 0px;
   position: relative;
 }
 

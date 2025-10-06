@@ -1,9 +1,9 @@
-import asyncio
 import aiohttp
+import ssl
+import json
 from datetime import datetime, date
 from typing import List, Dict, Optional, Tuple
-from sqlmodel import Session, select, func
-from app.db.session import get_session
+from sqlmodel import Session, select
 from app.models.tagCloud import (
     TagCloud, TagCloudCreate, TagCloudUpdate, TagCloudFetchHistory,
     TagSize, TagSource, FetchStatus
@@ -18,7 +18,79 @@ class TagCloudService:
     def __init__(self, session: Session):
         self.session = session
 
-    async def fetch_tags_from_ai(self, keywords: List[str] = None) -> List[Dict]:
+    async def fetch_tags_from_ai_stream(self, keywords: List[str] = None, prompt_template: str = None):
+        """从AI大模型获取标签（流式响应）"""
+        try:
+            ai_settings = await self.get_ai_settings()
+
+            if not ai_settings.get("enabled", False):
+                logger.warning("AI功能未启用")
+                return
+
+            if not ai_settings.get("api_key"):
+                logger.error("AI API密钥未配置")
+                return
+
+            keywords_text = ", ".join(keywords) if keywords else "技术,编程,开发"
+            if prompt_template:
+                prompt = prompt_template.replace("{keywords}", keywords_text)
+            else:
+                prompt = ai_settings["ai_prompt_template"].replace("{keywords}", keywords_text)
+
+            # 创建SSL上下文
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            # 准备请求数据
+            request_data = {
+                "model": ai_settings.get("model", "gpt-3.5-turbo"),
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": int(ai_settings.get("max_tokens", 1000)),
+                "temperature": float(ai_settings.get("temperature", 0.7)),
+                "stream": True  # 启用流式响应
+            }
+
+            headers = {
+                "Authorization": f"Bearer {ai_settings['api_key']}",
+                "Content-Type": "application/json"
+            }
+
+            base_url = ai_settings.get("base_url", "https://api.openai.com/v1")
+            url = f"{base_url}/chat/completions"
+
+            timeout = aiohttp.ClientTimeout(total=int(ai_settings.get("timeout", 30)))
+
+            async with aiohttp.ClientSession(timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+                async with session.post(url, json=request_data, headers=headers) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"AI API请求失败: {response.status} - {error_text}")
+                        return
+
+                    # 流式读取响应
+                    async for line in response.content:
+                        line = line.decode('utf-8').strip()
+                        if line.startswith('data: '):
+                            data = line[6:]  # 移除 'data: ' 前缀
+                            if data == '[DONE]':
+                                break
+                            try:
+                                chunk_data = json.loads(data)
+                                if 'choices' in chunk_data and len(chunk_data['choices']) > 0:
+                                    delta = chunk_data['choices'][0].get('delta', {})
+                                    content = delta.get('content', '')
+                                    if content:
+                                        yield content
+                            except json.JSONDecodeError:
+                                continue
+
+        except Exception as e:
+            logger.error(f"从AI获取标签失败: {e}")
+            return
+
+
+    async def fetch_tags_from_ai(self, keywords: List[str] = None, prompt_template: str = None) -> List[Dict]:
         """从AI大模型获取标签"""
         try:
             # 获取AI设置
@@ -29,7 +101,12 @@ class TagCloudService:
 
             # 构建提示词
             keywords_text = ", ".join(keywords) if keywords else "技术,编程,开发"
-            prompt = ai_settings["ai_prompt_template"].replace("{keywords}", keywords_text)
+
+            # 使用自定义提示词模板或默认模板
+            if prompt_template:
+                prompt = prompt_template.replace("{keywords}", keywords_text)
+            else:
+                prompt = ai_settings["ai_prompt_template"].replace("{keywords}", keywords_text)
 
             # 构建请求数据
             messages = [
@@ -108,6 +185,10 @@ class TagCloudService:
     async def get_ai_settings(self) -> Dict:
         """获取AI设置"""
         try:
+            from app.models.system_setting import SystemSetting
+            import json
+
+            # 首先从 SystemDefault 获取基础AI设置
             statement = select(SystemDefault).where(SystemDefault.category == "AISettings")
             settings = self.session.exec(statement).all()
 
@@ -115,6 +196,32 @@ class TagCloudService:
             for setting in settings:
                 ai_settings[setting.key_name] = setting.key_value
 
+            # 然后从 SystemSetting 获取AI配置（优先级更高）
+            try:
+                # 获取所有AI相关的系统设置
+                statement = select(SystemSetting).where(SystemSetting.category == "ai")
+                ai_system_settings = self.session.exec(statement).all()
+
+                for setting in ai_system_settings:
+                    if setting.key_name == "search_keywords" and setting.key_value:
+                        try:
+                            # 搜索关键词需要JSON解析
+                            search_keywords = json.loads(setting.key_value)
+                            ai_settings["search_keywords"] = search_keywords
+                        except json.JSONDecodeError:
+                            logger.warning("搜索关键词JSON解析失败")
+                    else:
+                        # 其他设置直接使用key_value
+                        ai_settings[setting.key_name] = setting.key_value
+
+            except Exception as e:
+                logger.warning(f"从SystemSetting获取设置失败: {e}")
+
+            # 确保有默认的提示词模板
+            if "ai_prompt_template" not in ai_settings:
+                ai_settings["ai_prompt_template"] = '请生成20个与"{keywords}"相关的热门技术标签，以JSON格式返回，格式为：[{"name": "标签名", "category": "分类", "count": 数量}]'
+
+            logger.info(f"获取到的AI设置: {ai_settings}")
             return ai_settings
         except Exception as e:
             logger.error(f"获取AI设置失败: {e}")
@@ -130,18 +237,37 @@ class TagCloudService:
             return "small"
 
     def get_color_by_category(self, category: str) -> str:
-        """根据分类确定标签颜色"""
-        color_map = {
-            "programming": "#ff6b6b",
-            "ai_generated": "#4ecdc4",
-            "web": "#45b7d1",
-            "mobile": "#96ceb4",
-            "data": "#feca57",
-            "cloud": "#ff9ff3",
-            "security": "#ff6348",
-            "devops": "#5f27cd"
-        }
-        return color_map.get(category, "#95a5a6")
+        """根据分类确定标签颜色，使用美观的随机颜色"""
+        import random
+
+        # 美观的颜色调色板 - 使用现代、协调的颜色
+        beautiful_colors = [
+            # 蓝色系
+            "#3498db", "#2980b9", "#5dade2", "#85c1e9",
+            # 绿色系
+            "#27ae60", "#2ecc71", "#58d68d", "#82e0aa",
+            # 紫色系
+            "#8e44ad", "#9b59b6", "#bb8fce", "#d2b4de",
+            # 橙色系
+            "#e67e22", "#f39c12", "#f7dc6f", "#f9e79f",
+            # 红色系
+            "#e74c3c", "#ec7063", "#f1948a", "#f5b7b1",
+            # 青色系
+            "#1abc9c", "#48c9b0", "#7fb3d3", "#aed6f1",
+            # 粉色系
+            "#e91e63", "#f06292", "#f8bbd9", "#fce4ec",
+            # 深色系
+            "#34495e", "#5d6d7e", "#85929e", "#b2babb",
+            # 暖色系
+            "#d35400", "#e67e22", "#f39c12", "#f1c40f",
+            # 冷色系
+            "#16a085", "#27ae60", "#2ecc71", "#58d68d"
+        ]
+
+        # 基于分类名称生成一致的随机颜色
+        # 使用分类名称的哈希值来确保相同分类总是得到相同颜色
+        category_hash = hash(category) % len(beautiful_colors)
+        return beautiful_colors[category_hash]
 
     async def fetch_trending_tags_from_github(self) -> List[Dict]:
         """从GitHub获取热门标签"""
@@ -288,17 +414,37 @@ class TagCloudService:
             return TagSize.SMALL
 
     def determine_tag_color(self, category: str) -> str:
-        """根据分类确定标签颜色"""
-        color_map = {
-            "frontend": "#4fc08d",
-            "backend": "#3776ab",
-            "database": "#4479a1",
-            "devops": "#2496ed",
-            "programming": "#f7df1e",
-            "tools": "#f05032",
-            "general": "#ff6b6b"
-        }
-        return color_map.get(category, "#ff6b6b")
+        """根据分类确定标签颜色，使用美观的随机颜色"""
+        import random
+
+        # 美观的颜色调色板 - 使用现代、协调的颜色
+        beautiful_colors = [
+            # 蓝色系
+            "#3498db", "#2980b9", "#5dade2", "#85c1e9",
+            # 绿色系
+            "#27ae60", "#2ecc71", "#58d68d", "#82e0aa",
+            # 紫色系
+            "#8e44ad", "#9b59b6", "#bb8fce", "#d2b4de",
+            # 橙色系
+            "#e67e22", "#f39c12", "#f7dc6f", "#f9e79f",
+            # 红色系
+            "#e74c3c", "#ec7063", "#f1948a", "#f5b7b1",
+            # 青色系
+            "#1abc9c", "#48c9b0", "#7fb3d3", "#aed6f1",
+            # 粉色系
+            "#e91e63", "#f06292", "#f8bbd9", "#fce4ec",
+            # 深色系
+            "#34495e", "#5d6d7e", "#85929e", "#b2babb",
+            # 暖色系
+            "#d35400", "#e67e22", "#f39c12", "#f1c40f",
+            # 冷色系
+            "#16a085", "#27ae60", "#2ecc71", "#58d68d"
+        ]
+
+        # 基于分类名称生成一致的随机颜色
+        # 使用分类名称的哈希值来确保相同分类总是得到相同颜色
+        category_hash = hash(category) % len(beautiful_colors)
+        return beautiful_colors[category_hash]
 
     async def update_tag_cloud(self, tags: List[Dict], source: str, clear_existing: bool = False) -> Tuple[int, int]:
         """更新标签云数据"""
@@ -415,7 +561,7 @@ class TagCloudService:
             "error_message": error_message
         }
 
-    async def fetch_tags_by_keywords(self, keywords):
+    async def fetch_tags_by_keywords(self, keywords, prompt_template=None):
         """根据关键词获取标签"""
         logger.info(f"Fetching tags by keywords: {keywords}")
 
@@ -428,7 +574,7 @@ class TagCloudService:
 
         try:
             # 使用AI根据关键词生成标签
-            result = await self.fetch_tags_from_ai(keywords)
+            result = await self.fetch_tags_from_ai(keywords, prompt_template)
 
             if result:
                 tags_count = len(result)
@@ -652,3 +798,24 @@ class TagCloudService:
             self.session.refresh(tag)
 
         return tag
+
+    async def clear_all_tags(self):
+        """清空所有标签数据"""
+        try:
+            logger.info("开始清空所有标签数据...")
+
+            # 删除所有标签
+            from sqlmodel import delete
+            delete_stmt = delete(TagCloud)
+            self.session.exec(delete_stmt)
+
+            # 提交事务
+            self.session.commit()
+
+            logger.info("所有标签数据已清空")
+            return True
+
+        except Exception as e:
+            logger.error(f"清空标签数据失败: {e}")
+            self.session.rollback()
+            return False

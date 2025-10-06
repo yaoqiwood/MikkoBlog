@@ -200,7 +200,7 @@
                   <div class="post-content">
                     <!-- 博客文章内容 -->
                     <template v-if="item.type === 'blog'">
-                      <h3 class="post-title">{{ item.title }}</h3>
+                      <h3 class="post-title" @click="viewBlogDetail(item.id)">{{ item.title }}</h3>
                       <p>{{ item.content }}</p>
                       <div v-if="item.image" class="post-image">
                         <img :src="item.image" :alt="item.title" />
@@ -490,8 +490,10 @@ import {
 } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 // 响应式数据
+const router = useRouter();
 const showFullscreenTip = ref(false);
 const blogPosts = ref([]);
 const moments = ref([]);
@@ -1006,6 +1008,11 @@ const viewColumnDetail = column => {
   // 这里可以跳转到专栏详情页面或者展开专栏文章列表
   Message.info(`查看专栏: ${column.name}`);
   // 未来可以实现专栏详情页面
+};
+
+// 查看博文详情
+const viewBlogDetail = blogId => {
+  router.push(`/blog/${blogId}`);
 };
 
 // 获取完整图片URL
@@ -1821,6 +1828,13 @@ onUnmounted(() => {
   color: #333;
   margin: 0 0 10px 0;
   line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.post-title:hover {
+  color: #ff6b6b;
+  transform: translateX(5px);
 }
 
 /* 没有更多数据提示 */

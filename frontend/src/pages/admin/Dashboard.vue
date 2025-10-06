@@ -2,7 +2,7 @@
   <div class="dashboard">
     <div class="dashboard-header">
       <h1 class="dashboard-title">仪表盘</h1>
-      <p class="dashboard-subtitle">欢迎回来，{{ userInfo.email || 'admin@example.com' }}</p>
+      <p class="dashboard-subtitle">欢迎回来，{{ displayUserInfo }}</p>
     </div>
 
     <!-- 统计卡片 -->
@@ -98,16 +98,76 @@
 </template>
 
 <script setup>
+import { authApi, profileApi, statsApi } from '@/utils/apiService';
+import { authCookie } from '@/utils/cookieUtils';
 import { Message } from 'view-ui-plus';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
 // 用户信息
 const userInfo = ref({
-  email: 'admin@example.com',
+  email: '',
+  username: '',
+  nickname: '',
+  is_admin: false,
 });
+
+// 显示用户信息的计算属性
+const displayUserInfo = computed(() => {
+  // 优先显示昵称
+  if (userInfo.value.nickname && userInfo.value.nickname.trim()) {
+    return userInfo.value.nickname;
+  }
+  // 其次显示用户名
+  if (userInfo.value.username && userInfo.value.username.trim()) {
+    return userInfo.value.username;
+  }
+  // 最后显示邮箱
+  if (userInfo.value.email && userInfo.value.email.trim()) {
+    return userInfo.value.email;
+  }
+  return '用户';
+});
+
+// 获取用户信息
+async function loadUserInfo() {
+  const auth = authCookie.getAuth();
+  if (!auth.token) {
+    return;
+  }
+
+  // 更新用户信息
+  if (auth.userInfo) {
+    userInfo.value = { ...userInfo.value, ...auth.userInfo };
+  }
+
+  // 尝试获取更详细的用户信息
+  try {
+    // 先获取基本用户信息
+    const userData = await authApi.getMe();
+    if (userData) {
+      userInfo.value = {
+        ...userInfo.value,
+        ...userData,
+      };
+    }
+
+    // 再获取用户个人资料（包含昵称）
+    const profileData = await profileApi.getMyProfile();
+    if (profileData) {
+      userInfo.value = {
+        ...userInfo.value,
+        nickname: profileData.nickname,
+        username: profileData.nickname, // 使用昵称作为用户名显示
+      };
+    }
+  } catch (error) {
+    console.warn('获取用户详细信息失败:', error);
+    // 如果获取详细信息失败，使用cookie中的基本信息
+  }
+}
 
 // 统计数据
 const stats = ref({
@@ -169,21 +229,31 @@ function goToTest() {
 // 加载统计数据
 async function loadStats() {
   try {
-    // 这里可以调用API获取真实数据
-    // 现在使用模拟数据
-    stats.value = {
-      users: 156,
-      posts: 89,
-      views: 1234,
-      activeUsers: 23,
-    };
+    // 调用真实的统计API
+    const statsData = await statsApi.getSummary();
+    if (statsData) {
+      stats.value = {
+        users: statsData.users || 0,
+        posts: statsData.posts || 0,
+        views: statsData.views || 0,
+        activeUsers: statsData.active_users || 0,
+      };
+    }
   } catch (error) {
     console.error('加载统计数据失败:', error);
     Message.error('加载统计数据失败');
+    // 如果API调用失败，使用默认值
+    stats.value = {
+      users: 0,
+      posts: 0,
+      views: 0,
+      activeUsers: 0,
+    };
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadUserInfo();
   loadStats();
 });
 </script>

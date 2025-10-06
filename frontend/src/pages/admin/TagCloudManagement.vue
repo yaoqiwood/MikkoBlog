@@ -19,6 +19,10 @@
           <Icon type="ios-search" />
           搜索设置
         </Button>
+        <Button type="warning" @click="reassignColors" :loading="reassigningColors">
+          <Icon type="ios-color-palette" />
+          重新分配颜色
+        </Button>
       </div>
     </div>
 
@@ -85,6 +89,8 @@
         :pagination="pagination"
         @on-page-change="handlePageChange"
         @on-page-size-change="handlePageSizeChange"
+        border
+        stripe
       >
         <template #size="{ row }">
           <Tag :color="getSizeColor(row.size)">{{ getSizeText(row.size) }}</Tag>
@@ -115,6 +121,21 @@
           </div>
         </template>
       </Table>
+
+      <!-- 手动分页器 -->
+      <div class="pagination-wrapper" style="margin-top: 16px; text-align: right">
+        <Page
+          :current="pagination.current"
+          :total="pagination.total"
+          :page-size="pagination.pageSize"
+          :page-size-opts="pagination.pageSizeOpts"
+          :show-total="pagination.showTotal"
+          :show-sizer="pagination.showSizer"
+          :show-elevator="pagination.showElevator"
+          @on-change="handlePageChange"
+          @on-page-size-change="handlePageSizeChange"
+        />
+      </div>
     </Card>
 
     <!-- 创建/编辑标签弹窗 -->
@@ -239,8 +260,8 @@
     </Modal>
 
     <!-- 搜索设置弹窗 -->
-    <Modal v-model="showSearchModal" title="搜索设置" width="600">
-      <Form ref="searchForm" :model="searchForm" :rules="searchRules" :label-width="120">
+    <Modal v-model="showSearchModal" title="搜索设置" width="800">
+      <Form ref="searchFormRef" :model="searchForm" :rules="searchRules" :label-width="120">
         <FormItem label="当前搜索关键词">
           <div class="current-keywords">
             <Icon type="ios-search" />
@@ -250,7 +271,7 @@
 
         <FormItem label="搜索关键词" prop="keywords">
           <Input
-            v-model="searchKeywords"
+            v-model="searchForm.keywords"
             type="textarea"
             :rows="4"
             placeholder="请输入搜索关键词，多个关键词用逗号分隔&#10;例如：AI，大模型，机器学习，深度学习，神经网络"
@@ -263,6 +284,20 @@
               >支持多个关键词，用中文逗号（，）或英文逗号（,）分隔。系统将从GitHub、Stack
               Overflow等平台搜索相关标签</span
             >
+          </div>
+        </FormItem>
+
+        <FormItem label="提示词模板" prop="prompt_template">
+          <Input
+            v-model="searchForm.prompt_template"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入提示词模板"
+            style="width: 100%"
+          />
+          <div class="search-help">
+            <Icon type="ios-information-circle" />
+            <span>使用{keywords}作为关键词占位符，AI将生成JSON格式的标签数据</span>
           </div>
         </FormItem>
 
@@ -286,8 +321,86 @@
         <Button type="primary" @click="updateSearchKeywords" :loading="searchUpdating">
           更新关键词
         </Button>
-        <Button type="success" @click="fetchTagsByKeywords" :loading="searchFetching">
+        <Button type="success" @click="fetchTagsByKeywordsStream" :loading="searchFetching">
           立即搜索
+        </Button>
+      </template>
+    </Modal>
+
+    <!-- AI响应显示弹窗 -->
+    <Modal v-model="showAIResponseModal" title="AI响应" width="900" :closable="false">
+      <div class="ai-response-container">
+        <!-- 状态显示 -->
+        <div class="response-status">
+          <Icon
+            :type="getStatusIcon(aiResponseStatus)"
+            :color="getAIStatusColor(aiResponseStatus)"
+          />
+          <span class="status-text">{{ aiResponseStatusText }}</span>
+        </div>
+
+        <!-- AI响应内容 -->
+        <div class="ai-response-content">
+          <div class="response-label">AI响应内容：</div>
+          <div class="response-text" ref="responseTextRef">{{ aiResponseContent }}</div>
+        </div>
+
+        <!-- 解析结果 -->
+        <div v-if="parsedTags.length > 0" class="parsed-tags">
+          <div class="response-label">解析结果（{{ parsedTags.length }}个标签）：</div>
+          <div class="tags-preview">
+            <Tag
+              v-for="(tag, index) in parsedTags.slice(0, 20)"
+              :key="index"
+              :color="getTagColor(tag.category)"
+              class="preview-tag"
+            >
+              {{ tag.name }}
+            </Tag>
+            <div v-if="parsedTags.length > 20" class="more-tags">
+              还有 {{ parsedTags.length - 20 }} 个标签...
+            </div>
+          </div>
+        </div>
+
+        <!-- 错误信息 -->
+        <div v-if="aiResponseError" class="error-message">
+          <Icon type="ios-close-circle" color="#ed4014" />
+          <span>{{ aiResponseError }}</span>
+        </div>
+
+        <!-- 调试信息 -->
+        <div
+          class="debug-info"
+          style="
+            margin-top: 10px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 12px;
+          "
+        >
+          <div>调试信息：</div>
+          <div>parsedTags.length: {{ parsedTags.length }}</div>
+          <div>aiResponseError: "{{ aiResponseError }}"</div>
+          <div>!!aiResponseError: {{ !!aiResponseError }}</div>
+          <div>isConfirmButtonDisabled: {{ isConfirmButtonDisabled }}</div>
+          <div>
+            按钮禁用条件: {{ parsedTags.length === 0 || !!aiResponseError ? 'true' : 'false' }}
+          </div>
+          <div>按钮实际状态: {{ isConfirmButtonDisabled ? '禁用' : '启用' }}</div>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button @click="cancelAIResponse" :disabled="searchFetching">取消</Button>
+        <Button
+          type="success"
+          @click="applyTagsData"
+          :loading="applyingTags"
+          :disabled="isConfirmButtonDisabled"
+        >
+          确认应用 ({{ parsedTags.length }}个标签)
         </Button>
       </template>
     </Modal>
@@ -297,7 +410,7 @@
 <script>
 import { tagCloudApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
-import { nextTick, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 
 export default {
   name: 'TagCloudManagement',
@@ -336,6 +449,10 @@ export default {
       current: 1,
       pageSize: 10,
       total: 0,
+      pageSizeOpts: [10, 20, 50, 100],
+      showTotal: true,
+      showSizer: true,
+      showElevator: true,
     });
 
     // 表单数据
@@ -380,12 +497,15 @@ export default {
     // 搜索相关数据
     const searchUpdating = ref(false);
     const searchFetching = ref(false);
-    const searchKeywords = ref('');
+    const searchFormRef = ref(null);
     const searchForm = ref({
       keywords: '',
+      prompt_template:
+        '请生成20个与"{keywords}"相关的热门技术标签，以JSON格式返回，格式为：[{"name": "标签名", "category": "分类", "count": 数量}]',
     });
     const searchRules = {
       keywords: [{ required: true, message: '请输入搜索关键词', trigger: 'blur' }],
+      prompt_template: [{ required: true, message: '请输入提示词模板', trigger: 'change' }],
     };
     const keywordExamples = ref([
       'AI',
@@ -404,6 +524,32 @@ export default {
       'DevOps',
       '云计算',
     ]);
+
+    // AI响应相关数据
+    const showAIResponseModal = ref(false);
+    const aiResponseContent = ref('');
+    const aiResponseStatus = ref('idle'); // idle, loading, success, error
+    const aiResponseStatusText = ref('');
+    const aiResponseError = ref('');
+    const parsedTags = ref([]);
+    const applyingTags = ref(false);
+    const responseTextRef = ref(null);
+    const reassigningColors = ref(false);
+
+    // 计算属性：按钮是否应该被禁用
+    const isConfirmButtonDisabled = computed(() => {
+      const hasError = !!aiResponseError.value;
+      const hasNoTags = parsedTags.value.length === 0;
+      const result = hasNoTags || hasError;
+      console.log('按钮禁用计算:', {
+        hasNoTags,
+        hasError,
+        result,
+        tagsLength: parsedTags.value.length,
+        error: aiResponseError.value,
+      });
+      return result;
+    });
 
     // 表格列定义
     const tableColumns = [
@@ -438,17 +584,17 @@ export default {
       loading.value = true;
       try {
         const params = {
-          limit: pagination.pageSize,
           page: pagination.current,
+          page_size: pagination.pageSize,
         };
 
         if (filters.category) params.category = filters.category;
-        if (filters.is_active !== '') params.is_active = filters.is_active === 'true';
+        if (filters.is_active !== '') params.isActive = filters.is_active === 'true';
         if (filters.source) params.source = filters.source;
 
         const response = await tagCloudApi.getTags(params);
-        tags.value = response.items || response;
-        pagination.total = response.total || response.length;
+        tags.value = response.items || [];
+        pagination.total = response.total || 0;
       } catch (error) {
         console.error('加载标签失败:', error);
         Message.error('加载标签失败');
@@ -485,22 +631,103 @@ export default {
     const fetchTagsNow = async () => {
       fetching.value = true;
       try {
-        await tagCloudApi.fetchTagsNow();
-        Message.success('标签获取任务已启动');
-        // 延迟刷新数据
-        window.setTimeout(() => {
-          loadTags();
-          loadStats();
-        }, 2000);
-      } catch (error) {
-        console.error('启动获取任务失败:', error);
-        if (error.response?.status === 401) {
-          Message.error('请先登录管理员账户');
-        } else if (error.response?.status === 403) {
-          Message.error('权限不足，需要管理员权限');
-        } else {
-          Message.error('启动获取任务失败: ' + (error.message || '未知错误'));
+        // 获取当前的搜索关键词和提示词模板
+        const keywords = scheduleInfo.value.search_keywords || [];
+        const promptTemplate =
+          scheduleInfo.value.prompt_template ||
+          '请生成20个与"{keywords}"相关的热门技术标签，以JSON格式返回，格式为：[{"name": "标签名", "category": "分类", "count": 数量}]';
+
+        if (keywords.length === 0) {
+          Message.error('请先在搜索设置中配置搜索关键词');
+          return;
         }
+
+        // 重置AI响应数据
+        aiResponseContent.value = '';
+        aiResponseStatus.value = 'loading';
+        aiResponseStatusText.value = '正在连接AI服务器...';
+        aiResponseError.value = '';
+        parsedTags.value = [];
+
+        // 显示AI响应弹窗
+        showAIResponseModal.value = true;
+
+        // 等待DOM更新
+        await nextTick();
+
+        // 发起流式请求
+        const response = await tagCloudApi.fetchTagsByKeywordsStream(keywords, promptTemplate);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new window.TextDecoder();
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+
+                  switch (data.type) {
+                    case 'start':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'ai_request':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'ai_response':
+                      aiResponseContent.value += data.content;
+                      // 自动滚动到底部
+                      await nextTick();
+                      if (responseTextRef.value) {
+                        responseTextRef.value.scrollTop = responseTextRef.value.scrollHeight;
+                      }
+                      break;
+                    case 'parse_start':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'parse_success':
+                      aiResponseStatus.value = 'success';
+                      aiResponseStatusText.value = data.message;
+                      parsedTags.value = data.data;
+                      aiResponseError.value = ''; // 清空错误信息
+                      break;
+                    case 'parse_error':
+                      aiResponseStatus.value = 'error';
+                      aiResponseError.value = data.message;
+                      break;
+                    case 'complete':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'error':
+                      aiResponseStatus.value = 'error';
+                      aiResponseError.value = data.message;
+                      break;
+                  }
+                } catch (e) {
+                  console.warn('解析流数据失败:', e);
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      } catch (error) {
+        console.error('流式获取标签失败:', error);
+        aiResponseStatus.value = 'error';
+        aiResponseError.value = `获取失败: ${error.message}`;
+        Message.error('获取标签失败');
       } finally {
         fetching.value = false;
       }
@@ -617,6 +844,14 @@ export default {
         scheduleForm.value.frequency = response.frequency || 'daily';
         scheduleForm.value.time = response.time || '';
         scheduleForm.value.day = response.day || 'monday';
+
+        // 初始化搜索表单数据
+        if (response.search_keywords) {
+          searchForm.value.keywords = response.search_keywords.join('，');
+        }
+        if (response.prompt_template) {
+          searchForm.value.prompt_template = response.prompt_template;
+        }
       } catch (error) {
         console.error('加载调度信息失败:', error);
         Message.error('加载调度信息失败');
@@ -717,12 +952,12 @@ export default {
       try {
         searchUpdating.value = true;
 
-        if (!searchKeywords.value.trim()) {
+        if (!searchForm.value.keywords.trim()) {
           Message.error('请输入搜索关键词');
           return;
         }
 
-        const keywords = parseKeywords(searchKeywords.value);
+        const keywords = parseKeywords(searchForm.value.keywords);
 
         if (keywords.length === 0) {
           Message.error('请输入有效的搜索关键词');
@@ -734,8 +969,8 @@ export default {
           return;
         }
 
-        await tagCloudApi.updateSearchKeywords(keywords);
-        Message.success('搜索关键词更新成功');
+        await tagCloudApi.updateSearchKeywords(keywords, searchForm.value.prompt_template);
+        Message.success('搜索关键词和提示词模板更新成功');
 
         // 重新加载调度信息
         await loadScheduleInfo();
@@ -752,19 +987,19 @@ export default {
       try {
         searchFetching.value = true;
 
-        if (!searchKeywords.value.trim()) {
+        if (!searchForm.value.keywords.trim()) {
           Message.error('请输入搜索关键词');
           return;
         }
 
-        const keywords = parseKeywords(searchKeywords.value);
+        const keywords = parseKeywords(searchForm.value.keywords);
 
         if (keywords.length === 0) {
           Message.error('请输入有效的搜索关键词');
           return;
         }
 
-        await tagCloudApi.fetchTagsByKeywords(keywords);
+        await tagCloudApi.fetchTagsByKeywords(keywords, searchForm.value.prompt_template);
         Message.success('关键词搜索任务已启动，请稍后查看结果');
 
         // 延迟刷新数据
@@ -782,6 +1017,117 @@ export default {
       }
     };
 
+    const fetchTagsByKeywordsStream = async () => {
+      try {
+        searchFetching.value = true;
+
+        if (!searchForm.value.keywords.trim()) {
+          Message.error('请输入搜索关键词');
+          return;
+        }
+
+        const keywords = parseKeywords(searchForm.value.keywords);
+
+        if (keywords.length === 0) {
+          Message.error('请输入有效的搜索关键词');
+          return;
+        }
+
+        // 重置AI响应数据
+        aiResponseContent.value = '';
+        aiResponseStatus.value = 'loading';
+        aiResponseStatusText.value = '正在连接AI服务器...';
+        aiResponseError.value = '';
+        parsedTags.value = [];
+
+        // 显示AI响应弹窗
+        showAIResponseModal.value = true;
+        showSearchModal.value = false;
+
+        // 等待DOM更新
+        await nextTick();
+
+        // 发起流式请求
+        const response = await tagCloudApi.fetchTagsByKeywordsStream(
+          keywords,
+          searchForm.value.prompt_template
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new window.TextDecoder();
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+
+                  switch (data.type) {
+                    case 'start':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'ai_request':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'ai_response':
+                      aiResponseContent.value += data.content;
+                      // 自动滚动到底部
+                      await nextTick();
+                      if (responseTextRef.value) {
+                        responseTextRef.value.scrollTop = responseTextRef.value.scrollHeight;
+                      }
+                      break;
+                    case 'parse_start':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'parse_success':
+                      aiResponseStatus.value = 'success';
+                      aiResponseStatusText.value = data.message;
+                      parsedTags.value = data.data;
+                      aiResponseError.value = ''; // 清空错误信息
+                      break;
+                    case 'parse_error':
+                      aiResponseStatus.value = 'error';
+                      aiResponseError.value = data.message;
+                      break;
+                    case 'complete':
+                      aiResponseStatusText.value = data.message;
+                      break;
+                    case 'error':
+                      aiResponseStatus.value = 'error';
+                      aiResponseError.value = data.message;
+                      break;
+                  }
+                } catch (e) {
+                  console.warn('解析流数据失败:', e);
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      } catch (error) {
+        console.error('流式获取标签失败:', error);
+        aiResponseStatus.value = 'error';
+        aiResponseError.value = `获取失败: ${error.message}`;
+        Message.error('获取标签失败');
+      } finally {
+        searchFetching.value = false;
+      }
+    };
+
     const getCurrentKeywordsText = keywords => {
       if (!keywords || keywords.length === 0) {
         return '未设置搜索关键词';
@@ -791,10 +1137,10 @@ export default {
 
     const addKeywordExample = async example => {
       console.log('点击示例关键词:', example);
-      console.log('当前输入框内容:', searchKeywords.value);
+      console.log('当前输入框内容:', searchForm.value.keywords);
 
       // 检查是否已存在该关键词
-      const currentKeywords = searchKeywords.value || '';
+      const currentKeywords = searchForm.value.keywords || '';
       const existingKeywords = parseKeywords(currentKeywords);
 
       if (existingKeywords.includes(example)) {
@@ -804,13 +1150,13 @@ export default {
 
       // 添加新关键词
       const newKeywords = currentKeywords + (currentKeywords ? '，' : '') + example;
-      searchKeywords.value = newKeywords;
+      searchForm.value.keywords = newKeywords;
 
-      console.log('更新后的输入框内容:', searchKeywords.value);
+      console.log('更新后的输入框内容:', searchForm.value.keywords);
 
       // 确保DOM更新
       await nextTick();
-      console.log('DOM更新后的输入框内容:', searchKeywords.value);
+      console.log('DOM更新后的输入框内容:', searchForm.value.keywords);
 
       // 显示成功消息
       Message.success(`已添加关键词: ${example}`);
@@ -825,13 +1171,13 @@ export default {
     };
 
     const validateKeywords = () => {
-      const keywords = parseKeywords(searchKeywords.value);
+      const keywords = parseKeywords(searchForm.value.keywords);
       const uniqueKeywords = [...new Set(keywords)];
 
       if (keywords.length !== uniqueKeywords.length) {
         // 有重复关键词，自动去重
         const deduplicatedText = uniqueKeywords.join('，');
-        searchKeywords.value = deduplicatedText;
+        searchForm.value.keywords = deduplicatedText;
         Message.warning('检测到重复关键词，已自动去重');
       }
     };
@@ -840,6 +1186,141 @@ export default {
       if (!dateTimeStr) return '未设置';
       const date = new Date(dateTimeStr);
       return date.toLocaleString('zh-CN');
+    };
+
+    // AI响应相关方法
+    const cancelAIResponse = () => {
+      showAIResponseModal.value = false;
+      aiResponseContent.value = '';
+      aiResponseStatus.value = 'idle';
+      aiResponseStatusText.value = '';
+      aiResponseError.value = '';
+      parsedTags.value = [];
+    };
+
+    const applyTagsData = async () => {
+      try {
+        applyingTags.value = true;
+
+        await tagCloudApi.applyTagsData(parsedTags.value);
+        Message.success(`成功应用 ${parsedTags.value.length} 个标签`);
+
+        // 关闭弹窗并刷新数据
+        showAIResponseModal.value = false;
+        await loadTags();
+        await loadStats();
+      } catch (error) {
+        console.error('应用标签数据失败:', error);
+        Message.error('应用标签数据失败');
+      } finally {
+        applyingTags.value = false;
+      }
+    };
+
+    const reassignColors = async () => {
+      try {
+        reassigningColors.value = true;
+
+        await tagCloudApi.reassignColors();
+        Message.success('标签颜色重新分配成功');
+
+        // 刷新数据
+        await loadTags();
+        await loadStats();
+      } catch (error) {
+        console.error('重新分配颜色失败:', error);
+        Message.error('重新分配颜色失败');
+      } finally {
+        reassigningColors.value = false;
+      }
+    };
+
+    const getStatusIcon = status => {
+      const icons = {
+        idle: 'ios-help-circle',
+        loading: 'ios-loading',
+        success: 'ios-checkmark-circle',
+        error: 'ios-close-circle',
+      };
+      return icons[status] || 'ios-help-circle';
+    };
+
+    const getAIStatusColor = status => {
+      const colors = {
+        idle: '#999',
+        loading: '#2d8cf0',
+        success: '#19be6b',
+        error: '#ed4014',
+      };
+      return colors[status] || '#999';
+    };
+
+    const getTagColor = category => {
+      // 美观的颜色调色板 - 与后端保持一致
+      const beautifulColors = [
+        // 蓝色系
+        '#3498db',
+        '#2980b9',
+        '#5dade2',
+        '#85c1e9',
+        // 绿色系
+        '#27ae60',
+        '#2ecc71',
+        '#58d68d',
+        '#82e0aa',
+        // 紫色系
+        '#8e44ad',
+        '#9b59b6',
+        '#bb8fce',
+        '#d2b4de',
+        // 橙色系
+        '#e67e22',
+        '#f39c12',
+        '#f7dc6f',
+        '#f9e79f',
+        // 红色系
+        '#e74c3c',
+        '#ec7063',
+        '#f1948a',
+        '#f5b7b1',
+        // 青色系
+        '#1abc9c',
+        '#48c9b0',
+        '#7fb3d3',
+        '#aed6f1',
+        // 粉色系
+        '#e91e63',
+        '#f06292',
+        '#f8bbd9',
+        '#fce4ec',
+        // 深色系
+        '#34495e',
+        '#5d6d7e',
+        '#85929e',
+        '#b2babb',
+        // 暖色系
+        '#d35400',
+        '#e67e22',
+        '#f39c12',
+        '#f1c40f',
+        // 冷色系
+        '#16a085',
+        '#27ae60',
+        '#2ecc71',
+        '#58d68d',
+      ];
+
+      // 基于分类名称生成一致的随机颜色
+      // 使用简单的哈希函数来确保相同分类总是得到相同颜色
+      let hash = 0;
+      for (let i = 0; i < category.length; i++) {
+        const char = category.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // 转换为32位整数
+      }
+
+      const colorIndex = Math.abs(hash) % beautifulColors.length;
+      return beautifulColors[colorIndex];
     };
 
     // 工具方法
@@ -914,10 +1395,20 @@ export default {
       scheduleRules,
       searchUpdating,
       searchFetching,
-      searchKeywords,
+      searchFormRef,
       searchForm,
       searchRules,
       keywordExamples,
+      showAIResponseModal,
+      aiResponseContent,
+      aiResponseStatus,
+      aiResponseStatusText,
+      aiResponseError,
+      parsedTags,
+      applyingTags,
+      responseTextRef,
+      reassigningColors,
+      isConfirmButtonDisabled,
 
       // 方法
       loadTags,
@@ -938,11 +1429,18 @@ export default {
       getScheduleHelpText,
       updateSearchKeywords,
       fetchTagsByKeywords,
+      fetchTagsByKeywordsStream,
       getCurrentKeywordsText,
       addKeywordExample,
       parseKeywords,
       validateKeywords,
       formatDateTime,
+      cancelAIResponse,
+      applyTagsData,
+      reassignColors,
+      getStatusIcon,
+      getAIStatusColor,
+      getTagColor,
       getSizeColor,
       getSizeText,
       getStatusColor,
@@ -1103,6 +1601,107 @@ export default {
 .keyword-tag:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* AI响应弹窗样式 */
+.ai-response-container {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.response-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 4px solid #2d8cf0;
+}
+
+.status-text {
+  font-weight: 500;
+  color: #333;
+}
+
+.ai-response-content {
+  margin-bottom: 16px;
+}
+
+.response-label {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.response-text {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.parsed-tags {
+  margin-bottom: 16px;
+}
+
+.tags-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.preview-tag {
+  margin: 0;
+}
+
+.more-tags {
+  color: #666;
+  font-size: 12px;
+  align-self: center;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 4px;
+  color: #ed4014;
+}
+
+/* 分页器样式 */
+:deep(.ivu-page) {
+  margin-top: 16px;
+  text-align: right;
+}
+
+:deep(.ivu-page-total) {
+  color: #666;
+  font-size: 14px;
+}
+
+:deep(.ivu-page-sizer) {
+  margin-right: 16px;
+}
+
+:deep(.ivu-page-elevator) {
+  margin-left: 16px;
 }
 
 /* 响应式设计 */

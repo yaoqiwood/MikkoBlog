@@ -80,20 +80,6 @@
         </div>
       </FormItem>
 
-      <FormItem label="提示词模板" prop="prompt_template">
-        <Input
-          v-model="aiForm.prompt_template"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入提示词模板"
-          style="width: 100%"
-        />
-        <div class="form-help">
-          <Icon type="ios-information-circle" />
-          <span>使用{keywords}作为关键词占位符，AI将生成JSON格式的标签数据</span>
-        </div>
-      </FormItem>
-
       <FormItem label="启用AI功能" prop="enabled">
         <Switch v-model="aiForm.enabled" />
         <div class="form-help">
@@ -173,8 +159,6 @@ const aiForm = ref({
   base_url: 'https://api.openai.com/v1',
   max_tokens: 1000,
   temperature: 0.7,
-  prompt_template:
-    '请生成20个与"{keywords}"相关的热门技术标签，以JSON格式返回，格式为：[{"name": "标签名", "category": "分类", "count": 数量}]',
   enabled: true,
   timeout: 30,
   retry_count: 3,
@@ -193,7 +177,6 @@ const aiRules = {
   base_url: [{ required: true, message: '请输入API基础URL', trigger: 'blur' }],
   max_tokens: [{ required: true, message: '请输入最大Token数', trigger: 'blur' }],
   temperature: [{ required: true, message: '请输入温度参数', trigger: 'blur' }],
-  prompt_template: [{ required: true, message: '请输入提示词模板', trigger: 'blur' }],
   timeout: [{ required: true, message: '请输入请求超时时间', trigger: 'blur' }],
   retry_count: [{ required: true, message: '请输入重试次数', trigger: 'blur' }],
 };
@@ -283,9 +266,6 @@ const loadAISettings = async () => {
       base_url: aiConfig.base_url || 'https://api.openai.com/v1',
       max_tokens: aiConfig.max_tokens || 1000,
       temperature: aiConfig.temperature || 0.7,
-      prompt_template:
-        aiConfig.prompt_template ||
-        '请生成20个与"{keywords}"相关的热门技术标签，以JSON格式返回，格式为：[{"name": "标签名", "category": "分类", "count": 数量}]',
       enabled: aiConfig.enabled !== false,
       timeout: aiConfig.timeout || 30,
       retry_count: aiConfig.retry_count || 3,
@@ -348,8 +328,6 @@ const resetSettings = () => {
   aiForm.value.base_url = 'https://api.openai.com/v1';
   aiForm.value.max_tokens = 1000;
   aiForm.value.temperature = 0.7;
-  aiForm.value.prompt_template =
-    '请生成20个与"{keywords}"相关的热门技术标签，以JSON格式返回，格式为：[{"name": "标签名", "category": "分类", "count": 数量}]';
   aiForm.value.enabled = true;
   aiForm.value.timeout = 30;
   aiForm.value.retry_count = 3;

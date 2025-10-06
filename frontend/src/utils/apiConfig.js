@@ -96,6 +96,11 @@ const API_CONFIG = {
       CHECK: '/healthz',
     },
 
+    // 统计数据
+    STATS: {
+      SUMMARY: '/stats/summary',
+    },
+
     // 专栏管理
     COLUMNS: {
       LIST: '/columns/',
@@ -285,6 +290,19 @@ export function getAttachmentUrl(action, id = null) {
  */
 export function getHealthUrl() {
   return getApiUrl(API_CONFIG.ENDPOINTS.HEALTH.CHECK);
+}
+
+/**
+ * 获取统计数据URL
+ * @param {string} action - 统计操作类型
+ * @returns {string} 统计接口URL
+ */
+export function getStatsUrl(action) {
+  const endpoint = API_CONFIG.ENDPOINTS.STATS[action.toUpperCase()];
+  if (!endpoint) {
+    throw new Error(`Invalid stats action: ${action}`);
+  }
+  return getApiUrl(endpoint);
 }
 
 /**

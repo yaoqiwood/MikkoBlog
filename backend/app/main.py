@@ -14,6 +14,7 @@ from app.api.routers.system import router as system_router
 from app.api.routers.attachments import router as attachments_router
 from app.api.routers.homepage import router as homepage_router
 from app.api.routers.postStats import router as post_stats_router
+from app.api.routers.stats import router as stats_router
 from app.api.routers.moments import router as moments_router
 from app.api.routers.columns import router as columns_router
 from app.api.routers.image_search import router as image_search_router
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(attachments_router, prefix="/api")
     app.include_router(homepage_router, prefix="/api")
     app.include_router(post_stats_router, prefix="/api")
+    app.include_router(stats_router, prefix="/api")
     app.include_router(moments_router, prefix="/api")
     app.include_router(columns_router, prefix="/api/columns", tags=["columns"])
     app.include_router(
