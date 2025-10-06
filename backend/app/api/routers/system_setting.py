@@ -230,7 +230,8 @@ async def test_ai_connection(
 
         connector = aiohttp.TCPConnector(ssl=ssl_context)
 
-        async with aiohttp.ClientSession(connector=connector) as session:
+        timeout = aiohttp.ClientTimeout(total=ai_config.timeout or 30)
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
             url = f"{ai_config.base_url}/chat/completions"
             async with session.post(url, headers=headers, json=data) as response:
                 if response.status == 200:

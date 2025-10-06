@@ -71,7 +71,7 @@
 
     <!-- AI设置 -->
     <Card title="AI设置" style="margin-bottom: 1.5rem">
-      <AISettings />
+      <AISettings ref="aiSettingsRef" />
     </Card>
 
     <!-- 图片搜索配置 -->
@@ -93,11 +93,12 @@
 import { Message } from 'view-ui-plus';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import ImageSearchSettings from './ImageSearchSettings.vue';
 import AISettings from './AISettings.vue';
+import ImageSearchSettings from './ImageSearchSettings.vue';
 
 const router = useRouter();
 const imageSearchRef = ref(null);
+const aiSettingsRef = ref(null);
 
 const settings = ref({
   siteName: 'MikkoBlog',
@@ -116,6 +117,11 @@ const settings = ref({
 
 async function saveSettings() {
   try {
+    // 保存AI设置
+    if (aiSettingsRef.value) {
+      await aiSettingsRef.value.saveSettings();
+    }
+
     // 保存图片搜索配置
     if (imageSearchRef.value) {
       await imageSearchRef.value.saveSettings();

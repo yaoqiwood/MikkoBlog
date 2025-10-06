@@ -220,7 +220,7 @@ export default {
         });
 
         await Promise.all(updates);
-        Message.success('配置保存成功');
+        // 不显示成功消息，由父组件统一处理
         emit('refresh');
       } catch (error) {
         console.error('保存配置失败:', error);

@@ -504,10 +504,11 @@ export const systemSettingApi = {
   /**
    * 测试AI连接
    * @param {object} aiConfig - AI配置
+   * @param {object} options - 请求选项（如超时时间）
    * @returns {Promise} 测试结果
    */
-  async testAIConnection(aiConfig) {
-    return post('/api/system-setting/ai/test-connection', aiConfig);
+  async testAIConnection(aiConfig, options = {}) {
+    return post('/api/system-setting/ai/test-connection', aiConfig, options);
   },
 
   /**
