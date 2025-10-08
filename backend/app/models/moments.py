@@ -1,11 +1,7 @@
 from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List
 
 from sqlmodel import Field, SQLModel, Relationship
-
-if TYPE_CHECKING:
-    from app.models.user import UserProfile
-    from app.models.attachment import Attachment
 
 
 class MomentsBase(SQLModel):
@@ -31,7 +27,9 @@ class Moments(MomentsBase, table=True):
     )
 
     # 关联关系
-    # author: Optional["UserProfile"] = Relationship(back_populates="moments")  # 暂时注释掉以避免循环导入
+    # author: Optional["UserProfile"] = Relationship(
+    #     back_populates="moments"
+    # )  # 暂时注释掉以避免循环导入
     images: List["MomentsImages"] = Relationship(back_populates="moment")
 
 

@@ -5,7 +5,6 @@ from sqlmodel import Session, select, func
 from app.db.session import get_session
 from app.models.user import User
 from app.models.post import Post
-from app.models.comment import Comment
 from app.models.moments import Moments
 from app.models.postStats import PostStats
 

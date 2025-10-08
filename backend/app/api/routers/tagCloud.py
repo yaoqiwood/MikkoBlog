@@ -55,7 +55,12 @@ async def getTags(
 
     # 构建分页查询
     offset = (page - 1) * page_size
-    statement = base_statement.order_by(TagCloud.count.desc()).offset(offset).limit(page_size)
+    statement = (
+        base_statement
+        .order_by(TagCloud.count.desc())
+        .offset(offset)
+        .limit(page_size)
+    )
 
     # 如果指定了limit，使用limit而不是page_size
     if limit is not None:
@@ -69,7 +74,10 @@ async def getTags(
         "total": total,
         "page": page,
         "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0
+        "total_pages": (
+            (total + page_size - 1) // page_size
+            if page_size > 0 else 0
+        )
     }
 
 
@@ -332,7 +340,10 @@ async def updateScheduleConfig(
     # 验证频度
     valid_frequencies = ["hourly", "daily", "weekly"]
     if frequency and frequency not in valid_frequencies:
-        raise HTTPException(status_code=400, detail=f"频度必须是以下之一: {', '.join(valid_frequencies)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"频度必须是以下之一: {', '.join(valid_frequencies)}"
+        )
 
     # 验证时间格式
     if time_str:
@@ -343,9 +354,15 @@ async def updateScheduleConfig(
             raise HTTPException(status_code=400, detail="时间格式错误，请使用 HH:MM 格式")
 
     # 验证星期几
-    valid_days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    valid_days = [
+        "monday", "tuesday", "wednesday", "thursday",
+        "friday", "saturday", "sunday"
+    ]
     if day and day.lower() not in valid_days:
-        raise HTTPException(status_code=400, detail=f"星期几必须是以下之一: {', '.join(valid_days)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"星期几必须是以下之一: {', '.join(valid_days)}"
+        )
 
     update_schedule_config(frequency, time_str, day)
     return {"message": "调度配置已更新"}
@@ -367,7 +384,11 @@ async def updateSearchKeywords(
     if isinstance(keywords, str):
         # 支持中文逗号和英文逗号混写
         import re
-        keywords = [keyword.strip() for keyword in re.split(r'[,，]', keywords) if keyword.strip()]
+        keywords = [
+            keyword.strip()
+            for keyword in re.split(r'[,，]', keywords)
+            if keyword.strip()
+        ]
     elif not isinstance(keywords, list):
         raise HTTPException(status_code=400, detail="关键词必须是字符串或列表格式")
 
@@ -476,7 +497,11 @@ async def fetchTagsByKeywords(
     if isinstance(keywords, str):
         # 支持中文逗号和英文逗号混写
         import re
-        keywords = [keyword.strip() for keyword in re.split(r'[,，]', keywords) if keyword.strip()]
+        keywords = [
+            keyword.strip()
+            for keyword in re.split(r'[,，]', keywords)
+            if keyword.strip()
+        ]
     elif not isinstance(keywords, list):
         raise HTTPException(status_code=400, detail="关键词必须是字符串或列表格式")
 
@@ -485,7 +510,9 @@ async def fetchTagsByKeywords(
         raise HTTPException(status_code=400, detail="关键词数量不能超过10个")
 
     # 异步执行搜索任务
-    backgroundTasks.add_task(fetch_tags_by_keywords_task, keywords, prompt_template)
+    backgroundTasks.add_task(
+        fetch_tags_by_keywords_task, keywords, prompt_template
+    )
 
     return {"message": f"关键词搜索任务已启动: {', '.join(keywords)}"}
 
@@ -522,27 +549,45 @@ async def fetchTagsByKeywordsStream(
     async def generate_stream():
         try:
             # 发送开始信号
-            yield f"data: {json.dumps({'type': 'start', 'message': '开始获取标签数据...'}, ensure_ascii=False)}\n\n"
+            start_data = json.dumps(
+                {'type': 'start', 'message': '开始获取标签数据...'},
+                ensure_ascii=False
+            )
+            yield f"data: {start_data}\n\n"
 
             # 获取AI响应
             with next(get_session()) as session:
                 tag_service = TagCloudService(session)
 
                 # 发送AI请求开始信号
-                yield f"data: {json.dumps({'type': 'ai_request', 'message': '正在向AI发送请求...'}, ensure_ascii=False)}\n\n"
+                ai_request_data = json.dumps(
+                    {'type': 'ai_request', 'message': '正在向AI发送请求...'},
+                    ensure_ascii=False
+                )
+                yield f"data: {ai_request_data}\n\n"
 
                 # 获取AI响应（流式）
-                ai_response_stream = tag_service.fetch_tags_from_ai_stream(keywords, prompt_template)
+                ai_response_stream = tag_service.fetch_tags_from_ai_stream(
+                    keywords, prompt_template
+                )
 
                 # 逐字发送AI响应
                 full_response = ""
                 async for chunk in ai_response_stream:
                     full_response += chunk
-                    yield f"data: {json.dumps({'type': 'ai_response', 'content': chunk}, ensure_ascii=False)}\n\n"
+                    ai_response_data = json.dumps(
+                        {'type': 'ai_response', 'content': chunk},
+                        ensure_ascii=False
+                    )
+                    yield f"data: {ai_response_data}\n\n"
                     await asyncio.sleep(0.05)  # 控制发送速度
 
                 # 发送解析开始信号
-                yield f"data: {json.dumps({'type': 'parse_start', 'message': '正在解析AI响应...'}, ensure_ascii=False)}\n\n"
+                parse_start_data = json.dumps(
+                    {'type': 'parse_start', 'message': '正在解析AI响应...'},
+                    ensure_ascii=False
+                )
+                yield f"data: {parse_start_data}\n\n"
 
                 # 调试：显示原始响应内容
                 logger.info(f"AI原始响应内容: {full_response[:500]}...")  # 只显示前500字符
@@ -562,27 +607,53 @@ async def fetchTagsByKeywordsStream(
                     json_start = cleaned_response.find('{')
                     json_end = cleaned_response.rfind('}') + 1
                     if json_start != -1 and json_end > json_start:
-                        cleaned_response = cleaned_response[json_start:json_end]
-                        logger.info(f"提取的JSON对象: {cleaned_response[:200]}...")
+                        cleaned_response = cleaned_response[
+                            json_start:json_end
+                        ]
+                        logger.info(
+                            f"提取的JSON对象: {cleaned_response[:200]}..."
+                        )
 
                 # 解析JSON数据
                 try:
                     parsed_data = json.loads(cleaned_response)
 
                     # 发送解析成功信号
-                    yield f"data: {json.dumps({'type': 'parse_success', 'data': parsed_data, 'message': '数据解析成功'}, ensure_ascii=False)}\n\n"
+                    parse_success_data = json.dumps(
+                        {
+                            'type': 'parse_success',
+                            'data': parsed_data,
+                            'message': '数据解析成功'
+                        },
+                        ensure_ascii=False
+                    )
+                    yield f"data: {parse_success_data}\n\n"
 
                 except json.JSONDecodeError as e:
-                    error_msg = f'JSON解析失败: {str(e)}。原始内容: {full_response[:200]}...'
+                    error_msg = (
+                        f'JSON解析失败: {str(e)}。原始内容: {full_response[:200]}...'
+                    )
                     logger.error(error_msg)
-                    yield f"data: {json.dumps({'type': 'parse_error', 'message': error_msg}, ensure_ascii=False)}\n\n"
+                    parse_error_data = json.dumps(
+                        {'type': 'parse_error', 'message': error_msg},
+                        ensure_ascii=False
+                    )
+                    yield f"data: {parse_error_data}\n\n"
                     return
 
                 # 发送完成信号
-                yield f"data: {json.dumps({'type': 'complete', 'message': '数据获取完成'}, ensure_ascii=False)}\n\n"
+                complete_data = json.dumps(
+                    {'type': 'complete', 'message': '数据获取完成'},
+                    ensure_ascii=False
+                )
+                yield f"data: {complete_data}\n\n"
 
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': f'获取失败: {str(e)}'}, ensure_ascii=False)}\n\n"
+            error_data = json.dumps(
+                {'type': 'error', 'message': f'获取失败: {str(e)}'},
+                ensure_ascii=False
+            )
+            yield f"data: {error_data}\n\n"
 
     return StreamingResponse(
         generate_stream(),
@@ -620,7 +691,9 @@ async def applyTagsData(
 
             # 插入新的标签数据
             logger.info(f"插入{len(tags)}个新标签...")
-            new_count, updated_count = await tag_service.update_tag_cloud(tags, "ai_keywords", clear_existing=True)
+            new_count, updated_count = await tag_service.update_tag_cloud(
+                tags, "ai_keywords", clear_existing=True
+            )
 
             logger.info(f"标签应用完成: 新增{new_count}个, 更新{updated_count}个")
 
@@ -695,7 +768,11 @@ def fetch_tags_by_keywords_task(keywords, prompt_template=None):
 
                 # 使用AI生成标签
                 logger.info("使用AI生成新标签...")
-                result = loop.run_until_complete(tag_service.fetch_tags_by_keywords(keywords, prompt_template))
+                result = loop.run_until_complete(
+                    tag_service.fetch_tags_by_keywords(
+                        keywords, prompt_template
+                    )
+                )
                 logger.info(f"Keywords fetch task completed: {result}")
         finally:
             loop.close()
