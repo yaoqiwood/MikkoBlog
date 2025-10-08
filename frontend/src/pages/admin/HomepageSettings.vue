@@ -72,6 +72,12 @@
         <FormItem label="显示 Live2D 看板娘">
           <Switch v-model="form.show_live2d" />
         </FormItem>
+        <FormItem label="欢迎模态框内容类型">
+          <RadioGroup v-model="form.welcome_modal_type">
+            <Radio label="bible">圣经话语</Radio>
+            <Radio label="quotes">世界名人格言</Radio>
+          </RadioGroup>
+        </FormItem>
         <FormItem>
           <div class="button-group">
             <Button type="primary" :loading="saving" @click="save">保存设置</Button>
@@ -118,6 +124,7 @@ const form = ref({
   show_music_player: false,
   music_url: '',
   show_live2d: false,
+  welcome_modal_type: 'bible',
 });
 const saving = ref(false);
 const error = ref('');
@@ -142,6 +149,7 @@ async function load() {
       show_music_player: !!data.show_music_player,
       music_url: data.music_url || '',
       show_live2d: !!data.show_live2d,
+      welcome_modal_type: data.welcome_modal_type || 'bible',
     };
   } catch (err) {
     console.error('加载主页设置失败:', err);
@@ -417,6 +425,7 @@ async function resetToDefault() {
       show_music_player: false,
       music_url: '',
       show_live2d: false,
+      welcome_modal_type: 'bible',
     };
 
     // 从API响应中提取默认值

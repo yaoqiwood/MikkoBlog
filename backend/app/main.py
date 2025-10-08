@@ -20,6 +20,7 @@ from app.api.routers.columns import router as columns_router
 from app.api.routers.image_search import router as image_search_router
 from app.api.routers.tagCloud import router as tag_cloud_router
 from app.api.routers.system_setting import router as system_setting_router
+from app.api.routers.local_music import router as local_music_router
 from app.scheduler.tag_cloud_scheduler import (
     start_tag_cloud_scheduler,
     stop_tag_cloud_scheduler
@@ -66,6 +67,21 @@ def create_app() -> FastAPI:
         system_setting_router,
         prefix="/api/system-setting",
         tags=["system-setting"]
+    )
+
+    # 导入音乐相关路由
+    from app.api.routers.music import router as music_router
+
+    app.include_router(
+        music_router,
+        prefix="/api/music",
+        tags=["music"]
+    )
+
+    app.include_router(
+        local_music_router,
+        prefix="/api/local-music",
+        tags=["local-music"]
     )
 
     # 静态文件服务

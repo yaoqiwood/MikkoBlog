@@ -235,6 +235,15 @@ export const postApi = {
   async getRelatedPosts(id, params = {}) {
     return get(getPostUrl('RELATED', id), params);
   },
+
+  /**
+   * 获取最受欢迎的博文
+   * @param {object} params - 查询参数
+   * @returns {Promise} 最受欢迎博文列表
+   */
+  async getPopularPosts(params = {}) {
+    return get('/api/posts/popular', params);
+  },
 };
 
 /**
@@ -547,7 +556,7 @@ export const systemSettingApi = {
  */
 export const homepageApi = {
   async getSettings() {
-    return get('http://localhost:8000/api/homepage/settings');
+    return get('http://localhost:8000/api/homepage/settings?_t=' + Date.now());
   },
   async updateSettings(data) {
     return put('http://localhost:8000/api/homepage/settings', data);
@@ -1061,6 +1070,57 @@ export const imageSearchApi = {
 };
 
 /**
+ * 文章统计API
+ */
+export const postStatsApi = {
+  /**
+   * 增加文章浏览量
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 更新后的统计数据
+   */
+  async incrementViewCount(postId) {
+    return post(`/api/post-stats/${postId}/view`);
+  },
+
+  /**
+   * 增加文章点赞数
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 更新后的统计数据
+   */
+  async incrementLikeCount(postId) {
+    return post(`/api/post-stats/${postId}/like`);
+  },
+
+  /**
+   * 增加文章分享数
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 更新后的统计数据
+   */
+  async incrementShareCount(postId) {
+    return post(`/api/post-stats/${postId}/share`);
+  },
+
+  /**
+   * 增加文章评论数
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 更新后的统计数据
+   */
+  async incrementCommentCount(postId) {
+    return post(`/api/post-stats/${postId}/comment`);
+  },
+
+  /**
+   * 批量增加文章统计数据
+   * @param {number} postId - 文章ID
+   * @param {Object} incrementData - 增加的数据
+   * @returns {Promise} 更新后的统计数据
+   */
+  async incrementStats(postId, incrementData) {
+    return patch(`/api/post-stats/${postId}/increment`, incrementData);
+  },
+};
+
+/**
  * 统计API
  */
 export const statsApi = {
@@ -1088,5 +1148,6 @@ export default {
   mixedContent: mixedContentApi,
   attachment: attachmentApi,
   imageSearch: imageSearchApi,
+  postStats: postStatsApi,
   stats: statsApi,
 };

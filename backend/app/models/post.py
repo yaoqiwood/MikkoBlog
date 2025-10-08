@@ -33,7 +33,7 @@ class Post(PostBase, table=True):
 
     # 关联关系
     comments: List["Comment"] = Relationship(back_populates="post")
-    author: Optional["UserProfile"] = Relationship(back_populates="posts")
+    # author: Optional["UserProfile"] = Relationship(back_populates="posts")  # 暂时注释掉以避免循环导入
     stats: Optional["PostStats"] = Relationship(back_populates="post")
 
 

@@ -1,5 +1,11 @@
 <template>
   <div class="blog-home" :style="{ '--bg-image': backgroundImageUrl }">
+    <!-- 欢迎模态框 -->
+    <WelcomeModal
+      :show="showWelcomeModal"
+      :modal-type="homepageSettings.welcome_modal_type || 'bible'"
+      @close="closeWelcomeModal"
+    />
     <!-- 头部导航 -->
     <header class="blog-header">
       <div class="header-container">
@@ -90,49 +96,25 @@
               </div>
             </div>
           </div>
-
           <!-- 音乐播放器 -->
-          <div class="music-player">
-            <div class="player-header">
-              <h3>🎵 音乐播放器</h3>
-            </div>
-            <div class="current-track">
-              <div class="track-info">
-                <div class="track-title">風の住む街 - 磯村由纪子</div>
-                <div class="track-controls">
-                  <button class="play-btn">▶️</button>
-                  <div class="progress-bar">
-                    <div class="progress"></div>
-                  </div>
-                  <div class="time">00:00 / 04:45</div>
-                  <button class="volume-btn">🔊</button>
-                </div>
-              </div>
-            </div>
-            <div class="playlist">
-              <div class="playlist-item">風の住む街</div>
-              <div class="playlist-item">ヨスガノソラメインテーマ - 記</div>
-              <div class="playlist-item">蝶恋</div>
-              <div class="playlist-item">月光の雲海</div>
-            </div>
-          </div>
-
+          <MusicPlayer ref="musicPlayerRef" />
           <!-- 最受欢迎 -->
           <div class="popular-posts">
             <h3>🌟 最受欢迎</h3>
-            <div class="popular-list">
-              <div class="popular-item">
-                <img src="https://via.placeholder.com/60x60/ff69b4/ffffff?text=1" alt="Popular 1" />
+            <div v-if="popularPostsLoading" class="popular-loading">
+              <div class="loading-spinner"></div>
+              <span>加载中...</span>
+            </div>
+            <div v-else class="popular-list">
+              <div
+                v-for="post in popularPostsList"
+                :key="post.id"
+                class="popular-item"
+                @click="viewBlogDetail(post.id)"
+              >
                 <div class="popular-info">
-                  <div class="popular-title">敏感词过滤已上线</div>
-                  <div class="popular-stats">49 浏览</div>
-                </div>
-              </div>
-              <div class="popular-item">
-                <img src="https://via.placeholder.com/60x60/87ceeb/ffffff?text=2" alt="Popular 2" />
-                <div class="popular-info">
-                  <div class="popular-title">小林家的龙女仆</div>
-                  <div class="popular-stats">56 浏览</div>
+                  <div class="popular-title">{{ post.title }}</div>
+                  <div class="popular-stats">{{ post.view_count || 0 }} 浏览</div>
                 </div>
               </div>
             </div>
@@ -370,18 +352,15 @@
                 :key="tag.name"
                 class="tag"
                 :class="tag.size"
-                :style="{ backgroundColor: tag.color }"
+                :style="`background-color: ${tag.color} !important; color: ${getTextColor(tag.color)} !important;`"
               >
                 {{ tag.name }}
               </span>
             </div>
-            <div class="tag-decoration">
-              <img src="https://via.placeholder.com/100x100/ffb6c1/ffffff?text=Rem" alt="Rem" />
-            </div>
           </div>
 
           <!-- 分类 -->
-          <div class="categories">
+          <div v-show="false" class="categories">
             <h3>📂 分类</h3>
             <div class="category-list">
               <div class="category-item">默认分类</div>
@@ -480,6 +459,8 @@
 </template>
 
 <script setup>
+import MusicPlayer from '@/components/MusicPlayer.vue';
+import WelcomeModal from '@/components/WelcomeModal.vue';
 import {
   authApi,
   columnsApi,
@@ -488,6 +469,7 @@ import {
   postApi,
   tagCloudApi,
 } from '@/utils/apiService';
+import localMusicApi from '@/utils/localMusicApi';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -520,6 +502,10 @@ const sidebarColumnsLoading = ref(false);
 // 标签云数据
 const tagCloudList = ref([]);
 const tagCloudLoading = ref(false);
+
+// 最受欢迎博文数据
+const popularPostsList = ref([]);
+const popularPostsLoading = ref(false);
 
 // 图片预览
 const showImagePreview = ref(false);
@@ -556,7 +542,25 @@ const homepageSettings = ref({
   show_music_player: false,
   music_url: '',
   show_live2d: false,
+  welcome_modal_type: 'bible',
 });
+
+// 欢迎模态框状态
+const showWelcomeModal = ref(true);
+
+// 自动播放设置
+const autoPlaySetting = ref(false);
+
+// 关闭欢迎模态框
+const closeWelcomeModal = () => {
+  showWelcomeModal.value = false;
+  // 关闭模态框后自动播放音乐（如果后台设置启用）
+  if (autoPlaySetting.value) {
+    autoPlayMusic();
+  }
+};
+
+const musicPlayerRef = ref(null);
 
 // 将相对路径转换为完整URL
 const getFullUrl = url => {
@@ -568,6 +572,25 @@ const getFullUrl = url => {
   }
 
   return url;
+};
+
+// 根据背景色计算合适的文字颜色
+const getTextColor = backgroundColor => {
+  if (!backgroundColor) return '#ffffff';
+
+  // 移除 # 号
+  const hex = backgroundColor.replace('#', '');
+
+  // 转换为RGB
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+
+  // 计算亮度
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  // 根据亮度返回白色或黑色文字
+  return brightness > 128 ? '#000000' : '#ffffff';
 };
 
 // 获取说说图片网格样式类
@@ -756,13 +779,45 @@ const loadHomepageSettings = async () => {
       show_music_player: !!settings.show_music_player,
       music_url: settings.music_url || '',
       show_live2d: !!settings.show_live2d,
+      welcome_modal_type: settings.welcome_modal_type || 'bible',
     };
   } catch (err) {
     console.error('加载主页设置失败:', err);
   }
 };
 
-// 格式化时间显示
+// 加载自动播放设置
+const loadAutoPlaySetting = async () => {
+  try {
+    const response = await localMusicApi.getAutoPlaySetting();
+    autoPlaySetting.value = response.auto_play;
+    console.log('自动播放设置:', autoPlaySetting.value);
+  } catch (err) {
+    console.error('加载自动播放设置失败:', err);
+    // 使用默认值
+    autoPlaySetting.value = false;
+  }
+};
+
+// 自动播放音乐（简化版本）
+const autoPlayMusic = () => {
+  if (!autoPlaySetting.value) {
+    console.log('自动播放已禁用');
+    return;
+  }
+
+  console.log('尝试自动播放音乐...');
+  // 延迟一段时间后尝试点击播放按钮
+  globalThis.setTimeout(() => {
+    const playBtn = globalThis.document.querySelector('.track-controls .play-btn:nth-child(2)');
+    if (playBtn) {
+      console.log('找到播放按钮，自动点击');
+      playBtn.click();
+    } else {
+      console.log('未找到播放按钮');
+    }
+  }, 1000);
+};
 const formatTime = dateString => {
   const date = new Date(dateString);
   const now = new Date();
@@ -951,24 +1006,67 @@ const loadColumns = async () => {
   }
 };
 
+// 随机排序函数
+const shuffleArray = array => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 // 加载标签云
 const loadTagCloud = async () => {
   tagCloudLoading.value = true;
   try {
     const response = await tagCloudApi.getActiveTags(20);
-    tagCloudList.value = response;
+    console.log('标签云数据:', response);
+    // 随机打乱标签顺序
+    tagCloudList.value = shuffleArray(response);
   } catch (err) {
     console.error('加载标签云失败:', err);
     // 静默失败，使用默认标签
-    tagCloudList.value = [
+    const defaultTags = [
       { name: 'Vue.js', size: 'large', color: '#4fc08d' },
       { name: 'JavaScript', size: 'large', color: '#f7df1e' },
       { name: 'Python', size: 'medium', color: '#3776ab' },
       { name: 'React', size: 'medium', color: '#61dafb' },
       { name: 'Node.js', size: 'small', color: '#339933' },
     ];
+    // 对默认标签也进行随机排序
+    tagCloudList.value = shuffleArray(defaultTags);
   } finally {
     tagCloudLoading.value = false;
+  }
+};
+
+// 加载最受欢迎博文
+const loadPopularPosts = async () => {
+  popularPostsLoading.value = true;
+  try {
+    const response = await postApi.getPopularPosts({ limit: 3 });
+    console.log('最受欢迎博文数据:', response);
+    popularPostsList.value = response;
+  } catch (err) {
+    console.error('加载最受欢迎博文失败:', err);
+    // 静默失败，使用默认数据
+    popularPostsList.value = [
+      {
+        id: 1,
+        title: '敏感词过滤已上线',
+        view_count: 49,
+        cover_image_url: 'https://via.placeholder.com/60x60/ff69b4/ffffff?text=1',
+      },
+      {
+        id: 2,
+        title: '小林家的龙女仆',
+        view_count: 56,
+        cover_image_url: 'https://via.placeholder.com/60x60/87ceeb/ffffff?text=2',
+      },
+    ];
+  } finally {
+    popularPostsLoading.value = false;
   }
 };
 
@@ -1247,18 +1345,23 @@ watch(
 );
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   // 检查是否全屏模式
   if (document.fullscreenElement) {
     showFullscreenTip.value = true;
   }
 
   // 初始加载
-  loadUserProfile();
+  await loadUserProfile();
+  await loadHomepageSettings();
+  await loadAutoPlaySetting(); // 加载自动播放设置
+
   loadAllContent(); // 默认加载所有内容
-  loadHomepageSettings();
   loadSidebarColumns(); // 加载右侧边栏专栏
   loadTagCloud(); // 加载标签云
+  loadPopularPosts(); // 加载最受欢迎博文
+
+  // 不自动播放音乐，等待用户关闭欢迎模态框后播放
 });
 
 onUnmounted(() => {
@@ -1272,7 +1375,7 @@ onUnmounted(() => {
   min-height: 100vh;
   font-family: 'Microsoft YaHei', sans-serif;
   position: relative;
-  background-size: contain;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
@@ -1607,16 +1710,15 @@ onUnmounted(() => {
 }
 
 .popular-item {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.popular-item img {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  object-fit: cover;
+.popular-item:hover {
+  background: rgba(255, 107, 107, 0.05);
+  transform: translateX(5px);
 }
 
 .popular-title {
@@ -1628,6 +1730,27 @@ onUnmounted(() => {
 .popular-stats {
   font-size: 12px;
   color: #666;
+}
+
+/* 最受欢迎加载状态 */
+.popular-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+.popular-loading .loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f0f0f0;
+  border-top: 2px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
 }
 
 /* 主内容区 */
@@ -1678,7 +1801,7 @@ onUnmounted(() => {
 .posts-container {
   padding: 20px;
   padding-top: 5px;
-  max-height: 910px;
+  /* 移除固定高度，让内容自适应 */
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #ff6b6b #f0f0f0;
@@ -1984,8 +2107,7 @@ onUnmounted(() => {
 .tag {
   padding: 5px 10px;
   border-radius: 15px;
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  color: white;
+  /* 背景色和文字颜色都由内联样式控制 */
   font-size: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -2030,18 +2152,6 @@ onUnmounted(() => {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 8px;
-}
-
-.tag-decoration {
-  text-align: center;
-}
-
-.tag-decoration img {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  object-fit: cover;
-  opacity: 0.8;
 }
 
 /* 分类 */
@@ -2513,7 +2623,7 @@ onUnmounted(() => {
 /* 响应式设计 */
 @media (max-width: 1024px) {
   .blog-home {
-    background-size: contain;
+    background-size: cover;
     background-attachment: scroll;
   }
 
@@ -2534,7 +2644,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .blog-home {
-    background-size: contain;
+    background-size: cover;
     background-attachment: scroll;
   }
 
@@ -2555,7 +2665,7 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .blog-home {
-    background-size: contain;
+    background-size: cover;
     background-position: center top;
   }
 }

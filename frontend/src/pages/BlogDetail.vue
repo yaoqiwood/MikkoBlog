@@ -173,7 +173,7 @@
 </template>
 
 <script setup>
-import { authApi, homepageApi, postApi } from '@/utils/apiService';
+import { authApi, homepageApi, postApi, postStatsApi } from '@/utils/apiService';
 import { marked } from 'marked';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -317,6 +317,15 @@ const loadBlogDetail = async () => {
 
     // 加载相关文章
     loadRelatedPosts();
+
+    // 增加浏览量
+    try {
+      await postStatsApi.incrementViewCount(blogId);
+      console.log('浏览量已增加');
+    } catch (viewErr) {
+      console.warn('增加浏览量失败:', viewErr);
+      // 不影响主要功能，只记录警告
+    }
   } catch (err) {
     console.error('加载博文详情失败:', err);
     error.value = '加载博文详情失败，请稍后重试';

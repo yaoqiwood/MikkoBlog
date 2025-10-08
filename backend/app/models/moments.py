@@ -31,7 +31,7 @@ class Moments(MomentsBase, table=True):
     )
 
     # 关联关系
-    author: Optional["UserProfile"] = Relationship(back_populates="moments")
+    # author: Optional["UserProfile"] = Relationship(back_populates="moments")  # 暂时注释掉以避免循环导入
     images: List["MomentsImages"] = Relationship(back_populates="moment")
 
 

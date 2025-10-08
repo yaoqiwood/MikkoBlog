@@ -25,6 +25,9 @@ class User(UserBase, table=True):
         default_factory=datetime.utcnow, nullable=False
     )
 
+    # 关联关系 - 暂时注释掉以避免循环导入
+    # uploaded_music: List["LocalMusic"] = Relationship(back_populates="upload_user")
+
 
 class UserCreate(SQLModel):
     email: str
@@ -72,9 +75,9 @@ class UserProfile(UserProfileBase, table=True):
         default_factory=datetime.utcnow, nullable=False
     )
 
-    # 关联关系
-    posts: List["Post"] = Relationship(back_populates="author")
-    moments: List["Moments"] = Relationship(back_populates="author")
+    # 关联关系 - 暂时注释掉以避免循环导入
+    # posts: List["Post"] = Relationship(back_populates="author")
+    # moments: List["Moments"] = Relationship(back_populates="author")
 
 
 class UserProfileRead(UserProfileBase):

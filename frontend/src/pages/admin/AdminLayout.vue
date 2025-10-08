@@ -92,6 +92,15 @@
               <span v-show="!sidebarCollapsed">附件管理</span>
             </router-link>
             <router-link
+              to="/admin/music"
+              class="menu-item"
+              :class="{ active: $route.path === '/admin/music' }"
+              :title="sidebarCollapsed ? '音乐管理' : ''"
+            >
+              <Icon type="ios-musical-notes" />
+              <span v-show="!sidebarCollapsed">音乐管理</span>
+            </router-link>
+            <router-link
               to="/admin/homepage"
               class="menu-item"
               :class="{ active: $route.path === '/admin/homepage' }"
@@ -233,6 +242,7 @@ const pageTitles = {
   '/admin/columns': '专栏管理',
   '/admin/profile': '个人信息设置',
   '/admin/attachments': '附件管理',
+  '/admin/music': '音乐管理',
   '/admin/settings': '系统设置',
   '/admin/system': '系统默认参数设置',
   '/admin/homepage': '主页设置',

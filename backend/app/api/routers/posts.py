@@ -109,6 +109,56 @@ def create_post(
     return PostRead.model_validate(post)
 
 
+@router.get("/popular", response_model=List[PostRead])
+def get_popular_posts(
+    limit: int = Query(3, ge=1, le=10, description="返回数量"),
+    db: Session = Depends(get_db)
+) -> List[PostRead]:
+    """
+    获取最受欢迎的博文（按浏览量排序）
+    返回浏览量最多的博文列表
+    """
+    statement = (
+        select(Post, UserProfile, PostStats)
+        .join(UserProfile, Post.user_id == UserProfile.user_id)
+        .outerjoin(PostStats, Post.id == PostStats.post_id)
+        .where(Post.is_deleted.is_(False))
+        .where(Post.is_visible.is_(True))
+        .order_by(PostStats.view_count.desc())
+        .limit(limit)
+    )
+
+    results = db.exec(statement).all()
+    result = []
+
+    for post, user_profile, post_stats in results:
+        post_dict = {
+            'id': post.id,
+            'title': post.title,
+            'content': post.content,
+            'summary': post.summary,
+            'cover_image_url': post.cover_image_url,
+            'is_published': post.is_published,
+            'is_deleted': post.is_deleted,
+            'is_visible': post.is_visible,
+            'user_id': post.user_id,
+            'created_at': post.created_at,
+            'updated_at': post.updated_at,
+            'user_nickname': user_profile.nickname,
+            'user_avatar': user_profile.avatar,
+            # 统计数据，如果不存在则默认为0
+            'view_count': post_stats.view_count if post_stats else 0,
+            'like_count': post_stats.like_count if post_stats else 0,
+            'share_count': post_stats.share_count if post_stats else 0,
+            'comment_count': post_stats.comment_count if post_stats else 0
+        }
+
+        post_data = PostRead.model_validate(post_dict)
+        result.append(post_data)
+
+    return result
+
+
 @router.get("/{post_id}", response_model=PostRead)
 def read_post(post_id: int, db: Session = Depends(get_db)) -> PostRead:
     post = db.get(Post, post_id)

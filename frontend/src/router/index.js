@@ -95,6 +95,12 @@ const router = createRouter({
           name: 'admin-attachments',
           component: () => import('@/pages/admin/AttachmentManagement.vue'),
         },
+        {
+          path: 'music',
+          name: 'admin-music',
+          component: () => import('@/pages/admin/MusicManagement.vue'),
+          meta: { title: '音乐管理' },
+        },
         { path: 'test-viewui', name: 'admin-test-viewui', component: TestViewUI },
         { path: 'fullscreen-test', name: 'admin-fullscreen-test', component: FullscreenTest },
       ],
