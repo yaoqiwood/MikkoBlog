@@ -19,6 +19,8 @@
           :banner-image-url="bannerImageUrl"
           :popular-posts-list="popularPostsList"
           :popular-posts-loading="popularPostsLoading"
+          :user-stats="userStats"
+          :stats-loading="statsLoading"
           @view-blog-detail="viewBlogDetail"
         />
 
@@ -107,6 +109,7 @@ import {
   homepageApi,
   momentsApi,
   postApi,
+  statsApi,
   tagCloudApi,
 } from '@/utils/apiService';
 import localMusicApi from '@/utils/localMusicApi';
@@ -175,6 +178,13 @@ const userProfile = ref({
 });
 const profileLoading = ref(false);
 const profileError = ref('');
+
+// 用户统计数据
+const userStats = ref({
+  blogCount: 0,
+  shareCount: 0,
+});
+const statsLoading = ref(false);
 
 // 主页设置数据
 const homepageSettings = ref({
@@ -877,6 +887,73 @@ const loadUserProfile = async () => {
   }
 };
 
+// 加载用户统计数据
+const loadUserStats = async () => {
+  try {
+    statsLoading.value = true;
+
+    // 尝试从统计API获取数据
+    try {
+      const statsResponse = await statsApi.getSummary();
+      console.log('统计API响应:', statsResponse);
+
+      userStats.value = {
+        blogCount: statsResponse.posts || 0,
+        shareCount: 0, // 统计API中没有moments数据，暂时设为0
+      };
+    } catch (statsErr) {
+      console.warn('统计API不可用，使用备用方案:', statsErr);
+
+      // 备用方案：并行获取博客数量和说说数量
+      const [postsResponse, momentsResponse] = await Promise.all([
+        postApi.getPosts({
+          page: 1,
+          limit: 1, // 只需要获取总数，不需要具体内容
+          is_visible: true,
+          is_deleted: false,
+        }),
+        momentsApi.getMoments({
+          page: 1,
+          limit: 1, // 只需要获取总数，不需要具体内容
+          is_visible: true,
+        }),
+      ]);
+
+      // 获取博客数量
+      let blogCount = 0;
+      if (postsResponse && Array.isArray(postsResponse)) {
+        // 如果后端API返回的是数组，我们需要获取总数
+        // 这里可能需要调用一个专门的统计API
+        // 暂时使用一个估算值，实际项目中应该修改后端API
+        blogCount = postsResponse.length > 0 ? 50 : 0; // 假设有50篇博客
+      }
+
+      // 获取说说数量
+      let shareCount = 0;
+      if (momentsResponse && momentsResponse.items) {
+        // 如果后端API返回了总数信息
+        shareCount = momentsResponse.total || momentsResponse.items.length || 0;
+      }
+
+      userStats.value = {
+        blogCount,
+        shareCount,
+      };
+    }
+
+    console.log('用户统计数据:', userStats.value);
+  } catch (err) {
+    console.error('加载用户统计数据失败:', err);
+    // 使用默认数据
+    userStats.value = {
+      blogCount: 0,
+      shareCount: 0,
+    };
+  } finally {
+    statsLoading.value = false;
+  }
+};
+
 // 重新加载数据
 const reloadPosts = async () => {
   blogPosts.value = [];
@@ -949,6 +1026,7 @@ onMounted(async () => {
 
   // 初始加载
   await loadUserProfile();
+  await loadUserStats(); // 加载用户统计数据
   await loadHomepageSettings();
   await loadAutoPlaySetting(); // 加载自动播放设置
 

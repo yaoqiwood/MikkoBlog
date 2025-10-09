@@ -24,9 +24,9 @@
           </div>
           <div class="username">@{{ userProfile.nickname }}</div>
           <div class="stats">
-            <span class="stat-item">14 博客</span>
-            <span class="stat-item">37 分享</span>
-            <button class="share-btn">分享</button>
+            <span class="stat-item">{{ userStats.blogCount }} 博客</span>
+            <span class="stat-item">{{ userStats.shareCount }} 分享</span>
+            <button class="share-btn" @click="showShareModal = true">分享</button>
           </div>
           <div class="contact-info">
             <div v-if="userProfile.email" class="contact-item">
@@ -78,10 +78,55 @@
         </div>
       </div>
     </div>
+
+    <!-- 分享模态框 -->
+    <Modal v-model="showShareModal" title="分享博客" width="400">
+      <div class="share-modal-content">
+        <div class="share-title">分享 {{ userProfile.nickname }} 的博客</div>
+        <div class="share-url">
+          <Input v-model="shareUrl" readonly>
+            <template #append>
+              <Button @click="copyToClipboard">复制</Button>
+            </template>
+          </Input>
+        </div>
+        <div class="share-platforms">
+          <div class="platform-title">分享到：</div>
+          <div class="platform-buttons">
+            <button class="platform-btn wechat" @click="shareToWeChat">
+              <i>💬</i>
+              <span>微信</span>
+            </button>
+            <button class="platform-btn weibo" @click="shareToWeibo">
+              <i>🔴</i>
+              <span>微博</span>
+            </button>
+            <button class="platform-btn qq" @click="shareToQQ">
+              <i>🐧</i>
+              <span>QQ</span>
+            </button>
+            <button class="platform-btn twitter" @click="shareToTwitter">
+              <i>🐦</i>
+              <span>Twitter</span>
+            </button>
+            <button class="platform-btn facebook" @click="shareToFacebook">
+              <i>📘</i>
+              <span>Facebook</span>
+            </button>
+            <button class="platform-btn copy" @click="copyToClipboard">
+              <i>📋</i>
+              <span>复制链接</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   </aside>
 </template>
 
 <script setup>
+import { ref, computed } from 'vue';
+import { Modal, Input, Button, Message } from 'view-ui-plus';
 import MusicPlayer from '@/components/MusicPlayer.vue';
 
 defineProps({
@@ -105,9 +150,80 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  userStats: {
+    type: Object,
+    default: () => ({
+      blogCount: 0,
+      shareCount: 0,
+    }),
+  },
+  statsLoading: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 defineEmits(['viewBlogDetail']);
+
+// 分享相关数据
+const showShareModal = ref(false);
+const shareUrl = computed(() => window.location.href);
+
+// 分享功能
+const copyToClipboard = async () => {
+  try {
+    await navigator.clipboard.writeText(shareUrl.value);
+    Message.success('链接已复制到剪贴板');
+  } catch (err) {
+    // 备用方案
+    const textArea = document.createElement('textarea');
+    textArea.value = shareUrl.value;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    Message.success('链接已复制到剪贴板');
+  }
+};
+
+const shareToWeChat = () => {
+  // 微信分享需要特殊处理，这里提供基础实现
+  const url = encodeURIComponent(shareUrl.value);
+  const title = encodeURIComponent(`${userProfile.value.nickname} 的博客`);
+  const desc = encodeURIComponent('来看看我的精彩博客内容！');
+
+  // 微信分享链接格式
+  const wechatUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${url}`;
+  window.open(wechatUrl, '_blank');
+  Message.info('请使用微信扫描二维码分享');
+};
+
+const shareToWeibo = () => {
+  const url = encodeURIComponent(shareUrl.value);
+  const title = encodeURIComponent(`${userProfile.value.nickname} 的博客`);
+  const weiboUrl = `https://service.weibo.com/share/share.php?url=${url}&title=${title}`;
+  window.open(weiboUrl, '_blank', 'width=600,height=400');
+};
+
+const shareToQQ = () => {
+  const url = encodeURIComponent(shareUrl.value);
+  const title = encodeURIComponent(`${userProfile.value.nickname} 的博客`);
+  const qqUrl = `https://connect.qq.com/widget/shareqq/index.html?url=${url}&title=${title}`;
+  window.open(qqUrl, '_blank', 'width=600,height=400');
+};
+
+const shareToTwitter = () => {
+  const url = encodeURIComponent(shareUrl.value);
+  const text = encodeURIComponent(`来看看 ${userProfile.value.nickname} 的精彩博客！`);
+  const twitterUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+  window.open(twitterUrl, '_blank', 'width=600,height=400');
+};
+
+const shareToFacebook = () => {
+  const url = encodeURIComponent(shareUrl.value);
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+  window.open(facebookUrl, '_blank', 'width=600,height=400');
+};
 </script>
 
 <style scoped>
@@ -313,5 +429,116 @@ defineEmits(['viewBlogDetail']);
 .profile-loading span {
   font-size: 14px;
   color: #999;
+}
+
+/* 分享模态框样式 */
+.share-modal-content {
+  padding: 10px 0;
+}
+
+.share-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.share-url {
+  margin-bottom: 20px;
+}
+
+.share-platforms {
+  margin-top: 20px;
+}
+
+.platform-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.platform-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.platform-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 12px;
+  color: #666;
+}
+
+.platform-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #ff6b6b;
+}
+
+.platform-btn i {
+  font-size: 20px;
+}
+
+.platform-btn.wechat:hover {
+  background: #07c160;
+  color: white;
+  border-color: #07c160;
+}
+
+.platform-btn.weibo:hover {
+  background: #e6162d;
+  color: white;
+  border-color: #e6162d;
+}
+
+.platform-btn.qq:hover {
+  background: #12b7f5;
+  color: white;
+  border-color: #12b7f5;
+}
+
+.platform-btn.twitter:hover {
+  background: #1da1f2;
+  color: white;
+  border-color: #1da1f2;
+}
+
+.platform-btn.facebook:hover {
+  background: #1877f2;
+  color: white;
+  border-color: #1877f2;
+}
+
+.platform-btn.copy:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .platform-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .platform-btn {
+    padding: 10px 6px;
+    font-size: 11px;
+  }
+
+  .platform-btn i {
+    font-size: 18px;
+  }
 }
 </style>
