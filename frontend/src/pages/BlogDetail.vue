@@ -26,7 +26,7 @@
           <div class="back-section">
             <Button @click="goBack" type="text" class="back-btn">
               <Icon type="ios-arrow-back" />
-              返回首页
+              {{ backButtonText }}
             </Button>
           </div>
 
@@ -191,6 +191,10 @@ const isCollected = ref(false);
 const tableOfContents = ref([]);
 const relatedPosts = ref([]);
 const relatedPostsLoading = ref(false);
+
+// 返回按钮相关
+const backUrl = ref('/');
+const backButtonText = ref('返回首页');
 
 // 用户资料数据
 const userProfile = ref({
@@ -447,9 +451,15 @@ const collectBlog = () => {
   Message.success(isCollected.value ? '收藏成功' : '取消收藏');
 };
 
-// 返回首页
+// 返回上一页
 const goBack = () => {
-  router.push('/');
+  // 如果有记录的返回URL，使用它；否则使用浏览器历史记录
+  if (backUrl.value && backUrl.value !== '/') {
+    router.push(backUrl.value);
+  } else {
+    // 使用浏览器历史记录返回
+    router.go(-1);
+  }
 };
 
 // 监听路由变化
@@ -463,8 +473,55 @@ watch(
   { immediate: true }
 );
 
+// 解析返回URL和按钮文本
+const parseBackInfo = () => {
+  const from = route.query.from;
+
+  if (from) {
+    // 从查询参数中获取来源页面
+    backUrl.value = decodeURIComponent(from);
+
+    // 根据来源页面设置按钮文本
+    if (from.includes('/articles')) {
+      backButtonText.value = '返回文章列表';
+    } else if (from.includes('/blog') && from.includes('view=columns')) {
+      backButtonText.value = '返回专栏';
+    } else if (from.includes('/blog')) {
+      backButtonText.value = '返回首页';
+    } else {
+      backButtonText.value = '返回上一页';
+    }
+  } else {
+    // 如果没有来源信息，检查浏览器历史记录
+    if (document.referrer) {
+      try {
+        const referrer = new window.URL(document.referrer);
+        if (referrer.pathname.includes('/articles')) {
+          backButtonText.value = '返回文章列表';
+          backUrl.value = '/articles';
+        } else if (referrer.pathname.includes('/blog')) {
+          backButtonText.value = '返回首页';
+          backUrl.value = '/blog';
+        } else {
+          backButtonText.value = '返回上一页';
+          backUrl.value = '/';
+        }
+      } catch {
+        // 如果URL解析失败，使用默认值
+        backButtonText.value = '返回首页';
+        backUrl.value = '/';
+      }
+    } else {
+      // 默认返回首页
+      backButtonText.value = '返回首页';
+      backUrl.value = '/';
+    }
+  }
+};
+
 // 生命周期
 onMounted(() => {
+  parseBackInfo();
   loadUserProfile();
   loadHomepageSettings();
 });

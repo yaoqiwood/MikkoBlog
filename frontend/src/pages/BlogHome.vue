@@ -7,367 +7,68 @@
       @close="closeWelcomeModal"
     />
     <!-- 头部导航 -->
-    <header class="blog-header">
-      <div class="header-container">
-        <div class="blog-title">
-          <h1>{{ homepageSettings.header_title || userProfile.blog_title || 'MikkoBlog' }}</h1>
-        </div>
-        <nav class="main-nav">
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'home' }"
-            @click="switchView('home')"
-            >首页</a
-          >
-          <router-link to="/articles" class="nav-item">文章列表</router-link>
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'columns' }"
-            @click="switchView('columns')"
-            >专栏</a
-          >
-          <a href="#" class="nav-item">关于我</a>
-        </nav>
-        <div class="search-box">
-          <i class="search-icon">🔍</i>
-        </div>
-      </div>
-    </header>
+    <BlogHeader :title="pageTitle" :current-view="currentView" @switch-view="switchView" />
 
     <!-- 主内容区域 -->
     <div class="main-content">
       <div class="content-container">
         <!-- 左侧边栏 -->
-        <aside class="left-sidebar">
-          <!-- 用户信息卡片 -->
-          <div class="user-card">
-            <div class="profile-banner">
-              <img v-if="bannerImageUrl" :src="bannerImageUrl" alt="Profile Banner" />
-              <img
-                v-else
-                src="https://via.placeholder.com/300x120/ffb6c1/ffffff?text=Anime+Girl"
-                alt="Profile Banner"
-              />
-            </div>
-            <div class="profile-info">
-              <!-- 加载状态 -->
-              <div v-if="profileLoading" class="profile-loading">
-                <div class="loading-spinner"></div>
-                <span>加载用户信息中...</span>
-              </div>
-
-              <!-- 用户信息内容 -->
-              <div v-else>
-                <div class="avatar">
-                  <img :src="userProfile.avatar" :alt="userProfile.nickname" />
-                </div>
-                <div class="username">@{{ userProfile.nickname }}</div>
-                <div class="stats">
-                  <span class="stat-item">14 博客</span>
-                  <span class="stat-item">37 分享</span>
-                  <button class="share-btn">分享</button>
-                </div>
-                <div class="contact-info">
-                  <div v-if="userProfile.email" class="contact-item">
-                    <i class="contact-icon">✉️</i>
-                    <span>{{ userProfile.email }}</span>
-                  </div>
-                  <div v-if="userProfile.github_url" class="contact-item">
-                    <i class="contact-icon">🐙</i>
-                    <span>{{ userProfile.github_url }}</span>
-                  </div>
-                  <div v-if="userProfile.twitter_url" class="contact-item">
-                    <i class="contact-icon">🐦</i>
-                    <span>{{ userProfile.twitter_url }}</span>
-                  </div>
-                  <div v-if="userProfile.weibo_url" class="contact-item">
-                    <i class="contact-icon">🔴</i>
-                    <span>{{ userProfile.weibo_url }}</span>
-                  </div>
-                  <div v-if="userProfile.website_url" class="contact-item">
-                    <i class="contact-icon">🌐</i>
-                    <span>{{ userProfile.website_url }}</span>
-                  </div>
-                </div>
-                <div class="motto">
-                  <p>{{ userProfile.motto }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- 音乐播放器 -->
-          <MusicPlayer ref="musicPlayerRef" />
-          <!-- 最受欢迎 -->
-          <div class="popular-posts">
-            <h3>🌟 最受欢迎</h3>
-            <div v-if="popularPostsLoading" class="popular-loading">
-              <div class="loading-spinner"></div>
-              <span>加载中...</span>
-            </div>
-            <div v-else class="popular-list">
-              <div
-                v-for="post in popularPostsList"
-                :key="post.id"
-                class="popular-item"
-                @click="viewBlogDetail(post.id)"
-              >
-                <div class="popular-info">
-                  <div class="popular-title">{{ post.title }}</div>
-                  <div class="popular-stats">{{ post.view_count || 0 }} 浏览</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
+        <LeftSidebar
+          :user-profile="userProfile"
+          :profile-loading="profileLoading"
+          :banner-image-url="bannerImageUrl"
+          :popular-posts-list="popularPostsList"
+          :popular-posts-loading="popularPostsLoading"
+          @view-blog-detail="viewBlogDetail"
+        />
 
         <!-- 主内容区 -->
         <main class="main-area">
           <!-- 首页内容 -->
-          <div v-if="currentView === 'home'" class="home-content">
-            <div class="content-nav">
-              <a
-                href="#"
-                class="content-nav-item"
-                :class="{ active: activeContentType === 'all' }"
-                @click.prevent="switchContentType('all')"
-              >
-                全部
-              </a>
-              <a
-                href="#"
-                class="content-nav-item"
-                :class="{ active: activeContentType === 'blog' }"
-                @click.prevent="switchContentType('blog')"
-              >
-                博客
-              </a>
-              <a
-                href="#"
-                class="content-nav-item"
-                :class="{ active: activeContentType === 'moments' }"
-                @click.prevent="switchContentType('moments')"
-              >
-                说说
-              </a>
-            </div>
-            <div class="posts-wrapper">
-              <!-- 错误提示 -->
-              <div v-if="error" class="error-message">
-                <div class="error-content">
-                  <i class="error-icon">⚠️</i>
-                  <span>{{ error }}</span>
-                  <button @click="reloadPosts" class="retry-btn">重新加载</button>
-                </div>
-              </div>
-
-              <div class="posts-container" @scroll="handleScroll">
-                <!-- 内容列表 -->
-                <article
-                  class="blog-post"
-                  v-for="(item, index) in displayedContent"
-                  :key="`${item.type}-${item.id}`"
-                >
-                  <div class="post-header">
-                    <div class="post-avatar">
-                      <img :src="getFullUrl(item.author_avatar)" :alt="item.author_name" />
-                      <div class="post-meta">
-                        <div class="author-name">{{ item.author_name }}</div>
-                      </div>
-                    </div>
-                    <div class="content-type-badge" :class="item.type">
-                      {{ item.type === 'blog' ? '博客' : '说说' }}
-                    </div>
-                  </div>
-                  <div class="post-content">
-                    <!-- 博客文章内容 -->
-                    <template v-if="item.type === 'blog'">
-                      <h3 class="post-title" @click="viewBlogDetail(item.id)">{{ item.title }}</h3>
-                      <p>{{ item.content }}</p>
-                      <div v-if="item.image" class="post-image">
-                        <img :src="item.image" :alt="item.title" />
-                      </div>
-                    </template>
-
-                    <!-- 说说内容 -->
-                    <template v-else-if="item.type === 'moment'">
-                      <p class="moment-content">{{ item.content }}</p>
-                      <!-- 说说图片 -->
-                      <div v-if="item.images && item.images.length > 0" class="moment-images">
-                        <div class="images-grid" :class="getImageGridClass(item.images.length)">
-                          <div
-                            v-for="(image, imgIndex) in item.images"
-                            :key="image.id"
-                            class="moment-image-item"
-                            @click="previewImage(item.images, imgIndex)"
-                          >
-                            <img :src="getFullUrl(image.url)" :alt="image.filename" />
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                  </div>
-                  <div class="post-stats">
-                    <div class="stat-item">
-                      <i class="stat-icon">👁️</i>
-                      <span>{{ item.views }}</span>
-                    </div>
-                    <div class="stat-item">
-                      <i class="stat-icon">💬</i>
-                      <span>{{ item.comments }}</span>
-                    </div>
-                    <div class="stat-item">
-                      <i class="stat-icon">👍</i>
-                      <span>{{ item.likes }}</span>
-                    </div>
-                    <div class="stat-item">
-                      <i class="stat-icon">📤</i>
-                      <span>{{ item.shares }}</span>
-                    </div>
-                    <div class="post-time-info">
-                      {{ item.create_or_update_time }}
-                    </div>
-                  </div>
-                  <div v-if="index < displayedContent.length - 1" class="post-divider"></div>
-                </article>
-
-                <!-- 空状态 -->
-                <div v-if="!loading && displayedContent.length === 0 && !error" class="empty-state">
-                  <div class="empty-content">
-                    <i class="empty-icon">📝</i>
-                    <h3>暂无内容</h3>
-                    <p>还没有发布任何内容，请稍后再来查看</p>
-                  </div>
-                </div>
-
-                <!-- 加载状态 -->
-                <div v-if="loading" class="loading-indicator">
-                  <div class="loading-spinner"></div>
-                  <span>加载中...</span>
-                </div>
-
-                <!-- 没有更多数据提示 -->
-                <div v-if="!hasMore && displayedContent.length > 0" class="no-more-data">
-                  <span>没有更多内容了</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HomeContent
+            v-if="currentView === 'home'"
+            :active-content-type="activeContentType"
+            :displayed-content="displayedContent"
+            :loading="loading"
+            :has-more="hasMore"
+            :error="error"
+            @switch-content-type="switchContentType"
+            @view-blog-detail="viewBlogDetail"
+            @preview-image="previewImage"
+            @reload-posts="reloadPosts"
+            @handle-scroll="handleScroll"
+          />
 
           <!-- 专栏展示 -->
-          <div v-if="currentView === 'columns'" class="columns-content">
-            <div class="columns-header">
-              <h2>📚 博主专栏</h2>
-              <p>探索不同技术领域的深度内容</p>
-            </div>
+          <ColumnsContent
+            v-if="currentView === 'columns'"
+            :columns-list="columnsList"
+            :columns-loading="columnsLoading"
+            @view-column-detail="viewColumnDetail"
+          />
 
-            <div v-if="columnsLoading" class="loading-indicator">
-              <div class="loading-spinner"></div>
-              <span>加载中...</span>
-            </div>
+          <!-- 专栏文章列表 -->
+          <ColumnDetail
+            v-if="currentView === 'column-detail'"
+            :current-column="currentColumn"
+            :column-posts-list="columnPostsList"
+            :column-posts-loading="columnPostsLoading"
+            @back-to-columns="currentView = 'columns'"
+            @view-blog-detail="viewBlogDetail"
+          />
 
-            <div v-else class="columns-grid">
-              <div
-                v-for="column in columnsList"
-                :key="column.id"
-                class="column-card"
-                @click="viewColumnDetail(column)"
-              >
-                <div class="column-cover">
-                  <img
-                    v-if="column.cover_image_url"
-                    :src="getFullImageUrl(column.cover_image_url)"
-                    :alt="column.name"
-                  />
-                  <div v-else class="default-cover">
-                    <span>{{ column.name.charAt(0) }}</span>
-                  </div>
-                </div>
-                <div class="column-info">
-                  <h3 class="column-name">{{ column.name }}</h3>
-                  <p class="column-description">{{ column.description }}</p>
-                  <div class="column-stats">
-                    <span class="stat-item">
-                      <Icon type="ios-document" />
-                      {{ column.post_count }} 篇文章
-                    </span>
-                    <span class="stat-item">
-                      <Icon type="ios-eye" />
-                      {{ column.view_count }} 浏览
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="!columnsLoading && columnsList.length === 0" class="empty-columns">
-              <Icon type="ios-folder-open" size="48" />
-              <p>暂无专栏内容</p>
-            </div>
-          </div>
+          <!-- 关于我页面 -->
+          <AboutContent v-if="currentView === 'about'" :user-profile="userProfile" />
         </main>
 
         <!-- 右侧边栏 -->
-        <aside class="right-sidebar">
-          <!-- 博主专栏 -->
-          <div class="blogger-column">
-            <h3>📚 博主专栏</h3>
-            <div v-if="sidebarColumnsLoading" class="column-loading">
-              <div class="loading-spinner"></div>
-              <span>加载中...</span>
-            </div>
-            <div v-else-if="sidebarColumnsList.length === 0" class="empty-columns">
-              <p>暂无专栏</p>
-            </div>
-            <div v-else class="column-list">
-              <div
-                v-for="column in sidebarColumnsList.slice(0, 6)"
-                :key="column.id"
-                class="column-item"
-                @click="viewColumnDetail(column)"
-              >
-                <img
-                  v-if="column.cover_image_url"
-                  :src="getFullImageUrl(column.cover_image_url)"
-                  :alt="column.name"
-                />
-                <div v-else class="default-column-cover">
-                  <span>{{ column.name.charAt(0) }}</span>
-                </div>
-                <div class="column-title">{{ column.name }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 标签云 -->
-          <div class="tag-cloud">
-            <h3>🏷️ 标签云</h3>
-            <div v-if="tagCloudLoading" class="tag-loading">
-              <div class="loading-spinner"></div>
-              <span>加载中...</span>
-            </div>
-            <div v-else class="tags">
-              <span
-                v-for="tag in tagCloudList"
-                :key="tag.name"
-                class="tag"
-                :class="tag.size"
-                :style="`background-color: ${tag.color} !important; color: ${getTextColor(tag.color)} !important;`"
-              >
-                {{ tag.name }}
-              </span>
-            </div>
-          </div>
-
-          <!-- 分类 -->
-          <div v-show="false" class="categories">
-            <h3>📂 分类</h3>
-            <div class="category-list">
-              <div class="category-item">默认分类</div>
-            </div>
-          </div>
-        </aside>
+        <RightSidebar
+          :sidebar-columns-list="sidebarColumnsList"
+          :sidebar-columns-loading="sidebarColumnsLoading"
+          :tag-cloud-list="tagCloudList"
+          :tag-cloud-loading="tagCloudLoading"
+          @view-column-detail="viewColumnDetail"
+        />
       </div>
     </div>
 
@@ -377,91 +78,29 @@
     </div>
 
     <!-- 图片预览 -->
-    <Modal
-      v-model="showImagePreview"
-      width="90%"
-      class-name="image-preview-modal"
-      :mask-closable="true"
-      :closable="true"
-    >
-      <template #header>
-        <div class="preview-header">
-          <span
-            >图片预览 ({{ previewIndex + 1 }} / {{ previewImages.length }}) -
-            {{ Math.round(imageScale * 100) }}%</span
-          >
-          <div class="preview-actions">
-            <Button type="text" @click="zoomOut" size="small" title="缩小 (-)">
-              <Icon type="ios-remove" />
-            </Button>
-            <Button type="text" @click="resetZoom" size="small" title="重置 (0)">
-              {{ Math.round(imageScale * 100) }}%
-            </Button>
-            <Button type="text" @click="zoomIn" size="small" title="放大 (+)">
-              <Icon type="ios-add" />
-            </Button>
-            <Button type="text" @click="prevImage" :disabled="previewIndex === 0" size="small">
-              <Icon type="ios-arrow-back" />
-              上一张
-            </Button>
-            <Button
-              type="text"
-              @click="nextImage"
-              :disabled="previewIndex === previewImages.length - 1"
-              size="small"
-            >
-              下一张
-              <Icon type="ios-arrow-forward" />
-            </Button>
-          </div>
-        </div>
-      </template>
-      <div
-        class="image-preview-container"
-        @wheel="handleWheel"
-        @mousemove="onDrag"
-        @mouseup="endDrag"
-        @mouseleave="endDrag"
-      >
-        <!-- 左侧箭头 -->
-        <div v-if="previewIndex > 0" class="nav-arrow nav-arrow-left" @click="prevImage">
-          <Icon type="ios-arrow-back" size="32" />
-        </div>
-
-        <!-- 右侧箭头 -->
-        <div
-          v-if="previewIndex < previewImages.length - 1"
-          class="nav-arrow nav-arrow-right"
-          @click="nextImage"
-        >
-          <Icon type="ios-arrow-forward" size="32" />
-        </div>
-
-        <img
-          :src="previewImageUrl"
-          alt="预览图片"
-          :style="imageStyle"
-          @mousedown="startDrag"
-          @click="imageScale > 1 ? null : closeImagePreview()"
-          @dragstart.prevent
-        />
-        <div class="preview-tip">
-          {{ imageScale > 1 ? '拖拽移动图片 | 滚轮缩放' : '点击图片关闭预览' }} | 使用 ← →
-          键切换图片 | +/- 键缩放 | 0 键重置 | ESC 键关闭
-        </div>
-      </div>
-      <template #footer>
-        <div class="preview-footer">
-          <Button @click="closeImagePreview">关闭</Button>
-        </div>
-      </template>
-    </Modal>
+    <ImagePreviewModal
+      v-model:show="showImagePreview"
+      :preview-images="previewImages"
+      :preview-index="previewIndex"
+      :preview-image-url="previewImageUrl"
+      @close="closeImagePreview"
+      @prev-image="prevImage"
+      @next-image="nextImage"
+    />
   </div>
 </template>
 
 <script setup>
-import MusicPlayer from '@/components/MusicPlayer.vue';
+import AboutContent from '@/components/blogHome/About/AboutContent.vue';
+import ColumnDetail from '@/components/blogHome/Columns/ColumnDetail.vue';
+import ColumnsContent from '@/components/blogHome/Columns/ColumnsContent.vue';
+import BlogHeader from '@/components/blogHome/Header/BlogHeader.vue';
+import HomeContent from '@/components/blogHome/Home/HomeContent.vue';
+import ImagePreviewModal from '@/components/blogHome/ImagePreview/ImagePreviewModal.vue';
+import LeftSidebar from '@/components/blogHome/Sidebar/LeftSidebar.vue';
+import RightSidebar from '@/components/blogHome/Sidebar/RightSidebar.vue';
 import WelcomeModal from '@/components/WelcomeModal.vue';
+
 import {
   authApi,
   columnsApi,
@@ -491,11 +130,16 @@ const error = ref('');
 const activeContentType = ref('all'); // 'all', 'blog', 'moments'
 
 // 视图切换
-const currentView = ref('home'); // 'home', 'columns'
+const currentView = ref('home'); // 'home', 'columns', 'column-detail', 'about'
 
 // 专栏相关数据
 const columnsList = ref([]);
 const columnsLoading = ref(false);
+
+// 专栏文章相关数据
+const columnPostsList = ref([]);
+const columnPostsLoading = ref(false);
+const currentColumn = ref(null);
 
 // 右侧边栏专栏数据
 const sidebarColumnsList = ref([]);
@@ -514,10 +158,6 @@ const showImagePreview = ref(false);
 const previewImages = ref([]);
 const previewIndex = ref(0);
 const previewImageUrl = ref('');
-const imageScale = ref(1);
-const imagePosition = ref({ x: 0, y: 0 });
-const isDragging = ref(false);
-const dragStart = ref({ x: 0, y: 0 });
 
 // 用户资料数据
 const userProfile = ref({
@@ -562,8 +202,6 @@ const closeWelcomeModal = () => {
   }
 };
 
-const musicPlayerRef = ref(null);
-
 // 将相对路径转换为完整URL
 const getFullUrl = url => {
   if (!url) return '';
@@ -576,85 +214,17 @@ const getFullUrl = url => {
   return url;
 };
 
-// 根据背景色计算合适的文字颜色
-const getTextColor = backgroundColor => {
-  if (!backgroundColor) return '#ffffff';
-
-  // 移除 # 号
-  const hex = backgroundColor.replace('#', '');
-
-  // 转换为RGB
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-
-  // 计算亮度
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-  // 根据亮度返回白色或黑色文字
-  return brightness > 128 ? '#000000' : '#ffffff';
-};
-
-// 获取说说图片网格样式类
-const getImageGridClass = count => {
-  if (count === 1) return 'images-grid-1';
-  if (count === 2) return 'images-grid-2';
-  if (count === 3) return 'images-grid-3';
-  if (count === 4) return 'images-grid-4';
-  return 'images-grid-9';
-};
-
 // 预览图片
 const previewImage = (images, index) => {
   previewImages.value = images;
   previewIndex.value = index;
   previewImageUrl.value = getFullUrl(images[index].url);
   showImagePreview.value = true;
-
-  // 添加键盘事件监听
-  document.addEventListener('keydown', handleKeydown);
-};
-
-// 键盘导航
-const handleKeydown = event => {
-  if (!showImagePreview.value) return;
-
-  switch (event.key) {
-    case 'ArrowLeft':
-      event.preventDefault();
-      prevImage();
-      break;
-    case 'ArrowRight':
-      event.preventDefault();
-      nextImage();
-      break;
-    case 'Escape':
-      event.preventDefault();
-      closeImagePreview();
-      break;
-    case '=':
-    case '+':
-      event.preventDefault();
-      zoomIn();
-      break;
-    case '-':
-      event.preventDefault();
-      zoomOut();
-      break;
-    case '0':
-      event.preventDefault();
-      resetZoom();
-      break;
-  }
 };
 
 // 关闭图片预览
 const closeImagePreview = () => {
   showImagePreview.value = false;
-  document.removeEventListener('keydown', handleKeydown);
-  // 重置缩放和位置
-  imageScale.value = 1;
-  imagePosition.value = { x: 0, y: 0 };
 };
 
 // 上一张图片
@@ -662,9 +232,6 @@ const prevImage = () => {
   if (previewIndex.value > 0) {
     previewIndex.value--;
     previewImageUrl.value = getFullUrl(previewImages.value[previewIndex.value].url);
-    // 重置缩放和位置
-    imageScale.value = 1;
-    imagePosition.value = { x: 0, y: 0 };
   }
 };
 
@@ -673,75 +240,8 @@ const nextImage = () => {
   if (previewIndex.value < previewImages.value.length - 1) {
     previewIndex.value++;
     previewImageUrl.value = getFullUrl(previewImages.value[previewIndex.value].url);
-    // 重置缩放和位置
-    imageScale.value = 1;
-    imagePosition.value = { x: 0, y: 0 };
   }
 };
-
-// 图片缩放功能
-const zoomIn = () => {
-  if (imageScale.value < 3) {
-    imageScale.value = Math.min(imageScale.value + 0.2, 3);
-  }
-};
-
-const zoomOut = () => {
-  if (imageScale.value > 0.5) {
-    imageScale.value = Math.max(imageScale.value - 0.2, 0.5);
-    // 如果缩放到1，重置位置
-    if (imageScale.value === 1) {
-      imagePosition.value = { x: 0, y: 0 };
-    }
-  }
-};
-
-const resetZoom = () => {
-  imageScale.value = 1;
-  imagePosition.value = { x: 0, y: 0 };
-};
-
-// 鼠标滚轮缩放
-const handleWheel = event => {
-  event.preventDefault();
-  if (event.deltaY < 0) {
-    zoomIn();
-  } else {
-    zoomOut();
-  }
-};
-
-// 拖拽功能
-const startDrag = event => {
-  if (imageScale.value > 1) {
-    isDragging.value = true;
-    dragStart.value = {
-      x: event.clientX - imagePosition.value.x,
-      y: event.clientY - imagePosition.value.y,
-    };
-    event.preventDefault();
-  }
-};
-
-const onDrag = event => {
-  if (isDragging.value && imageScale.value > 1) {
-    imagePosition.value = {
-      x: event.clientX - dragStart.value.x,
-      y: event.clientY - dragStart.value.y,
-    };
-  }
-};
-
-const endDrag = () => {
-  isDragging.value = false;
-};
-
-// 计算图片样式
-const imageStyle = computed(() => ({
-  transform: `scale(${imageScale.value}) translate(${imagePosition.value.x / imageScale.value}px, ${imagePosition.value.y / imageScale.value}px)`,
-  cursor: imageScale.value > 1 ? (isDragging.value ? 'grabbing' : 'grab') : 'pointer',
-  transition: isDragging.value ? 'none' : 'transform 0.2s ease',
-}));
 
 // 计算背景图URL
 const backgroundImageUrl = computed(() => {
@@ -820,6 +320,7 @@ const autoPlayMusic = () => {
     }
   }, 1000);
 };
+
 const formatTime = dateString => {
   const date = new Date(dateString);
   const now = new Date();
@@ -1103,23 +604,78 @@ const switchView = view => {
   }
 };
 
+// 加载专栏文章
+const loadColumnPosts = async columnId => {
+  columnPostsLoading.value = true;
+  try {
+    const response = await postApi.getPosts({
+      page: 1,
+      limit: 50,
+      column_id: columnId,
+      is_visible: true,
+      is_deleted: false,
+    });
+
+    if (response && response.length > 0) {
+      // 转换数据格式以适配前端显示
+      const formattedPosts = response.map(post => ({
+        id: post.id,
+        title: post.title,
+        content: post.summary || post.content.substring(0, 200) + '...',
+        time: formatTime(post.created_at),
+        display_time: formatTime(post.updated_at || post.created_at),
+        create_or_update_time: formatCreateOrUpdateTime(post.created_at, post.updated_at),
+        views: post.view_count || 0,
+        comments: post.comment_count || 0,
+        likes: post.like_count || 0,
+        shares: post.share_count || 0,
+        image: post.cover_image_url,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        author_name: post.user_nickname || userProfile.value.nickname || '',
+        author_avatar:
+          post.user_avatar ||
+          userProfile.value.avatar ||
+          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+      }));
+
+      columnPostsList.value = formattedPosts;
+    } else {
+      columnPostsList.value = [];
+    }
+  } catch (err) {
+    console.error('加载专栏文章失败:', err);
+    Message.error('加载专栏文章失败，请稍后重试');
+    columnPostsList.value = [];
+  } finally {
+    columnPostsLoading.value = false;
+  }
+};
+
 // 查看专栏详情
 const viewColumnDetail = column => {
-  // 这里可以跳转到专栏详情页面或者展开专栏文章列表
-  Message.info(`查看专栏: ${column.name}`);
-  // 未来可以实现专栏详情页面
+  currentColumn.value = column;
+  currentView.value = 'column-detail';
+  loadColumnPosts(column.id);
 };
 
 // 查看博文详情
 const viewBlogDetail = blogId => {
-  router.push(`/blog/${blogId}`);
-};
+  // 记录当前页面作为来源
+  const currentPath = route.path;
+  const currentQuery = route.query;
 
-// 获取完整图片URL
-const getFullImageUrl = url => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `http://localhost:8000${url}`;
+  // 构建来源URL
+  let fromUrl = currentPath;
+  if (Object.keys(currentQuery).length > 0) {
+    const queryString = new URLSearchParams(currentQuery).toString();
+    fromUrl += `?${queryString}`;
+  }
+
+  router.push({
+    path: `/blog/${blogId}`,
+    query: { from: encodeURIComponent(fromUrl) },
+  });
 };
 
 // 计算当前显示的内容
@@ -1346,6 +902,25 @@ watch(
   { immediate: true }
 );
 
+// 监听路由变化，确保导航状态正确
+watch(
+  () => route.path,
+  newPath => {
+    // 如果当前在首页，确保视图状态正确
+    if (newPath === '/') {
+      if (route.query.view === 'columns') {
+        currentView.value = 'columns';
+        loadColumns();
+      } else if (route.query.view === 'about') {
+        currentView.value = 'about';
+      } else {
+        currentView.value = 'home';
+      }
+    }
+  },
+  { immediate: true }
+);
+
 // 生命周期
 onMounted(async () => {
   // 检查是否全屏模式
@@ -1358,6 +933,11 @@ onMounted(async () => {
     currentView.value = 'columns';
     // 如果直接跳转到专栏视图，需要加载专栏数据
     loadColumns();
+  } else if (route.query.view === 'about') {
+    currentView.value = 'about';
+  } else {
+    // 确保默认视图是首页
+    currentView.value = 'home';
   }
 
   // 检查是否首次访问，只在首次访问时显示欢迎模态框
@@ -1381,8 +961,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // 清理键盘事件监听器
-  document.removeEventListener('keydown', handleKeydown);
+  // 清理工作
 });
 </script>
 
@@ -1399,105 +978,6 @@ onUnmounted(() => {
   background-image: var(--bg-image, linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%));
 }
 
-/* 头部样式 */
-.blog-header {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-
-.header-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 60px;
-  position: relative;
-}
-
-.blog-title h1 {
-  font-size: 24px;
-  font-weight: bold;
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-}
-
-.main-nav {
-  display: flex;
-  gap: 30px;
-}
-
-.nav-item {
-  text-decoration: none;
-  color: #333;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.nav-item:hover {
-  color: #ff6b6b;
-  transform: translateY(-2px);
-}
-
-.nav-item::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  transition: width 0.3s ease;
-}
-
-.nav-item:hover::after {
-  width: 100%;
-}
-
-.blog-title {
-  position: absolute;
-  left: 20px;
-}
-
-.blog-title h1 {
-  font-size: 24px;
-  font-weight: bold;
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-}
-
-.main-nav {
-  display: flex;
-  gap: 30px;
-}
-
-.search-box {
-  position: absolute;
-  right: 20px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.search-box:hover {
-  background: rgba(0, 0, 0, 0.1);
-  transform: scale(1.05);
-}
-
 /* 主内容区域 */
 .main-content {
   max-width: 1200px;
@@ -1512,685 +992,11 @@ onUnmounted(() => {
   align-items: start;
 }
 
-/* 左侧边栏 */
-.left-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.user-card {
-  background: white;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.user-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-.profile-banner img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-}
-
-.profile-info {
-  padding: 20px;
-  text-align: center;
-}
-
-.avatar {
-  margin: -40px auto 15px;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 4px solid white;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.username {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.stats {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.stat-item {
-  font-size: 14px;
-  color: #666;
-}
-
-.share-btn {
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  color: white;
-  border: none;
-  padding: 5px 15px;
-  border-radius: 15px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.share-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-}
-
-.contact-info {
-  margin-bottom: 15px;
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #666;
-}
-
-.contact-icon {
-  font-size: 16px;
-}
-
-.motto p {
-  font-style: italic;
-  color: #888;
-  font-size: 14px;
-  margin: 0;
-}
-
-/* 音乐播放器 */
-.music-player {
-  background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.player-header h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.track-title {
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.track-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.play-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.play-btn:hover {
-  transform: scale(1.2);
-}
-
-.progress-bar {
-  flex: 1;
-  height: 4px;
-  background: #eee;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress {
-  width: 30%;
-  height: 100%;
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  border-radius: 2px;
-}
-
-.time {
-  font-size: 12px;
-  color: #666;
-}
-
-.volume-btn {
-  background: none;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.playlist {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.playlist-item {
-  font-size: 12px;
-  color: #666;
-  padding: 5px 10px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.playlist-item:hover {
-  background: rgba(255, 107, 107, 0.1);
-  color: #ff6b6b;
-}
-
-/* 最受欢迎 */
-.popular-posts {
-  background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.popular-posts h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.popular-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.popular-item {
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.popular-item:hover {
-  background: rgba(255, 107, 107, 0.05);
-  transform: translateX(5px);
-}
-
-.popular-title {
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 5px;
-}
-
-.popular-stats {
-  font-size: 12px;
-  color: #666;
-}
-
-/* 最受欢迎加载状态 */
-.popular-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  color: #999;
-  font-size: 14px;
-}
-
-.popular-loading .loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #f0f0f0;
-  border-top: 2px solid #ff6b6b;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 8px;
-}
-
 /* 主内容区 */
 .main-area {
   background: transparent;
   border-radius: 15px;
   padding: 0;
-}
-
-/* 内容导航 */
-.content-nav {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  padding: 10px;
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.content-nav-item {
-  text-decoration: none;
-  color: #666;
-  font-size: 14px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.content-nav-item.active,
-.content-nav-item:hover {
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-}
-
-.posts-wrapper {
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.posts-container {
-  padding: 20px;
-  padding-top: 5px;
-  /* 移除固定高度，让内容自适应 */
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #ff6b6b #f0f0f0;
-}
-
-.posts-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.posts-container::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 15px 0;
-}
-
-.posts-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  border-radius: 3px;
-  border: 1px solid white;
-}
-
-.posts-container::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(45deg, #ff5252, #26a69a);
-}
-
-.blog-post {
-  padding: 20px 0;
-  transition: all 0.3s ease;
-}
-
-.blog-post:hover {
-  background: rgba(255, 107, 107, 0.02);
-  border-radius: 10px;
-  padding: 20px;
-  margin: 0 -20px;
-}
-
-.blog-post:last-child {
-  padding-bottom: 0;
-}
-
-.post-divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #eee, transparent);
-  margin: 20px 0;
-}
-
-/* 加载状态 */
-.loading-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 20px;
-  color: #666;
-  font-size: 14px;
-}
-
-.loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #f0f0f0;
-  border-top: 2px solid #ff6b6b;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* 错误提示 */
-.error-message {
-  margin-bottom: 20px;
-}
-
-.error-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 15px 20px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  color: #dc2626;
-}
-
-.error-icon {
-  font-size: 18px;
-}
-
-.retry-btn {
-  background: #dc2626;
-  color: white;
-  border: none;
-  padding: 5px 15px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-}
-
-.retry-btn:hover {
-  background: #b91c1c;
-  transform: translateY(-1px);
-}
-
-/* 空状态 */
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.empty-content {
-  color: #666;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 15px;
-  display: block;
-}
-
-.empty-content h3 {
-  margin: 0 0 10px 0;
-  color: #333;
-  font-size: 18px;
-}
-
-.empty-content p {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
-}
-
-/* 文章标题样式 */
-.post-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.post-title:hover {
-  color: #ff6b6b;
-  transform: translateX(5px);
-}
-
-/* 没有更多数据提示 */
-.no-more-data {
-  text-align: center;
-  padding: 20px;
-  color: #999;
-  font-size: 14px;
-  border-top: 1px solid #eee;
-  margin-top: 10px;
-}
-
-.post-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 15px;
-  position: relative;
-}
-
-.post-header .post-avatar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.post-avatar img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.author-name {
-  font-weight: bold;
-  font-size: 16px;
-  color: #333;
-}
-
-.post-time {
-  font-size: 12px;
-  color: #666;
-}
-
-.post-content {
-  margin-bottom: 15px;
-}
-
-.post-content p {
-  color: #333;
-  line-height: 1.6;
-  margin: 0 0 10px 0;
-}
-
-.post-image img {
-  width: 100%;
-  max-width: 400px;
-  border-radius: 10px;
-  margin-top: 10px;
-}
-
-.post-stats {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 14px;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.stat-item:hover {
-  color: #ff6b6b;
-  transform: translateY(-1px);
-}
-
-.post-time-info {
-  font-size: 12px;
-  color: #999;
-  font-style: italic;
-  margin-left: auto;
-}
-
-/* 右侧边栏 */
-.right-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.blogger-column,
-.tag-cloud,
-.categories {
-  background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.blogger-column h3,
-.tag-cloud h3,
-.categories h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.column-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.column-item {
-  text-align: center;
-}
-
-.column-item img {
-  width: 80px;
-  height: 80px;
-  border-radius: 10px;
-  object-fit: cover;
-  margin-bottom: 8px;
-}
-
-.column-title {
-  font-size: 14px;
-  color: #333;
-}
-
-/* 标签云 */
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
-}
-
-.tag {
-  padding: 5px 10px;
-  border-radius: 15px;
-  /* 背景色和文字颜色都由内联样式控制 */
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.tag:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-}
-
-.tag.small {
-  font-size: 11px;
-  padding: 3px 8px;
-}
-
-.tag.medium {
-  font-size: 13px;
-  padding: 6px 12px;
-}
-
-.tag.large {
-  font-size: 15px;
-  padding: 8px 15px;
-}
-
-/* 标签云加载状态 */
-.tag-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  color: #999;
-  font-size: 14px;
-}
-
-.tag-loading .loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #f0f0f0;
-  border-top: 2px solid #ff6b6b;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 8px;
-}
-
-/* 分类 */
-.category-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.category-item {
-  padding: 10px 15px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-  color: #333;
-}
-
-.category-item:hover {
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-  color: white;
-  transform: translateX(5px);
 }
 
 /* 全屏提示 */
@@ -2216,424 +1022,6 @@ onUnmounted(() => {
   80% {
     opacity: 1;
   }
-}
-
-/* 用户资料加载状态 */
-.profile-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  color: #666;
-}
-
-.profile-loading .loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #f0f0f0;
-  border-top: 2px solid #ff6b6b;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
-}
-
-.profile-loading span {
-  font-size: 14px;
-  color: #999;
-}
-
-/* 内容类型标识 */
-.content-type-badge {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 15px;
-  color: white;
-  font-weight: 500;
-  position: absolute;
-  top: 0;
-  right: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-.content-type-badge.blog {
-  background: linear-gradient(45deg, #667eea, #764ba2);
-}
-
-.content-type-badge.moment {
-  background: linear-gradient(45deg, #f093fb, #f5576c);
-}
-
-/* 说说内容样式 */
-.moment-content {
-  color: #333;
-  line-height: 1.6;
-  margin: 0 0 10px 0;
-  font-size: 16px;
-}
-
-/* 说说图片网格 */
-.moment-images {
-  margin: 12px 0;
-}
-
-.images-grid {
-  display: grid;
-  gap: 4px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.images-grid-1 {
-  grid-template-columns: 1fr;
-  max-width: 300px;
-}
-
-.images-grid-2 {
-  grid-template-columns: 1fr 1fr;
-  max-width: 300px;
-}
-
-.images-grid-3 {
-  grid-template-columns: 1fr 1fr 1fr;
-  max-width: 300px;
-}
-
-.images-grid-4 {
-  grid-template-columns: 1fr 1fr;
-  max-width: 300px;
-}
-
-.images-grid-9 {
-  grid-template-columns: 1fr 1fr 1fr;
-  max-width: 300px;
-}
-
-.moment-image-item {
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.moment-image-item:hover {
-  transform: scale(1.02);
-}
-
-.moment-image-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* 图片预览样式 */
-.preview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.preview-actions {
-  display: flex;
-  gap: 8px;
-  margin-right: 20px;
-}
-
-.image-preview-container {
-  text-align: center;
-  position: relative;
-  background: #f5f5f5;
-  border-radius: 8px;
-  padding: 16px;
-  min-height: 300px;
-  max-height: 60vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  user-select: none;
-}
-
-.image-preview-container img {
-  max-width: 100%;
-  max-height: 50vh;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform-origin: center center;
-}
-
-/* 导航箭头 */
-.nav-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 60px;
-  height: 60px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: white;
-  transition: all 0.3s ease;
-  z-index: 20;
-  opacity: 0.7;
-}
-
-.nav-arrow:hover {
-  background: rgba(0, 0, 0, 0.7);
-  opacity: 1;
-  transform: translateY(-50%) scale(1.1);
-}
-
-.nav-arrow-left {
-  left: 20px;
-}
-
-.nav-arrow-right {
-  right: 20px;
-}
-
-.preview-tip {
-  margin-top: 8px;
-  color: #999;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.preview-footer {
-  text-align: center;
-}
-
-:deep(.image-preview-modal .ivu-modal-body) {
-  padding: 16px;
-}
-
-:deep(.image-preview-modal .ivu-modal-header) {
-  border-bottom: 1px solid #e8eaec;
-}
-
-:deep(.image-preview-modal .ivu-modal-footer) {
-  border-top: 1px solid #e8eaec;
-  text-align: center;
-}
-
-/* 导航激活状态 */
-.nav-item.active {
-  color: #2d8cf0;
-  font-weight: 600;
-  border-bottom: 2px solid #2d8cf0;
-}
-
-/* 专栏展示样式 */
-.columns-content {
-  padding: 20px;
-}
-
-.columns-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.columns-header h2 {
-  font-size: 28px;
-  color: #333;
-  margin-bottom: 10px;
-  background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.columns-header p {
-  color: #666;
-  font-size: 16px;
-}
-
-.columns-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
-}
-
-.column-card {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  cursor: pointer;
-  border: 1px solid #f0f0f0;
-}
-
-.column-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.column-cover {
-  height: 180px;
-  overflow: hidden;
-  position: relative;
-}
-
-.column-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.column-card:hover .column-cover img {
-  transform: scale(1.05);
-}
-
-.default-cover {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 48px;
-  font-weight: bold;
-}
-
-.column-info {
-  padding: 20px;
-}
-
-.column-name {
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 10px;
-  line-height: 1.3;
-}
-
-.column-description {
-  color: #666;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 15px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.column-stats {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #999;
-  font-size: 13px;
-}
-
-.stat-item i {
-  font-size: 14px;
-}
-
-.empty-columns {
-  text-align: center;
-  padding: 60px 20px;
-  color: #999;
-}
-
-.empty-columns i {
-  margin-bottom: 15px;
-  color: #ddd;
-}
-
-.empty-columns p {
-  font-size: 16px;
-}
-
-/* 右侧边栏专栏样式 */
-.column-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  color: #999;
-  font-size: 14px;
-}
-
-.column-loading .loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #f0f0f0;
-  border-top: 2px solid #ff6b6b;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 8px;
-}
-
-.column-item {
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 8px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.column-item:hover {
-  background: rgba(255, 107, 107, 0.05);
-  transform: translateY(-2px);
-}
-
-.column-item img {
-  width: 70px;
-  height: 70px;
-  border-radius: 8px;
-  object-fit: cover;
-  margin: 0 auto 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: block;
-}
-
-.default-column-cover {
-  width: 70px;
-  height: 70px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 22px;
-  font-weight: bold;
-  margin: 0 auto 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.column-title {
-  font-size: 12px;
-  color: #333;
-  font-weight: 500;
-  text-align: center;
-  word-wrap: break-word;
-  max-width: 100%;
-  line-height: 1.3;
 }
 
 /* 响应式设计 */
@@ -2662,16 +1050,6 @@ onUnmounted(() => {
   .blog-home {
     background-size: cover;
     background-attachment: scroll;
-  }
-
-  .header-container {
-    flex-direction: column;
-    height: auto;
-    padding: 15px 20px;
-  }
-
-  .main-nav {
-    margin: 10px 0;
   }
 
   .content-container {

@@ -10,7 +10,7 @@
           <router-link to="/blog" class="nav-item">首页</router-link>
           <a href="#" class="nav-item active">文章列表</a>
           <a href="#" class="nav-item" @click="goToColumns">专栏</a>
-          <a href="#" class="nav-item">关于我</a>
+          <a href="#" class="nav-item" @click="goToAbout">关于我</a>
         </nav>
         <div class="search-box">
           <i class="search-icon">🔍</i>
@@ -170,8 +170,9 @@
 import { columnsApi, homepageApi, postApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
+const route = useRoute();
 const router = useRouter();
 
 // 响应式数据
@@ -370,13 +371,33 @@ const handlePageSizeChange = size => {
 };
 
 const viewArticle = row => {
-  router.push(`/blog/${row.id}`);
+  // 记录当前页面作为来源
+  const currentPath = route.path;
+  const currentQuery = route.query;
+
+  // 构建来源URL
+  let fromUrl = currentPath;
+  if (Object.keys(currentQuery).length > 0) {
+    const queryString = new URLSearchParams(currentQuery).toString();
+    fromUrl += `?${queryString}`;
+  }
+
+  router.push({
+    path: `/blog/${row.id}`,
+    query: { from: encodeURIComponent(fromUrl) },
+  });
 };
 
 // 跳转到专栏页面
 const goToColumns = () => {
   // 跳转到首页并传递参数，让首页自动切换到专栏视图
   router.push({ path: '/blog', query: { view: 'columns' } });
+};
+
+// 跳转到关于我页面
+const goToAbout = () => {
+  // 跳转到首页并传递参数，让首页自动切换到关于我视图
+  router.push({ path: '/blog', query: { view: 'about' } });
 };
 
 // 生命周期
