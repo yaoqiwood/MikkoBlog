@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.models.post import Post, PostCreate, PostRead, PostUpdate
 from app.models.user import UserProfile
 from app.models.postStats import PostStats
+from app.models.columns import PostColumns
 
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -19,18 +20,26 @@ def list_posts(
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     is_visible: Optional[bool] = Query(None, description="是否可见"),
     is_deleted: Optional[bool] = Query(None, description="是否已删除"),
+    title: Optional[str] = Query(None, description="标题搜索关键词"),
+    column_id: Optional[int] = Query(None, description="专栏ID筛选"),
+    start_date: Optional[str] = Query(None, description="开始日期"),
+    end_date: Optional[str] = Query(None, description="结束日期"),
     db: Session = Depends(get_db)
 ) -> List[PostRead]:
     """
     获取文章列表接口
 
-    支持分页、可见性和删除状态筛选，返回文章及其作者信息和统计数据。
+    支持分页、可见性、删除状态、标题搜索、专栏筛选和日期范围筛选，返回文章及其作者信息和统计数据。
 
     参数:
         page (int): 页码，从1开始，默认1
         limit (int): 每页数量，默认10，最大100
         is_visible (Optional[bool]): 是否可见筛选（可选）
         is_deleted (Optional[bool]): 是否已删除筛选（可选）
+        title (Optional[str]): 标题搜索关键词（可选）
+        column_id (Optional[int]): 专栏ID筛选（可选）
+        start_date (Optional[str]): 开始日期（可选）
+        end_date (Optional[str]): 结束日期（可选）
         db (Session): 数据库会话（依赖注入）
 
     返回:
@@ -53,6 +62,23 @@ def list_posts(
     # 处理可见性过滤
     if is_visible is not None:
         statement = statement.where(Post.is_visible == is_visible)
+
+    # 处理标题搜索
+    if title:
+        statement = statement.where(Post.title.contains(title))
+
+    # 处理专栏筛选
+    if column_id:
+        # 通过PostColumns关联表筛选
+        statement = statement.join(
+            PostColumns, Post.id == PostColumns.post_id
+        ).where(PostColumns.column_id == column_id)
+
+    # 处理日期范围筛选
+    if start_date:
+        statement = statement.where(Post.created_at >= start_date)
+    if end_date:
+        statement = statement.where(Post.created_at <= end_date)
 
     # 按创建时间倒序排序，并分页
     statement = statement.order_by(Post.created_at.desc())

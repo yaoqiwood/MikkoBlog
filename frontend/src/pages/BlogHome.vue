@@ -20,6 +20,7 @@
             @click="switchView('home')"
             >首页</a
           >
+          <router-link to="/articles" class="nav-item">文章列表</router-link>
           <a
             href="#"
             class="nav-item"
@@ -472,10 +473,11 @@ import {
 import localMusicApi from '@/utils/localMusicApi';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 // 响应式数据
 const router = useRouter();
+const route = useRoute();
 const showFullscreenTip = ref(false);
 const blogPosts = ref([]);
 const moments = ref([]);
@@ -546,7 +548,7 @@ const homepageSettings = ref({
 });
 
 // 欢迎模态框状态
-const showWelcomeModal = ref(true);
+const showWelcomeModal = ref(false);
 
 // 自动播放设置
 const autoPlaySetting = ref(false);
@@ -1349,6 +1351,20 @@ onMounted(async () => {
   // 检查是否全屏模式
   if (document.fullscreenElement) {
     showFullscreenTip.value = true;
+  }
+
+  // 检查URL参数，决定初始视图
+  if (route.query.view === 'columns') {
+    currentView.value = 'columns';
+    // 如果直接跳转到专栏视图，需要加载专栏数据
+    loadColumns();
+  }
+
+  // 检查是否首次访问，只在首次访问时显示欢迎模态框
+  const hasSeenWelcome = sessionStorage.getItem('hasSeenWelcome');
+  if (!hasSeenWelcome) {
+    showWelcomeModal.value = true;
+    sessionStorage.setItem('hasSeenWelcome', 'true');
   }
 
   // 初始加载

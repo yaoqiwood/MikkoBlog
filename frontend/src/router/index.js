@@ -3,6 +3,7 @@ import CommentManagement from '@/pages/admin/CommentManagement.vue';
 import Dashboard from '@/pages/admin/Dashboard.vue';
 import TagCloudManagement from '@/pages/admin/TagCloudManagement.vue';
 import UserManagement from '@/pages/admin/UserManagement.vue';
+import ArticleList from '@/pages/ArticleList.vue';
 import BlogDetail from '@/pages/BlogDetail.vue';
 import BlogHome from '@/pages/BlogHome.vue';
 import CookieTest from '@/pages/CookieTest.vue';
@@ -21,6 +22,12 @@ const router = createRouter({
   routes: [
     { path: '/', redirect: '/blog' },
     { path: '/blog', name: 'blog-home', component: BlogHome },
+    {
+      path: '/articles',
+      name: 'article-list',
+      component: ArticleList,
+      meta: { title: '文章列表' },
+    },
     { path: '/blog/:id', name: 'blog-detail', component: BlogDetail, meta: { title: '博文详情' } },
     { path: '/login', name: 'login', component: Login },
     { path: '/home', name: 'home', component: Home },

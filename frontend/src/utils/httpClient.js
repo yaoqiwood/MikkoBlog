@@ -87,8 +87,18 @@ httpClient.interceptors.response.use(
     } else if (error.response?.status === 401) {
       // 401未授权错误
       authCookie.clearAuth();
-      // 可以在这里触发登录页面跳转
-      window.location.href = '/login';
+
+      // 检查当前是否在公开页面，如果是则不自动跳转
+      const currentPath = window.location.pathname;
+      const publicPaths = ['/', '/blog', '/article', '/moments'];
+      const isPublicPage = publicPaths.some(
+        path => currentPath === path || currentPath.startsWith(path + '/')
+      );
+
+      if (!isPublicPage) {
+        // 只有在非公开页面才自动跳转到登录页
+        window.location.href = '/login';
+      }
     }
 
     return Promise.reject(error);

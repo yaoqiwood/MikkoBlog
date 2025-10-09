@@ -246,6 +246,7 @@ onUnmounted(() => {
 
 const loadDefaultPlaylist = async () => {
   console.log('开始加载默认播放列表');
+
   try {
     // 优先从后端获取播放列表
     console.log('尝试获取播放列表');

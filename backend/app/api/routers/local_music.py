@@ -164,8 +164,7 @@ async def get_music_list(
     page_size: int = 20,
     search: Optional[str] = None,
     genre: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """获取音乐列表"""
 
@@ -216,8 +215,7 @@ async def get_music_detail(
 @router.get("/{music_id}/file")
 async def get_music_file(
     music_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """获取音乐文件URL"""
 
@@ -238,8 +236,7 @@ async def get_music_file(
 
 @router.get("/settings/auto-play")
 async def get_auto_play_setting(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """获取自动播放设置"""
 
@@ -311,8 +308,7 @@ async def update_auto_play_setting(
 
 @router.get("/settings/public-playlist")
 async def get_public_playlist(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """获取公开的播放列表（用于博客首页播放）"""
 
@@ -396,8 +392,7 @@ async def delete_music(
 # 播放列表相关API
 @router.get("/playlists/list")
 async def get_playlists(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """获取播放列表"""
 
@@ -543,8 +538,7 @@ async def delete_playlist(
 @router.get("/playlists/{playlist_id}/musics")
 async def get_playlist_musics(
     playlist_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """获取播放列表中的音乐"""
 
