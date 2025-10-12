@@ -209,7 +209,9 @@ import { computed, onMounted, reactive, ref } from 'vue';
 const saving = ref(false);
 const resetting = ref(false);
 const showResetModal = ref(false);
-const defaultAvatar = ref('https://via.placeholder.com/150x150/87ceeb/ffffff?text=Avatar');
+const defaultAvatar = ref(
+  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI4MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QXZhdGFyPC90ZXh0Pgo8L3N2Zz4K'
+);
 
 // 上传配置
 const uploadAction = computed(() => {

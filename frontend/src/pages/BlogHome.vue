@@ -81,14 +81,18 @@
 
     <!-- 图片预览 -->
     <ImagePreviewModal
-      v-model:show="showImagePreview"
+      :show="showImagePreview"
       :preview-images="previewImages"
       :preview-index="previewIndex"
       :preview-image-url="previewImageUrl"
       @close="closeImagePreview"
       @prev-image="prevImage"
       @next-image="nextImage"
+      @update:show="showImagePreview = $event"
     />
+
+    <!-- 看板娘 -->
+    <WaifuWidget :show="showWaifu" @update:show="showWaifu = $event" />
   </div>
 </template>
 
@@ -101,6 +105,7 @@ import HomeContent from '@/components/blogHome/Home/HomeContent.vue';
 import ImagePreviewModal from '@/components/blogHome/ImagePreview/ImagePreviewModal.vue';
 import LeftSidebar from '@/components/blogHome/Sidebar/LeftSidebar.vue';
 import RightSidebar from '@/components/blogHome/Sidebar/RightSidebar.vue';
+import WaifuWidget from '@/components/WaifuWidget.vue';
 import WelcomeModal from '@/components/WelcomeModal.vue';
 
 import {
@@ -167,7 +172,8 @@ const userProfile = ref({
   nickname: '',
   email: '',
   bio: '',
-  avatar: 'https://via.placeholder.com/80x80/87ceeb/ffffff?text=Avatar',
+  avatar:
+    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjQwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QXZhdGFyPC90ZXh0Pgo8L3N2Zz4K',
   blog_title: '',
   blog_subtitle: '',
   motto: '',
@@ -202,6 +208,9 @@ const showWelcomeModal = ref(false);
 
 // 自动播放设置
 const autoPlaySetting = ref(false);
+
+// 看板娘设置
+const showWaifu = ref(true); // 临时设置为 true 用于测试
 
 // 关闭欢迎模态框
 const closeWelcomeModal = () => {
@@ -293,8 +302,16 @@ const loadHomepageSettings = async () => {
       show_live2d: !!settings.show_live2d,
       welcome_modal_type: settings.welcome_modal_type || 'bible',
     };
+
+    // 如果启用了看板娘，则显示看板娘
+    if (homepageSettings.value.show_live2d) {
+      showWaifu.value = true;
+    }
   } catch (err) {
     console.error('加载主页设置失败:', err);
+    // 默认启用看板娘（用于演示）
+    homepageSettings.value.show_live2d = true;
+    showWaifu.value = true;
   }
 };
 
@@ -404,7 +421,7 @@ const loadPosts = async () => {
         author_avatar:
           post.user_avatar ||
           userProfile.value.avatar ||
-          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
 
       blogPosts.value.push(...formattedPosts);
@@ -469,7 +486,7 @@ const loadMoments = async () => {
         author_avatar:
           moment.user_avatar ||
           userProfile.value.avatar ||
-          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
 
       moments.value.push(...formattedMoments);
@@ -569,13 +586,15 @@ const loadPopularPosts = async () => {
         id: 1,
         title: '敏感词过滤已上线',
         view_count: 49,
-        cover_image_url: 'https://via.placeholder.com/60x60/ff69b4/ffffff?text=1',
+        cover_image_url:
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZmY2OWI0Ii8+Cjx0ZXh0IHg9IjMwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE4IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MTwvdGV4dD4KPC9zdmc+Cg==',
       },
       {
         id: 2,
         title: '小林家的龙女仆',
         view_count: 56,
-        cover_image_url: 'https://via.placeholder.com/60x60/87ceeb/ffffff?text=2',
+        cover_image_url:
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjMwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE4IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MjwvdGV4dD4KPC9zdmc+Cg==',
       },
     ];
   } finally {
@@ -646,7 +665,7 @@ const loadColumnPosts = async columnId => {
         author_avatar:
           post.user_avatar ||
           userProfile.value.avatar ||
-          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
 
       columnPostsList.value = formattedPosts;
@@ -775,7 +794,7 @@ const loadAllContent = async () => {
         author_avatar:
           post.user_avatar ||
           userProfile.value.avatar ||
-          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
       blogPosts.value.push(...formattedPosts);
       hasMorePosts = postsResponse.length >= Math.ceil(pageSize / 2);
@@ -801,7 +820,7 @@ const loadAllContent = async () => {
         author_avatar:
           moment.user_avatar ||
           userProfile.value.avatar ||
-          'https://via.placeholder.com/40x40/87ceeb/ffffff?text=A',
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
       moments.value.push(...formattedMoments);
       hasMoreMoments = momentsResponse.has_more;
@@ -861,7 +880,9 @@ const loadUserProfile = async () => {
       nickname: profile.nickname || '',
       email: profile.email || '',
       bio: profile.bio || '',
-      avatar: profile.avatar || 'https://via.placeholder.com/80x80/87ceeb/ffffff?text=Avatar',
+      avatar:
+        profile.avatar ||
+        'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjQwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QXZhdGFyPC90ZXh0Pgo8L3N2Zz4K',
       blog_title: profile.blog_title || '',
       blog_subtitle: profile.blog_subtitle || '',
       motto: profile.motto || '',

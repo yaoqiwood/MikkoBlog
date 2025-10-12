@@ -6,7 +6,7 @@
         <img v-if="bannerImageUrl" :src="bannerImageUrl" alt="Profile Banner" />
         <img
           v-else
-          src="https://via.placeholder.com/300x120/ffb6c1/ffffff?text=Anime+Girl"
+          src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDMwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZmZiNmMxIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iNjUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkFuaW1lIEdpcmw8L3RleHQ+Cjwvc3ZnPgo="
           alt="Profile Banner"
         />
       </div>
