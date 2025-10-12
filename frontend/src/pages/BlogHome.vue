@@ -92,7 +92,12 @@
     />
 
     <!-- 看板娘 -->
-    <WaifuWidget :show="showWaifu" @update:show="showWaifu = $event" />
+    <WaifuWidget
+      :show="showWaifu"
+      :position="waifuPosition"
+      @update:show="showWaifu = $event"
+      @update:position="waifuPosition = $event"
+    />
   </div>
 </template>
 
@@ -210,7 +215,8 @@ const showWelcomeModal = ref(false);
 const autoPlaySetting = ref(false);
 
 // 看板娘设置
-const showWaifu = ref(true); // 临时设置为 true 用于测试
+const showWaifu = ref(true);
+const waifuPosition = ref('left'); // 'left' 或 'right'
 
 // 关闭欢迎模态框
 const closeWelcomeModal = () => {
@@ -303,14 +309,11 @@ const loadHomepageSettings = async () => {
       welcome_modal_type: settings.welcome_modal_type || 'bible',
     };
 
-    // 如果启用了看板娘，则显示看板娘
-    if (homepageSettings.value.show_live2d) {
-      showWaifu.value = true;
-    }
+    // 设置看板娘显示状态
+    showWaifu.value = homepageSettings.value.show_live2d;
   } catch (err) {
     console.error('加载主页设置失败:', err);
-    // 默认启用看板娘（用于演示）
-    homepageSettings.value.show_live2d = true;
+    // 使用默认设置
     showWaifu.value = true;
   }
 };
@@ -325,6 +328,30 @@ const loadAutoPlaySetting = async () => {
     console.error('加载自动播放设置失败:', err);
     // 使用默认值
     autoPlaySetting.value = false;
+  }
+};
+
+// 加载看板娘设置
+const loadWaifuSettings = () => {
+  try {
+    // 从本地存储加载看板娘设置
+    const savedShow = localStorage.getItem('waifu-show');
+    const savedPosition = localStorage.getItem('waifu-position');
+
+    if (savedShow !== null) {
+      showWaifu.value = savedShow === 'true';
+    }
+
+    if (savedPosition && ['left', 'right'].includes(savedPosition)) {
+      waifuPosition.value = savedPosition;
+    }
+
+    console.log('看板娘设置:', { show: showWaifu.value, position: waifuPosition.value });
+  } catch (err) {
+    console.error('加载看板娘设置失败:', err);
+    // 使用默认值
+    showWaifu.value = true;
+    waifuPosition.value = 'left';
   }
 };
 
@@ -1050,6 +1077,7 @@ onMounted(async () => {
   await loadUserStats(); // 加载用户统计数据
   await loadHomepageSettings();
   await loadAutoPlaySetting(); // 加载自动播放设置
+  loadWaifuSettings(); // 加载看板娘设置
 
   loadAllContent(); // 默认加载所有内容
   loadSidebarColumns(); // 加载右侧边栏专栏

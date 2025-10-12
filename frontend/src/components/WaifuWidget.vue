@@ -1,589 +1,342 @@
 <template>
-  <div v-if="showWaifu" class="waifu-widget">
+  <div class="waifu-widget" v-if="show">
     <!-- 看板娘容器 -->
-    <div id="waifu-widget" class="waifu-container">
-      <div class="waifu-toolbar">
-        <button class="waifu-btn" @click="toggleWaifu" title="隐藏看板娘">
-          <i>👋</i>
-        </button>
-        <button class="waifu-btn" @click="changeModel" title="切换模型">
-          <i>🔄</i>
-        </button>
-        <button class="waifu-btn" @click="showMessage" title="显示消息">
-          <i>💬</i>
-        </button>
-        <button class="waifu-btn" @click="showSettings = true" title="设置">
-          <i>⚙️</i>
-        </button>
-      </div>
+    <div id="waifu" ref="waifuContainer"></div>
 
-      <!-- 消息气泡 -->
-      <div class="waifu-message" v-if="showMessageBubble">
-        {{ currentMessage }}
-      </div>
-    </div>
-
-    <!-- 设置面板 -->
-    <div v-if="showSettings" class="waifu-settings">
-      <div class="settings-header">
-        <h3>看板娘设置</h3>
-        <button @click="showSettings = false" class="close-btn">×</button>
-      </div>
-      <div class="settings-content">
-        <div class="setting-item">
-          <label>当前模型: {{ currentModelName }}</label>
-        </div>
-        <div class="setting-item">
-          <label>自动问候</label>
-          <input type="checkbox" v-model="autoGreeting" @change="saveSettings" />
-        </div>
-        <div class="setting-item" v-if="autoGreeting">
-          <label>问候间隔</label>
-          <select v-model="greetingInterval" @change="saveSettings">
-            <option value="30">30秒</option>
-            <option value="60">1分钟</option>
-            <option value="120">2分钟</option>
-            <option value="300">5分钟</option>
-          </select>
-        </div>
-        <div class="setting-item">
-          <label>点击交互</label>
-          <input type="checkbox" v-model="clickInteraction" @change="saveSettings" />
-        </div>
-      </div>
+    <!-- 位置控制按钮 -->
+    <div class="waifu-controls" v-if="showControls">
+      <button
+        class="control-btn position-btn"
+        @click="togglePosition"
+        :title="position === 'left' ? '切换到右下角' : '切换到左下角'"
+      >
+        <i class="icon-position"></i>
+      </button>
+      <button class="control-btn close-btn" @click="closeWidget" title="关闭看板娘">
+        <i class="icon-close">×</i>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
+// Props
 const props = defineProps({
   show: {
     type: Boolean,
     default: true,
   },
+  position: {
+    type: String,
+    default: 'left', // 'left' 或 'right'
+    validator: value => ['left', 'right'].includes(value),
+  },
+  showControls: {
+    type: Boolean,
+    default: true,
+  },
+  cdnPath: {
+    type: String,
+    default: 'https://fastly.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/',
+  },
 });
 
-const emit = defineEmits(['update:show']);
+// Emits
+const emit = defineEmits(['update:show', 'update:position']);
 
 // 响应式数据
-const showWaifu = ref(props.show);
-const showMessageBubble = ref(false);
-const currentMessage = ref('');
-const showSettings = ref(false);
-const autoGreeting = ref(true);
-const greetingInterval = ref(60);
-const clickInteraction = ref(true);
-const currentModelName = ref('雷姆');
+const waifuContainer = ref(null);
+const currentPosition = ref(props.position);
+const isInitialized = ref(false);
 
-// 模型列表
-const models = [
-  { id: 'rem', name: '雷姆' },
-  { id: 'kurumi', name: '时崎狂三' },
-  { id: 'chino', name: '香风智乃' },
-  { id: 'index', name: '茵蒂克丝' },
-];
+// 初始化 Live2D 看板娘
+const initLive2D = async () => {
+  if (isInitialized.value || !waifuContainer.value) return;
 
-let currentModelIndex = 0;
-let greetingTimer = null;
-let clickCount = 0;
-let lastClickTime = 0;
+  try {
+    // 动态加载 Live2D 脚本
+    await loadScript(`${props.cdnPath}autoload.js`);
 
-// 消息列表
-const messages = [
-  'こんにちは！私はレムです！',
-  '今日も一日頑張りましょう！',
-  '何かお手伝いできることはありますか？',
-  'ご主人様、おかえりなさい！',
-  'このブログを楽しんでくださいね！',
-  '私をクリックして遊んでね！',
-  '今日の気分はどうですか？',
-  '一緒に新しいことを学びませんか？',
-  'あなたの笑顔が大好きです！',
-  'お疲れ様でした！',
-];
+    // 等待 DOM 更新和 Live2D 看板娘完全加载
+    await nextTick();
 
-// 切换看板娘显示
-const toggleWaifu = () => {
-  showWaifu.value = !showWaifu.value;
-  emit('update:show', showWaifu.value);
+    // 延迟一段时间确保 Live2D 看板娘完全初始化
+    globalThis.setTimeout(() => {
+      updatePosition();
+    }, 1000);
 
-  if (showWaifu.value) {
-    initWaifu();
-  } else {
-    destroyWaifu();
+    isInitialized.value = true;
+    console.log('Live2D 看板娘初始化成功');
+  } catch (error) {
+    console.error('Live2D 看板娘初始化失败:', error);
   }
 };
 
-// 切换模型
-const changeModel = () => {
-  currentModelIndex = (currentModelIndex + 1) % models.length;
-  currentModelName.value = models[currentModelIndex].name;
-  destroyWaifu();
-  globalThis.setTimeout(() => {
-    initWaifu();
-  }, 100);
-  saveSettings();
-};
-
-// 显示消息
-const showMessage = () => {
-  const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-  displayMessage(randomMessage);
-};
-
-// 显示消息气泡
-const displayMessage = message => {
-  currentMessage.value = message;
-  showMessageBubble.value = true;
-
-  globalThis.setTimeout(() => {
-    showMessageBubble.value = false;
-  }, 3000);
-};
-
-// 处理点击事件
-const handleClick = () => {
-  if (!clickInteraction.value) return;
-
-  const currentTime = Date.now();
-  if (currentTime - lastClickTime < 500) {
-    clickCount++;
-  } else {
-    clickCount = 1;
-  }
-  lastClickTime = currentTime;
-
-  if (clickCount === 1) {
-    displayMessage('こんにちは！');
-  } else if (clickCount === 2) {
-    displayMessage('また会えて嬉しいです！');
-  } else if (clickCount === 3) {
-    displayMessage('あなたのことが大好きです！');
-    clickCount = 0;
-  }
-};
-
-// 初始化看板娘
-const initWaifu = () => {
-  if (!showWaifu.value) return;
-
-  // 使用成熟的 live2d-widget
-  if (window.L2Dwidget) {
-    startL2Dwidget();
-  } else {
-    loadL2Dwidget()
-      .then(() => {
-        startL2Dwidget();
-      })
-      .catch(error => {
-        console.error('L2Dwidget 加载失败:', error);
-        displayMessage('看板娘加载失败，显示静态版本');
-      });
-  }
-};
-
-// 加载 L2Dwidget 库
-const loadL2Dwidget = () => {
+// 动态加载脚本
+const loadScript = src => {
   return new Promise((resolve, reject) => {
-    // 检查是否已经加载过
-    if (window.L2Dwidget) {
+    // 检查是否已经加载
+    if (document.querySelector(`script[src="${src}"]`)) {
       resolve();
       return;
     }
 
-    // 使用成熟的 live2d-widget CDN
     const script = document.createElement('script');
-    script.src = 'https://fastly.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js';
-    script.async = true;
-    script.onload = () => {
-      // 等待一下确保库完全加载
-      // globalThis.setTimeout(() => {
-      //   if (window.L2Dwidget) {
-      //     resolve();
-      //   } else {
-      //     reject(new Error('L2Dwidget 未正确加载'));
-      //   }
-      // }, 1000);
-    };
-    script.onerror = () => {
-      reject(new Error('Live2D 库加载失败'));
-    };
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
     document.head.appendChild(script);
   });
 };
 
-// 启动 L2Dwidget
-const startL2Dwidget = () => {
-  const currentModel = models[currentModelIndex];
-
-  // 使用成熟的配置
-  window.L2Dwidget.init({
-    model: {
-      jsonPath: `https://fastly.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/assets/${currentModel.id}/model.json`,
-      scale: 0.5,
-    },
-    display: {
-      superSample: 2,
-      width: 200,
-      height: 400,
-      hOffset: 0,
-      vOffset: 0,
-    },
-    mobile: {
-      show: true,
-      scale: 0.5,
-    },
-    react: {
-      opacityDefault: 1,
-      opacityOnHover: 0.8,
-    },
-    dialog: {
-      enable: true,
-      script: {
-        'tap body': messages,
-      },
-    },
-  });
-
-  // 添加点击事件
-  document.addEventListener('click', handleClick);
-
-  // 显示欢迎消息
-  globalThis.setTimeout(() => {
-    displayMessage(`你好！我是${currentModelName.value}！`);
-  }, 1000);
-};
-
-// 显示静态看板娘
-const showStaticWaifu = () => {
-  const container = document.getElementById('waifu-widget');
-  if (container) {
-    container.innerHTML = `
-      <div style="
-        width: 200px;
-        height: 400px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
-        border-radius: 10px;
-        color: #666;
-        text-align: center;
-        padding: 20px;
-        box-sizing: border-box;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      " onclick="this.style.transform = 'scale(1.05)'">
-        <div style="font-size: 80px; margin-bottom: 20px; animation: bounce 2s infinite;">🎭</div>
-        <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">${currentModelName.value}</div>
-        <div style="font-size: 14px; opacity: 0.8; margin-bottom: 15px;">静态看板娘</div>
-        <div style="font-size: 12px; opacity: 0.6;">点击我试试看！</div>
-        <div style="font-size: 10px; opacity: 0.5; margin-top: 10px;">Live2D 库加载中...</div>
-      </div>
-      <style>
-        @keyframes bounce {
-          0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-          40% { transform: translateY(-10px); }
-          60% { transform: translateY(-5px); }
-        }
-      </style>
-    `;
-
-    // 添加点击事件
-    container.addEventListener('click', () => {
-      displayMessage('我是静态看板娘，Live2D 版本正在加载中...');
-    });
-  }
-};
-
-// 销毁看板娘
-const destroyWaifu = () => {
-  document.removeEventListener('click', handleClick);
-
-  // 清理 L2Dwidget
-  if (window.L2Dwidget) {
-    try {
-      window.L2Dwidget.destroy();
-    } catch (error) {
-      console.warn('销毁 L2Dwidget 时出错:', error);
-    }
+// 更新位置
+const updatePosition = () => {
+  const waifuElement = document.getElementById('waifu');
+  if (!waifuElement) {
+    console.log('看板娘元素未找到，稍后重试...');
+    // 如果看板娘还没加载，延迟重试
+    globalThis.setTimeout(updatePosition, 500);
+    return;
   }
 
-  // 清理相关 DOM 元素
-  const waifuElements = document.querySelectorAll(
-    '[id*="waifu"], [class*="waifu"], [id*="l2d"], [class*="l2d"]'
-  );
-  waifuElements.forEach(element => {
-    if (element.id !== 'waifu-widget' && element.parentNode) {
-      element.parentNode.removeChild(element);
-    }
-  });
-};
-
-// 设置自动问候
-const setupAutoGreeting = () => {
-  if (greetingTimer) {
-    globalThis.clearInterval(greetingTimer);
-  }
-
-  if (autoGreeting.value) {
-    greetingTimer = globalThis.setInterval(() => {
-      showMessage();
-    }, greetingInterval.value * 1000);
-  }
-};
-
-// 保存设置
-const saveSettings = () => {
-  const settings = {
-    autoGreeting: autoGreeting.value,
-    greetingInterval: greetingInterval.value,
-    clickInteraction: clickInteraction.value,
-    currentModel: currentModelIndex,
+  // 强制设置所有相关样式
+  const styles = {
+    position: 'fixed',
+    bottom: '0px',
+    top: 'auto',
+    zIndex: '1000',
+    transition: 'all 0.3s ease',
   };
-  localStorage.setItem('waifu-settings', JSON.stringify(settings));
-  setupAutoGreeting();
+
+  if (currentPosition.value === 'left') {
+    styles.left = '0px';
+    styles.right = 'auto';
+  } else {
+    styles.left = 'auto';
+    styles.right = '0px';
+  }
+
+  // 应用所有样式
+  Object.assign(waifuElement.style, styles);
+
+  // 同时通过 CSS 类来确保样式生效
+  waifuElement.className = waifuElement.className.replace(/waifu-(left|right)/g, '');
+  waifuElement.classList.add(`waifu-${currentPosition.value}`);
+
+  console.log('看板娘位置已更新到:', currentPosition.value, '样式:', styles);
 };
 
-// 加载设置
-const loadSettings = () => {
-  try {
-    const settings = JSON.parse(localStorage.getItem('waifu-settings') || '{}');
-    autoGreeting.value = settings.autoGreeting !== undefined ? settings.autoGreeting : true;
-    greetingInterval.value = settings.greetingInterval || 60;
-    clickInteraction.value =
-      settings.clickInteraction !== undefined ? settings.clickInteraction : true;
-    currentModelIndex = settings.currentModel || 0;
-    currentModelName.value = models[currentModelIndex].name;
-  } catch (error) {
-    console.error('加载设置失败:', error);
-  }
+// 切换位置
+const togglePosition = () => {
+  console.log('切换位置前:', currentPosition.value);
+  currentPosition.value = currentPosition.value === 'left' ? 'right' : 'left';
+  console.log('切换位置后:', currentPosition.value);
+
+  updatePosition();
+  emit('update:position', currentPosition.value);
+
+  // 保存位置设置到本地存储
+  localStorage.setItem('waifu-position', currentPosition.value);
+
+  console.log('位置切换完成，已保存到本地存储');
+};
+
+// 关闭看板娘
+const closeWidget = () => {
+  emit('update:show', false);
+
+  // 保存关闭状态到本地存储
+  localStorage.setItem('waifu-show', 'false');
 };
 
 // 监听 show 属性变化
 watch(
   () => props.show,
   newShow => {
-    showWaifu.value = newShow;
-    if (newShow) {
-      globalThis.setTimeout(() => {
-        initWaifu();
-      }, 100);
-    } else {
-      destroyWaifu();
+    if (newShow && !isInitialized.value) {
+      nextTick(() => {
+        initLive2D();
+      });
     }
   }
 );
 
+// 监听 position 属性变化
+watch(
+  () => props.position,
+  newPosition => {
+    currentPosition.value = newPosition;
+    updatePosition();
+  }
+);
+
+// 从本地存储加载设置
+const loadSettings = () => {
+  const savedShow = localStorage.getItem('waifu-show');
+  const savedPosition = localStorage.getItem('waifu-position');
+
+  if (savedShow === 'false') {
+    emit('update:show', false);
+  }
+
+  if (savedPosition && ['left', 'right'].includes(savedPosition)) {
+    currentPosition.value = savedPosition;
+    emit('update:position', savedPosition);
+  }
+};
+
+// 生命周期
 onMounted(() => {
   loadSettings();
-  setupAutoGreeting();
 
-  if (showWaifu.value) {
-    globalThis.setTimeout(() => {
-      initWaifu();
-    }, 500);
+  if (props.show) {
+    nextTick(() => {
+      initLive2D();
+    });
   }
+
+  // 定期检查并更新看板娘位置
+  const positionInterval = globalThis.setInterval(() => {
+    const waifuElement = document.getElementById('waifu');
+    if (waifuElement && isInitialized.value) {
+      // 检查当前样式是否与期望位置一致
+      const currentLeft = waifuElement.style.left;
+      const currentRight = waifuElement.style.right;
+
+      if (currentPosition.value === 'left' && currentLeft !== '0px') {
+        updatePosition();
+      } else if (currentPosition.value === 'right' && currentRight !== '0px') {
+        updatePosition();
+      }
+    }
+  }, 2000);
+
+  // 清理定时器
+  onUnmounted(() => {
+    globalThis.clearInterval(positionInterval);
+  });
 });
 
 onUnmounted(() => {
-  destroyWaifu();
-  if (greetingTimer) {
-    globalThis.clearInterval(greetingTimer);
+  // 清理工作
+  const waifuElement = document.getElementById('waifu');
+  if (waifuElement) {
+    waifuElement.remove();
   }
 });
 </script>
 
 <style scoped>
-.waifu-container {
-  position: relative;
-  width: 200px;
-  height: 400px;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
-  overflow: hidden;
+.waifu-widget {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1000;
 }
 
-.waifu-toolbar {
-  position: absolute;
-  top: -35px;
+.waifu-controls {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
   display: flex;
-  gap: 5px;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
   z-index: 1001;
 }
 
-.waifu-toolbar {
-  right: 0;
-}
-
-.waifu-btn {
-  width: 30px;
-  height: 30px;
+.control-btn {
+  width: 40px;
+  height: 40px;
   border: none;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
-  color: #333;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: all 0.3s ease;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.waifu-btn:hover {
-  background: #667eea;
-  color: white;
-  transform: scale(1.1);
-}
-
-.waifu-message {
-  position: absolute;
-  bottom: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px 15px;
-  border-radius: 15px;
-  font-size: 14px;
-  max-width: 200px;
-  word-wrap: break-word;
-  margin-bottom: 10px;
-  animation: messageIn 0.3s ease-out;
-}
-
-.waifu-message {
-  right: 0;
-}
-
-.waifu-message::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  right: 20px;
-  border: 5px solid transparent;
-  border-top-color: rgba(0, 0, 0, 0.8);
-}
-
-@keyframes messageIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.waifu-settings {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  z-index: 2000;
-  min-width: 300px;
-  max-width: 500px;
-}
-
-.settings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #eee;
-}
-
-.settings-header h3 {
-  margin: 0;
-  color: #333;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
   cursor: pointer;
-  color: #999;
-  padding: 0;
-  width: 30px;
-  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 16px;
+  color: #666;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
-.close-btn:hover {
-  color: #333;
+.control-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.settings-content {
-  padding: 20px;
+.position-btn .icon-position::before {
+  content: '↔';
+  font-size: 18px;
 }
 
-.setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+.close-btn .icon-close {
+  font-size: 20px;
+  font-weight: bold;
 }
 
-.setting-item label {
-  font-weight: 500;
-  color: #333;
+/* 全局样式 - 用于 Live2D 看板娘 */
+:global(#waifu) {
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  transition: all 0.3s ease !important;
 }
 
-.setting-item input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
+/* 确保看板娘容器正确显示 */
+:global(.waifu-widget #waifu) {
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
 }
 
-.setting-item select {
-  padding: 5px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
+/* 位置类样式 */
+:global(#waifu.waifu-left) {
+  left: 0 !important;
+  right: auto !important;
+}
+
+:global(#waifu.waifu-right) {
+  left: auto !important;
+  right: 0 !important;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .waifu-widget {
+  .waifu-controls {
     bottom: 10px;
-  }
-
-  .waifu-widget {
     right: 10px;
   }
 
-  .waifu-container {
-    width: 160px;
-    height: 320px;
+  .control-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 14px;
   }
 
-  .waifu-btn {
-    width: 25px;
-    height: 25px;
-    font-size: 12px;
+  .position-btn .icon-position::before {
+    font-size: 16px;
   }
 
-  .waifu-message {
-    bottom: 60px;
-    right: 10px;
-    max-width: 200px;
-    font-size: 12px;
+  .close-btn .icon-close {
+    font-size: 18px;
   }
+}
 
-  .waifu-settings {
-    margin: 20px;
-    min-width: auto;
-    max-width: calc(100vw - 40px);
+/* 确保看板娘在移动端也能正常显示 */
+@media (max-width: 480px) {
+  :global(#waifu) {
+    transform: scale(0.8) !important;
+    transform-origin: bottom center !important;
   }
 }
 </style>
