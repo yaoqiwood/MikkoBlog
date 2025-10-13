@@ -47,6 +47,7 @@ export default [
       'vue/attributes-order': 'off',
       'vue/first-attribute-linebreak': 'off',
       'vue/require-default-prop': 'off',
+      'vue/attribute-hyphenation': 'off', // 允许 camelCase 属性名
 
       // JavaScript rules - 简化规则避免冲突
       'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
