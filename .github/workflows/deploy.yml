@@ -45,11 +45,19 @@ jobs:
         key: ${{ secrets.SERVER_SSH_KEY }}
         port: ${{ secrets.SERVER_PORT }}
         script: |
-          # 进入项目目录
-          cd /opt/mikko-blog
-
-          # 拉取最新代码
-          git pull origin cicd-deploy
+          # 检查并创建项目目录
+          if [ ! -d "/opt/mikko-blog" ]; then
+            echo "Creating project directory..."
+            mkdir -p /opt/mikko-blog
+            cd /opt/mikko-blog
+            echo "Cloning repository..."
+            git clone -b cicd-deploy https://github.com/yaoqiwood/MikkoBlog.git .
+          else
+            echo "Project directory exists, updating..."
+            cd /opt/mikko-blog
+            # 拉取最新代码
+            git pull origin cicd-deploy
+          fi
 
           # 停止现有容器
           docker-compose -f docker-compose.prod.yml down
