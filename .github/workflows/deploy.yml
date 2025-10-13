@@ -5,6 +5,7 @@ on:
     branches: [ cicd-deploy ]
   pull_request:
     branches: [ cicd-deploy ]
+  workflow_dispatch:  # 添加手动触发支持
 
 jobs:
   build-and-deploy:
