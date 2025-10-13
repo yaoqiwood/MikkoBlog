@@ -48,7 +48,7 @@ sudo chown $USER:$USER /opt/mikko-blog
 if [ ! -d "/opt/mikko-blog/.git" ]; then
     echo "📥 克隆项目..."
     cd /opt/mikko-blog
-    git clone https://github.com/your-username/MikkoBlog.git .
+    git clone -b cicd-deploy https://github.com/yaoqiwood/MikkoBlog.git .
 else
     echo "✅ 项目已存在"
 fi

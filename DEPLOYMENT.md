@@ -23,10 +23,10 @@ ssh root@your-server-ip
 ### 2. 运行初始化脚本
 ```bash
 # 下载并运行初始化脚本
-curl -fsSL https://raw.githubusercontent.com/your-username/MikkoBlog/main/scripts/server-setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/yaoqiwood/MikkoBlog/cicd-deploy/scripts/server-setup.sh | bash
 
 # 或者手动执行
-wget https://raw.githubusercontent.com/your-username/MikkoBlog/main/scripts/server-setup.sh
+wget https://raw.githubusercontent.com/yaoqiwood/MikkoBlog/cicd-deploy/scripts/server-setup.sh
 chmod +x server-setup.sh
 ./server-setup.sh
 ```
@@ -79,7 +79,7 @@ cat ~/.ssh/id_rsa
 ## 🚀 部署流程
 
 ### 自动部署（推荐）
-1. 推送代码到 `main` 分支
+1. 推送代码到 `cicd-deploy` 分支
 2. GitHub Actions 会自动触发部署
 3. 查看部署状态：仓库 → Actions
 
@@ -133,7 +133,7 @@ docker-compose -f docker-compose.prod.yml restart
 ### 更新应用
 ```bash
 cd /opt/mikko-blog
-git pull origin main
+git pull origin cicd-deploy
 ./scripts/deploy.sh
 ```
 

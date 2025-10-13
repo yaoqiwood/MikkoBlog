@@ -2,9 +2,9 @@ name: Deploy to Server
 
 on:
   push:
-    branches: [ main ]
+    branches: [ cicd-deploy ]
   pull_request:
-    branches: [ main ]
+    branches: [ cicd-deploy ]
 
 jobs:
   build-and-deploy:
@@ -29,7 +29,7 @@ jobs:
         docker build -t mikko-blog-frontend:latest -f frontend/Dockerfile .
 
     - name: Deploy to server
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/cicd-deploy'
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.SERVER_HOST }}
@@ -41,7 +41,7 @@ jobs:
           cd /opt/mikko-blog
 
           # 拉取最新代码
-          git pull origin main
+          git pull origin cicd-deploy
 
           # 停止现有容器
           docker-compose -f docker-compose.prod.yml down
