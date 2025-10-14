@@ -1,87 +1,54 @@
 <template>
-  <!-- Live2D 看板娘控制器 -->
-  <div class="live2d-controller"></div>
+  <!-- Vue Live2D 看板娘 -->
+  <vue-live2d
+    v-if="shouldShowLive2D"
+    :api-path="apiPath"
+    :size="size"
+    :width="width"
+    :height="height"
+    :model="model"
+    :direction="direction"
+    :tip-position="tipPosition"
+    :tips="tips"
+    :home-page="homePage"
+    :custom-id="customId"
+  />
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, watch } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import vueLive2d from 'vue-live2d';
 
 const route = useRoute();
 
 // 检查是否应该显示看板娘
-const shouldShowLive2D = () => {
+const shouldShowLive2D = computed(() => {
   // 不在管理页面显示
   return !route.path.startsWith('/admin');
-};
-
-// 控制看板娘显示/隐藏
-const toggleLive2D = () => {
-  const waifu = document.querySelector('#waifu');
-  if (waifu) {
-    if (shouldShowLive2D()) {
-      // 显示看板娘
-      waifu.style.display = 'block';
-      waifu.style.visibility = 'visible';
-      waifu.style.opacity = '1';
-      waifu.style.pointerEvents = 'auto';
-      console.log('🎭 Live2D 看板娘已显示');
-    } else {
-      // 隐藏看板娘
-      waifu.style.display = 'none';
-      waifu.style.visibility = 'hidden';
-      waifu.style.opacity = '0';
-      waifu.style.pointerEvents = 'none';
-      console.log('🎭 Live2D 看板娘已隐藏');
-    }
-  }
-};
-
-// 等待看板娘元素创建并控制显示
-const waitAndControlLive2D = () => {
-  const checkInterval = setInterval(() => {
-    const waifu = document.querySelector('#waifu');
-    if (waifu) {
-      clearInterval(checkInterval);
-      toggleLive2D();
-    }
-  }, 100);
-
-  // 最多等待10秒
-  setTimeout(() => {
-    clearInterval(checkInterval);
-  }, 10000);
-};
-
-onMounted(() => {
-  // 延迟控制，确保看板娘脚本已加载
-  setTimeout(() => {
-    waitAndControlLive2D();
-  }, 2000);
 });
 
-// 监听路由变化
-watch(
-  () => route.path,
-  () => {
-    // 路由变化时重新控制看板娘显示
-    setTimeout(() => {
-      toggleLive2D();
-    }, 100);
-  }
-);
+// 配置参数
+const apiPath =
+  'https://raw.githubusercontent.com/evgo2017/live2d-static-api/refs/heads/main/indexes';
+const size = 255;
+const width = 0;
+const height = 0;
+const model = ['Potion-Maker/Pio', 'school-2017-costume-yello'];
+const direction = 'right';
+const tipPosition = 'top';
+const homePage = 'https://github.com/yaoqiwood/MikkoBlog';
+const customId = 'mikko-live2d';
+
+// 自定义提示语
+const tips = {
+  welcome: ['欢迎来到 MikkoBlog！', '今天也要加油哦~', '有什么想了解的吗？'],
+  click: ['点击我有什么奖励吗？', '嘿嘿，被你发现了~', '再点一下试试看？'],
+  mouseover: ['鼠标滑过我了呢~', '想和我互动吗？', '我在这里等你哦'],
+  timeout: ['你还在吗？', '不要走嘛~', '回来陪我聊天吧']
+};
 </script>
 
 <style scoped>
-.live2d-controller {
-  display: none;
-}
-
-/* 全局样式：确保看板娘在管理页面隐藏 */
-:global(.admin-page) #waifu {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
+/* vue-live2d 组件会自动处理样式 */
 </style>
