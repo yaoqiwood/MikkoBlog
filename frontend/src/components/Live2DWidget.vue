@@ -1,6 +1,8 @@
 <template>
   <!-- Live2D 看板娘容器 -->
-  <div v-if="shouldShowLive2D" id="live2d-widget-container"></div>
+  <div v-if="shouldShowLive2D" id="live2d-widget-container">
+    <!-- 看板娘会在这里自动创建 -->
+  </div>
 </template>
 
 <script setup>
@@ -40,6 +42,12 @@ const loadLive2DWidget = () => {
       const waifu = document.querySelector('#waifu');
       if (waifu) {
         console.log('🎭 Live2D 看板娘已自动加载');
+        // 设置看板娘位置为绝对定位，使用百分比控制
+        waifu.style.position = 'absolute';
+        waifu.style.left = '85%'; // 默认位置
+        waifu.style.bottom = '0px';
+        waifu.style.zIndex = '1000';
+
         // 启用拖拽功能
         if (window.initWidget) {
           try {
@@ -88,6 +96,11 @@ const showWidget = () => {
       waifu.style.display = 'block';
       waifu.style.visibility = 'visible';
       waifu.style.opacity = '1';
+      // 确保位置设置正确
+      waifu.style.position = 'absolute';
+      waifu.style.left = '85%';
+      waifu.style.bottom = '0px';
+      waifu.style.zIndex = '1000';
       console.log('🎭 Live2D 看板娘已显示');
     } else {
       // 如果元素还没创建，继续等待
@@ -149,11 +162,19 @@ watch(
       // 路由变化时立即处理看板娘显示/隐藏
       window.setTimeout(() => {
         if (shouldShowLive2D.value) {
-          showWidget();
+          // 确保看板娘在路由切换后能正确显示
+          const waifu = document.querySelector('#waifu');
+          if (waifu) {
+            showWidget();
+          } else {
+            // 如果看板娘不存在，重新加载
+            console.log('🎭 看板娘不存在，重新加载');
+            loadLive2DWidget();
+          }
         } else {
           hideWidget();
         }
-      }, 100);
+      }, 200);
     }
   }
 );
@@ -170,6 +191,15 @@ watch(
 </style>
 
 <style>
+/* 看板娘全局样式 */
+#waifu {
+  position: absolute !important;
+  left: 85% !important;
+  bottom: 0px !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+}
+
 /* 确保看板娘在管理页面隐藏 */
 .admin-page #waifu {
   display: none !important;
