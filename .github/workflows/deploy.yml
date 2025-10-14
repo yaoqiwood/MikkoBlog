@@ -142,10 +142,10 @@ jobs:
 
           echo "=== Check if frontend files exist ==="
           docker exec mikko_frontend_prod ls -la /usr/share/nginx/html/ || echo "Cannot list frontend files"
-          
+
           echo "=== Check environment variables ==="
           ./scripts/check-env.sh || echo "Environment check script failed"
-          
+
           echo "=== Check if .env file exists and has required variables ==="
           if [ -f ".env" ]; then
             echo "✅ .env file exists"
