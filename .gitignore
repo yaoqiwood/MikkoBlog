@@ -1,0 +1,55 @@
+# 环境变量文件
+.env
+.env.local
+.env.production
+.env.production.local
+
+# 日志文件
+*.log
+logs/
+backend/backend.log
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 上传文件
+backend/uploads/
+uploads/
+
+# 依赖目录
+node_modules/
+frontend/node_modules/
+
+# 构建输出
+frontend/dist/
+frontend/build/
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.temp
+
+# SSL证书
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+
+# 备份文件
+*.backup
+*.bak
+backup_*.sql
+uploads_backup_*.tar.gz
+docker-compose.prod.yml
+backend/config/config.docker.yaml
+config-templates/env.production.template
