@@ -29,17 +29,26 @@ const loadLive2DWidget = () => {
   }
 
   const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js';
+  script.src = 'https://fastly.jsdelivr.net/npm/live2d-widgets@1.0.0-rc.7/dist/autoload.js';
   script.async = true;
 
   script.onload = () => {
     console.log('🎭 Live2D 看板娘脚本已加载');
-    // 脚本加载完成后，根据当前路由决定是否显示
-    if (shouldShowLive2D.value) {
-      showWidget();
-    } else {
-      hideWidget();
-    }
+    // 等待 initWidget 函数可用
+    window.setTimeout(() => {
+      if (window.initWidget) {
+        // 初始化看板娘，启用拖拽功能
+        window.initWidget({
+          waifuPath: 'https://fastly.jsdelivr.net/npm/live2d-widgets@1/dist/waifu-tips.json',
+          cdnPath: 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/',
+          drag: true, // 启用拖拽功能
+          logLevel: 'info',
+        });
+        console.log('🎭 Live2D 看板娘已初始化，拖拽功能已启用');
+      } else {
+        console.error('🎭 initWidget 函数不可用');
+      }
+    }, 1000);
   };
 
   script.onerror = () => {
@@ -60,7 +69,6 @@ const showWidget = () => {
       waifu.style.display = 'block';
       waifu.style.visibility = 'visible';
       waifu.style.opacity = '1';
-      waifu.style.pointerEvents = 'auto'; // 确保可以拖拽
       console.log('🎭 Live2D 看板娘已显示');
     } else {
       // 如果元素还没创建，继续等待
@@ -78,7 +86,6 @@ const hideWidget = () => {
     waifu.style.display = 'none';
     waifu.style.visibility = 'hidden';
     waifu.style.opacity = '0';
-    waifu.style.pointerEvents = 'none';
     console.log('🎭 Live2D 看板娘已隐藏');
   }
 };
@@ -144,16 +151,6 @@ watch(
 </style>
 
 <style>
-/* 全局样式：确保看板娘可以拖拽 */
-#waifu {
-  pointer-events: auto !important;
-  cursor: move !important;
-}
-
-#waifu canvas {
-  pointer-events: auto !important;
-}
-
 /* 确保看板娘在管理页面隐藏 */
 .admin-page #waifu {
   display: none !important;
