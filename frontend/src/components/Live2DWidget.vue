@@ -29,26 +29,45 @@ const loadLive2DWidget = () => {
   }
 
   const script = document.createElement('script');
-  script.src = 'https://fastly.jsdelivr.net/npm/live2d-widgets@1.0.0-rc.7/dist/autoload.js';
+  script.src = 'https://cdn.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js';
   script.async = true;
 
   script.onload = () => {
     console.log('🎭 Live2D 看板娘脚本已加载');
-    // 等待 initWidget 函数可用
+    // 等待看板娘自动初始化完成
     window.setTimeout(() => {
-      if (window.initWidget) {
-        // 初始化看板娘，启用拖拽功能
-        window.initWidget({
-          waifuPath: 'https://fastly.jsdelivr.net/npm/live2d-widgets@1/dist/waifu-tips.json',
-          cdnPath: 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/',
-          drag: true, // 启用拖拽功能
-          logLevel: 'info',
-        });
-        console.log('🎭 Live2D 看板娘已初始化，拖拽功能已启用');
+      // 检查看板娘是否已经创建
+      const waifu = document.querySelector('#waifu');
+      if (waifu) {
+        console.log('🎭 Live2D 看板娘已自动加载');
+        // 启用拖拽功能
+        if (window.initWidget) {
+          try {
+            window.initWidget({
+              drag: true,
+              logLevel: 'error',
+            });
+            console.log('🎭 拖拽功能已启用');
+          } catch (error) {
+            console.error('🎭 拖拽功能启用失败:', error);
+          }
+        }
       } else {
-        console.error('🎭 initWidget 函数不可用');
+        console.log('🎭 看板娘未自动加载，尝试手动初始化');
+        // 如果自动加载失败，尝试手动初始化
+        if (window.initWidget) {
+          try {
+            window.initWidget({
+              drag: true,
+              logLevel: 'error',
+            });
+            console.log('🎭 Live2D 看板娘已手动初始化');
+          } catch (error) {
+            console.error('🎭 看板娘手动初始化失败:', error);
+          }
+        }
       }
-    }, 1000);
+    }, 3000); // 增加等待时间
   };
 
   script.onerror = () => {
