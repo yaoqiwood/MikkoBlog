@@ -31,14 +31,15 @@ services:
       dockerfile: backend/Dockerfile
     container_name: mikko_backend
     environment:
-      - MIKKO_CONFIG=/app/config/config.yaml
+      - MIKKO_CONFIG=/app/config/config.docker.yaml
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/config:/app/config
 
 volumes:
   db_data:
