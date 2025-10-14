@@ -84,7 +84,27 @@ jobs:
           curl -f http://localhost || echo "Frontend health check failed"
 
           # 显示详细日志
+          echo "=== All container status ==="
+          docker-compose -f docker-compose.prod.yml ps -a
+          
+          echo "=== Nginx container logs ==="
+          docker-compose -f docker-compose.prod.yml logs mikko_nginx_prod || echo "Nginx container not found or no logs"
+          
           echo "=== Frontend logs ==="
           docker-compose -f docker-compose.prod.yml logs frontend --tail=20
+          
           echo "=== Backend logs ==="
           docker-compose -f docker-compose.prod.yml logs backend --tail=20
+          
+          echo "=== MySQL logs ==="
+          docker-compose -f docker-compose.prod.yml logs db --tail=20
+          
+          echo "=== Docker network info ==="
+          docker network ls
+          docker network inspect mikko-blog_mikko-network || echo "Network not found"
+          
+          echo "=== Check if nginx.conf exists ==="
+          ls -la frontend/nginx.conf || echo "nginx.conf not found"
+          
+          echo "=== Check frontend Dockerfile ==="
+          ls -la frontend/Dockerfile || echo "Frontend Dockerfile not found"
