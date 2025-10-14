@@ -17,37 +17,42 @@ const shouldShowLive2D = computed(() => {
 
 // 动态加载看板娘脚本
 const loadLive2DWidget = () => {
-  if (!shouldShowLive2D.value) {
-    hideWidget();
-    return;
-  }
-
   // 检查是否已经加载过脚本
   if (document.querySelector('script[src*="live2d-widget"]')) {
-    showWidget();
+    // 脚本已加载，只需要控制显示/隐藏
+    if (shouldShowLive2D.value) {
+      showWidget();
+    } else {
+      hideWidget();
+    }
     return;
   }
 
   const script = document.createElement('script');
   script.src = 'https://cdn.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js';
   script.async = true;
-  
+
   script.onload = () => {
     console.log('🎭 Live2D 看板娘脚本已加载');
-    showWidget();
+    // 脚本加载完成后，根据当前路由决定是否显示
+    if (shouldShowLive2D.value) {
+      showWidget();
+    } else {
+      hideWidget();
+    }
   };
-  
+
   script.onerror = () => {
     console.error('🎭 Live2D 看板娘脚本加载失败');
   };
-  
+
   document.head.appendChild(script);
 };
 
 // 显示看板娘
 const showWidget = () => {
   if (!shouldShowLive2D.value) return;
-  
+
   // 等待看板娘元素创建
   const checkWidget = () => {
     const waifu = document.querySelector('#waifu');
@@ -55,13 +60,14 @@ const showWidget = () => {
       waifu.style.display = 'block';
       waifu.style.visibility = 'visible';
       waifu.style.opacity = '1';
+      waifu.style.pointerEvents = 'auto'; // 确保可以拖拽
       console.log('🎭 Live2D 看板娘已显示');
     } else {
       // 如果元素还没创建，继续等待
-      setTimeout(checkWidget, 100);
+      window.setTimeout(checkWidget, 100);
     }
   };
-  
+
   checkWidget();
 };
 
@@ -72,6 +78,7 @@ const hideWidget = () => {
     waifu.style.display = 'none';
     waifu.style.visibility = 'hidden';
     waifu.style.opacity = '0';
+    waifu.style.pointerEvents = 'none';
     console.log('🎭 Live2D 看板娘已隐藏');
   }
 };
@@ -97,7 +104,7 @@ const removeLive2DWidget = () => {
 
 onMounted(() => {
   // 延迟加载，确保页面渲染完成
-  setTimeout(() => {
+  window.setTimeout(() => {
     loadLive2DWidget();
   }, 1000);
 });
@@ -112,10 +119,15 @@ watch(
   () => route.path,
   (newPath, oldPath) => {
     if (newPath !== oldPath) {
-      // 路由变化时重新处理看板娘
-      setTimeout(() => {
-        loadLive2DWidget();
-      }, 300);
+      console.log(`🎭 路由变化: ${oldPath} -> ${newPath}`);
+      // 路由变化时立即处理看板娘显示/隐藏
+      window.setTimeout(() => {
+        if (shouldShowLive2D.value) {
+          showWidget();
+        } else {
+          hideWidget();
+        }
+      }, 100);
     }
   }
 );
@@ -128,5 +140,24 @@ watch(
   right: 0;
   z-index: 1000;
   /* 移除 pointer-events: none，让看板娘可以被拖拽 */
+}
+</style>
+
+<style>
+/* 全局样式：确保看板娘可以拖拽 */
+#waifu {
+  pointer-events: auto !important;
+  cursor: move !important;
+}
+
+#waifu canvas {
+  pointer-events: auto !important;
+}
+
+/* 确保看板娘在管理页面隐藏 */
+.admin-page #waifu {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 </style>
