@@ -1,23 +1,10 @@
 <template>
-  <!-- Vue Live2D 看板娘 -->
-  <vue-live2d
-    v-if="shouldShowLive2D"
-    :api-path="apiPath"
-    :size="size"
-    :width="width"
-    :height="height"
-    :model="model"
-    :direction="direction"
-    :tip-position="tipPosition"
-    :tips="tips"
-    :home-page="homePage"
-    :custom-id="customId"
-  />
+  <!-- Live2D 看板娘容器 -->
+  <div v-if="shouldShowLive2D" id="live2d-widget-container"></div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import vueLive2d from 'vue-live2d';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -28,26 +15,118 @@ const shouldShowLive2D = computed(() => {
   return !route.path.startsWith('/admin');
 });
 
-// 配置参数 - 使用可用的API源
-const apiPath = 'https://cdn.jsdelivr.net/gh/fghrsh/live2d_api@latest/';
-const size = 255;
-const width = 0;
-const height = 0;
-const model = ['Potion-Maker/Pio'];
-const direction = 'right';
-const tipPosition = 'top';
-const homePage = 'https://github.com/yaoqiwood/MikkoBlog';
-const customId = 'mikko-live2d';
+// 动态加载看板娘脚本
+const loadLive2DWidget = () => {
+  if (!shouldShowLive2D.value) {
+    hideWidget();
+    return;
+  }
 
-// 自定义提示语
-const tips = {
-  welcome: ['欢迎来到 MikkoBlog！', '今天也要加油哦~', '有什么想了解的吗？'],
-  click: ['点击我有什么奖励吗？', '嘿嘿，被你发现了~', '再点一下试试看？'],
-  mouseover: ['鼠标滑过我了呢~', '想和我互动吗？', '我在这里等你哦'],
-  timeout: ['你还在吗？', '不要走嘛~', '回来陪我聊天吧'],
+  // 检查是否已经加载过脚本
+  if (document.querySelector('script[src*="live2d-widget"]')) {
+    showWidget();
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js';
+  script.async = true;
+  
+  script.onload = () => {
+    console.log('🎭 Live2D 看板娘脚本已加载');
+    showWidget();
+  };
+  
+  script.onerror = () => {
+    console.error('🎭 Live2D 看板娘脚本加载失败');
+  };
+  
+  document.head.appendChild(script);
 };
+
+// 显示看板娘
+const showWidget = () => {
+  if (!shouldShowLive2D.value) return;
+  
+  // 等待看板娘元素创建
+  const checkWidget = () => {
+    const waifu = document.querySelector('#waifu');
+    if (waifu) {
+      waifu.style.display = 'block';
+      waifu.style.visibility = 'visible';
+      waifu.style.opacity = '1';
+      console.log('🎭 Live2D 看板娘已显示');
+    } else {
+      // 如果元素还没创建，继续等待
+      setTimeout(checkWidget, 100);
+    }
+  };
+  
+  checkWidget();
+};
+
+// 隐藏看板娘
+const hideWidget = () => {
+  const waifu = document.querySelector('#waifu');
+  if (waifu) {
+    waifu.style.display = 'none';
+    waifu.style.visibility = 'hidden';
+    waifu.style.opacity = '0';
+    console.log('🎭 Live2D 看板娘已隐藏');
+  }
+};
+
+// 完全移除看板娘（仅在组件卸载时使用）
+const removeLive2DWidget = () => {
+  // 移除看板娘相关元素
+  const live2dElements = document.querySelectorAll('#waifu, #waifu-tips, .waifu-tool');
+  live2dElements.forEach(el => el.remove());
+
+  // 移除相关样式
+  const live2dStyles = document.querySelectorAll('style[data-live2d]');
+  live2dStyles.forEach(style => style.remove());
+
+  // 移除脚本
+  const existingScript = document.querySelector('script[src*="live2d-widget"]');
+  if (existingScript) {
+    existingScript.remove();
+  }
+
+  console.log('🎭 Live2D 看板娘已完全移除');
+};
+
+onMounted(() => {
+  // 延迟加载，确保页面渲染完成
+  setTimeout(() => {
+    loadLive2DWidget();
+  }, 1000);
+});
+
+onUnmounted(() => {
+  // 组件卸载时完全移除看板娘
+  removeLive2DWidget();
+});
+
+// 监听路由变化
+watch(
+  () => route.path,
+  (newPath, oldPath) => {
+    if (newPath !== oldPath) {
+      // 路由变化时重新处理看板娘
+      setTimeout(() => {
+        loadLive2DWidget();
+      }, 300);
+    }
+  }
+);
 </script>
 
 <style scoped>
-/* vue-live2d 组件会自动处理样式 */
+#live2d-widget-container {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  z-index: 1000;
+  /* 移除 pointer-events: none，让看板娘可以被拖拽 */
+}
 </style>
