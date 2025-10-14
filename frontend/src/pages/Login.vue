@@ -56,7 +56,7 @@
                     v-model="loginModel.email"
                     type="email"
                     size="large"
-                    placeholder="admin@example.com"
+                    placeholder="请输入邮箱地址"
                     prefix="ios-mail"
                   />
                 </FormItem>
@@ -65,7 +65,7 @@
                     v-model="loginModel.username"
                     type="text"
                     size="large"
-                    placeholder="admin"
+                    placeholder="请输入用户名"
                     prefix="ios-person"
                   />
                 </FormItem>
@@ -76,7 +76,7 @@
                     v-model="loginModel.password"
                     type="password"
                     size="large"
-                    placeholder="••••••••"
+                    placeholder="请输入密码"
                     prefix="ios-lock"
                   />
                 </FormItem>

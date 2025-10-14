@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-layout admin-page">
+  <div class="admin-layout">
     <!-- 侧边栏 -->
     <div class="admin-sidebar" :class="{ collapsed: sidebarCollapsed }">
       <div class="sidebar-header">
