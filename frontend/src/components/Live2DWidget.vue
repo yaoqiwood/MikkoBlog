@@ -17,6 +17,74 @@ const shouldShowLive2D = computed(() => {
   return !route.path.startsWith('/admin');
 });
 
+// 实现拖拽功能
+const implementDragFunction = element => {
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  // 鼠标按下事件
+  const handleMouseDown = e => {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    // 获取当前位置
+    const rect = element.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+
+    // 添加样式
+    element.style.cursor = 'grabbing';
+    element.style.userSelect = 'none';
+
+    // 阻止默认行为
+    e.preventDefault();
+  };
+
+  // 鼠标移动事件
+  const handleMouseMove = e => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+
+    // 计算新位置
+    const newLeft = startLeft + deltaX;
+    const newTop = startTop + deltaY;
+
+    // 限制在视窗范围内
+    const maxLeft = window.innerWidth - element.offsetWidth;
+    const maxTop = window.innerHeight - element.offsetHeight;
+
+    const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+
+    // 设置新位置
+    element.style.left = `${clampedLeft}px`;
+    element.style.top = `${clampedTop}px`;
+    element.style.bottom = 'auto';
+  };
+
+  // 鼠标释放事件
+  const handleMouseUp = () => {
+    if (!isDragging) return;
+
+    isDragging = false;
+    element.style.cursor = 'move';
+    element.style.userSelect = 'auto';
+  };
+
+  // 添加事件监听器
+  element.addEventListener('mousedown', handleMouseDown);
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+
+  console.log('🎭 自定义拖拽功能已实现');
+};
+
 // 动态加载看板娘脚本
 const loadLive2DWidget = () => {
   // 检查是否已经加载过脚本
@@ -47,6 +115,10 @@ const loadLive2DWidget = () => {
         waifu.style.left = '85%'; // 默认位置
         waifu.style.bottom = '0px';
         waifu.style.zIndex = '1000';
+        waifu.style.cursor = 'move';
+
+        // 实现自定义拖拽功能
+        implementDragFunction(waifu);
 
         // 启用拖拽功能
         if (window.initWidget) {
@@ -101,6 +173,11 @@ const showWidget = () => {
       waifu.style.left = '85%';
       waifu.style.bottom = '0px';
       waifu.style.zIndex = '1000';
+      waifu.style.cursor = 'move';
+
+      // 重新实现拖拽功能（防止URL跳转后丢失）
+      implementDragFunction(waifu);
+
       console.log('🎭 Live2D 看板娘已显示');
     } else {
       // 如果元素还没创建，继续等待
@@ -178,6 +255,40 @@ watch(
     }
   }
 );
+
+// 监听页面可见性变化（处理URL跳转）
+onMounted(() => {
+  // 监听页面可见性变化
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && shouldShowLive2D.value) {
+      // 页面变为可见时，检查看板娘状态
+      window.setTimeout(() => {
+        const waifu = document.querySelector('#waifu');
+        if (waifu) {
+          showWidget();
+        } else {
+          console.log('🎭 页面可见性变化，重新加载看板娘');
+          loadLive2DWidget();
+        }
+      }, 500);
+    }
+  });
+
+  // 监听页面加载完成
+  window.addEventListener('load', () => {
+    if (shouldShowLive2D.value) {
+      window.setTimeout(() => {
+        const waifu = document.querySelector('#waifu');
+        if (waifu) {
+          showWidget();
+        } else {
+          console.log('🎭 页面加载完成，重新加载看板娘');
+          loadLive2DWidget();
+        }
+      }, 1000);
+    }
+  });
+});
 </script>
 
 <style scoped>
@@ -198,6 +309,13 @@ watch(
   bottom: 0px !important;
   z-index: 1000 !important;
   pointer-events: auto !important;
+  cursor: move !important;
+  user-select: none !important;
+}
+
+/* 拖拽时的样式 */
+#waifu:active {
+  cursor: grabbing !important;
 }
 
 /* 确保看板娘在管理页面隐藏 */
