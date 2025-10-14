@@ -117,3 +117,28 @@ jobs:
 
           echo "=== Check backend container logs ==="
           docker logs mikko_backend_prod --tail=50 || echo "Backend container not found"
+          
+          echo "=== Check frontend container logs ==="
+          docker logs mikko_frontend_prod --tail=50 || echo "Frontend container not found"
+          
+          echo "=== Check MySQL container logs ==="
+          docker logs mikko_mysql_prod --tail=30 || echo "MySQL container not found"
+          
+          echo "=== Check container resource usage ==="
+          docker stats --no-stream || echo "Cannot get container stats"
+          
+          echo "=== Check Docker system info ==="
+          docker system df || echo "Cannot get Docker system info"
+          
+          echo "=== Check if containers are actually running ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || echo "Cannot get container list"
+          
+          echo "=== Test internal network connectivity ==="
+          docker exec mikko_frontend_prod curl -s http://backend:8000/api/healthz || echo "Frontend cannot reach backend"
+          docker exec mikko_backend_prod curl -s http://db:3306 || echo "Backend cannot reach database"
+          
+          echo "=== Check nginx configuration ==="
+          docker exec mikko_frontend_prod nginx -t || echo "Nginx config test failed"
+          
+          echo "=== Check if frontend files exist ==="
+          docker exec mikko_frontend_prod ls -la /usr/share/nginx/html/ || echo "Cannot list frontend files"
