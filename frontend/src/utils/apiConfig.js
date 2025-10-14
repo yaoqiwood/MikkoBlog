@@ -5,8 +5,8 @@
 
 // 基础配置
 const API_CONFIG = {
-  // 基础URL
-  BASE_URL: 'http://localhost:8000',
+  // 基础URL - 生产环境使用相对路径，开发环境使用localhost
+  BASE_URL: import.meta.env.PROD ? '' : 'http://localhost:8000',
 
   // API版本
   API_VERSION: '/api',

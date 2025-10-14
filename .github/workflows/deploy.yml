@@ -108,12 +108,12 @@ jobs:
 
           echo "=== Check frontend Dockerfile ==="
           ls -la frontend/Dockerfile || echo "Frontend Dockerfile not found"
-          
+
           echo "=== Test backend health endpoint ==="
           curl -v http://localhost:8000/api/healthz || echo "Backend health check failed"
-          
+
           echo "=== Test API through frontend proxy ==="
           curl -v http://localhost/api/healthz || echo "API proxy failed"
-          
+
           echo "=== Check backend container logs ==="
           docker logs mikko_backend_prod --tail=50 || echo "Backend container not found"
