@@ -125,6 +125,17 @@ export function getApiUrl(endpoint) {
 }
 
 /**
+ * 获取完整的文件URL
+ * @param {string} filePath - 文件路径
+ * @returns {string} 完整的文件URL
+ */
+export function getFileUrl(filePath) {
+  if (!filePath) return '';
+  if (filePath.startsWith('http')) return filePath;
+  return `${API_CONFIG.BASE_URL}${filePath}`;
+}
+
+/**
  * 获取基础配置
  * @returns {object} API配置对象
  */

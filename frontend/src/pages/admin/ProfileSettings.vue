@@ -215,7 +215,7 @@ const defaultAvatar = ref(
 
 // 上传配置
 const uploadAction = computed(() => {
-  return 'http://localhost:8000/api/upload/avatar';
+  return '/api/upload/avatar';
 });
 
 const uploadHeaders = computed(() => {

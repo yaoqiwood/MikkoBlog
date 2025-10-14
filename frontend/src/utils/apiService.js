@@ -83,7 +83,7 @@ export const authApi = {
    * @returns {Promise} 重置结果
    */
   async resetAvatar() {
-    return del('http://localhost:8000/api/upload/avatar');
+    return del('/api/upload/avatar');
   },
 
   /**
@@ -92,7 +92,7 @@ export const authApi = {
    * @returns {Promise} 用户资料
    */
   async getPublicProfile(userId) {
-    return get(`http://localhost:8000/api/admin/profiles/public/${userId}`);
+    return get(`/api/admin/profiles/public/${userId}`);
   },
 };
 
@@ -556,10 +556,10 @@ export const systemSettingApi = {
  */
 export const homepageApi = {
   async getSettings() {
-    return get('http://localhost:8000/api/homepage/settings?_t=' + Date.now());
+    return get('/api/homepage/settings?_t=' + Date.now());
   },
   async updateSettings(data) {
-    return put('http://localhost:8000/api/homepage/settings', data);
+    return put('/api/homepage/settings', data);
   },
 };
 
@@ -728,7 +728,7 @@ export const momentsApi = {
    * @returns {Promise} 说说列表
    */
   async getMoments(params = {}) {
-    return get('http://localhost:8000/api/moments', params);
+    return get('/api/moments', params);
   },
 
   /**
@@ -737,7 +737,7 @@ export const momentsApi = {
    * @returns {Promise} 说说详情
    */
   async getMomentById(id) {
-    return get(`http://localhost:8000/api/moments/${id}`);
+    return get(`/api/moments/${id}`);
   },
 
   /**
@@ -746,7 +746,7 @@ export const momentsApi = {
    * @returns {Promise} 创建结果
    */
   async createMoment(momentData) {
-    return post('http://localhost:8000/api/moments', momentData);
+    return post('/api/moments', momentData);
   },
 
   /**
@@ -756,7 +756,7 @@ export const momentsApi = {
    * @returns {Promise} 更新结果
    */
   async updateMoment(id, momentData) {
-    return put(`http://localhost:8000/api/moments/${id}`, momentData);
+    return put(`/api/moments/${id}`, momentData);
   },
 
   /**
@@ -765,7 +765,7 @@ export const momentsApi = {
    * @returns {Promise} 删除结果
    */
   async deleteMoment(id) {
-    return del(`http://localhost:8000/api/moments/${id}`);
+    return del(`/api/moments/${id}`);
   },
 
   /**
@@ -774,7 +774,7 @@ export const momentsApi = {
    * @returns {Promise} 切换结果
    */
   async toggleMomentVisibility(id) {
-    return patch(`http://localhost:8000/api/moments/${id}/toggle-visibility`);
+    return patch(`/api/moments/${id}/toggle-visibility`);
   },
 };
 
@@ -1042,7 +1042,7 @@ export const imageSearchApi = {
    * @returns {Promise} 图片列表
    */
   async searchImages(tags, count = 10, orientation = 'landscape') {
-    return post('http://localhost:8000/api/image-search/search', {
+    return post('/api/image-search/search', {
       tags,
       count,
       orientation,
@@ -1055,7 +1055,7 @@ export const imageSearchApi = {
    * @returns {Promise} 封面图片URL
    */
   async getRandomCover(tags) {
-    return post('http://localhost:8000/api/image-search/random-cover', {
+    return post('/api/image-search/random-cover', {
       tags,
     });
   },
@@ -1065,7 +1065,7 @@ export const imageSearchApi = {
    * @returns {Promise} 标签列表
    */
   async getTags() {
-    return get('http://localhost:8000/api/image-search/tags');
+    return get('/api/image-search/tags');
   },
 };
 
