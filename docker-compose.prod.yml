@@ -46,6 +46,7 @@ services:
     container_name: mikko_backend_prod
     environment:
       - MIKKO_CONFIG=/app/config/config.yaml
+      - DATABASE_URL=mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
       - MYSQL_HOST=db
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -77,21 +78,7 @@ services:
     networks:
       - mikko-network
 
-  # 可选：添加Nginx反向代理
-  nginx:
-    image: nginx:alpine
-    container_name: mikko_nginx_prod
-    ports:
-      - "8080:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - frontend
-      - backend
-    restart: unless-stopped
-    networks:
-      - mikko-network
+  # Nginx反向代理已集成到frontend容器中
 
 volumes:
   db_data_prod:
