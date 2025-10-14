@@ -73,3 +73,18 @@ jobs:
 
           # 检查服务状态
           docker-compose -f docker-compose.prod.yml ps
+
+          # 等待服务启动
+          echo "Waiting for services to start..."
+          sleep 30
+
+          # 检查服务健康状态
+          echo "Checking service health..."
+          curl -f http://localhost:8000/health || echo "Backend health check failed"
+          curl -f http://localhost || echo "Frontend health check failed"
+
+          # 显示详细日志
+          echo "=== Frontend logs ==="
+          docker-compose -f docker-compose.prod.yml logs frontend --tail=20
+          echo "=== Backend logs ==="
+          docker-compose -f docker-compose.prod.yml logs backend --tail=20
