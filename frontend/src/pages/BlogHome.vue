@@ -2,7 +2,7 @@
   <div class="blog-home" :style="{ '--bg-image': backgroundImageUrl }">
     <!-- Live2D 看板娘 -->
     <Live2DWidget />
-    
+
     <!-- 欢迎模态框 -->
     <WelcomeModal
       :show="showWelcomeModal"
