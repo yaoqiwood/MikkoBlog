@@ -4,19 +4,16 @@
 
 ```
 MikkoBlog/
-├── .github/                          # GitHub Actions 工作流
-│   └── workflows/
-│       ├── deploy.yml                # 自动部署工作流
-│       └── debug.yml                 # 调试工作流
 ├── backend/                          # 后端服务 (FastAPI + Python)
 ├── frontend/                         # 前端服务 (Vue 3 + Vite)
 ├── nginx/                           # Nginx 配置文件
-├── scripts/                         # 部署和管理脚本
-├── docker-compose.prod.yml          # 生产环境 Docker Compose 配置
-├── env.example                      # 环境变量示例文件
-├── MANUAL_DEPLOYMENT.md             # 手动部署指南
+├── uploads/                         # 上传文件存储
+├── docker-compose.yml               # Docker Compose 配置
+├── LIVE2D_WIDGET_README.md          # Live2D 看板娘说明
+├── music-player-integration.md      # 音乐播放器集成说明
 ├── PROJECT_STRUCTURE.md             # 项目结构文档 (本文件)
-└── README.md                        # 项目说明文档
+├── readme.md                        # 项目说明文档
+└── SCROLLBAR_FIX.md                 # 滚动条修复说明
 ```
 
 ## 🐍 后端结构 (backend/)
@@ -162,107 +159,129 @@ backend/
 
 ```
 frontend/
+├── backend/                          # 后端上传文件副本
+│   └── uploads/
+│       └── music/                    # 音乐文件
+├── dist/                             # 构建输出目录
+│   └── assets/                       # 构建后的静态资源
+│       ├── AttachmentManagement-1Fv8Fuy1.css
+│       ├── AttachmentManagement-Bgp_aTjf.js
+│       ├── ColumnsManagement-CIx0nqZ4.css
+│       ├── ColumnsManagement-CvEphOMX.js
+│       ├── HomepageSettings-4i6Gljrh.css
+│       ├── HomepageSettings-rxKP4_DH.js
+│       ├── index-CbQRcPjJ.js
+│       ├── index-CIHgxqVY.css
+│       ├── ionicons-BP-3J37-.ttf
+│       ├── ionicons-CIIvoz24.woff2
+│       ├── ionicons-E4jYJjsE.svg
+│       ├── ionicons-fsCmv2gq.woff
+│       ├── MarkdownEditor-DdvgzegD.css
+│       ├── MarkdownEditor-DHucw_hC.js
+│       ├── MomentsManagement-CiIbirJJ.css
+│       ├── MomentsManagement-DWSvoKFH.js
+│       ├── MusicManagement-Dy_24vVm.js
+│       ├── MusicManagement-K23EPPhA.css
+│       ├── PostEditor-03XfIqlk.js
+│       ├── PostEditor-sqEZHO0k.css
+│       ├── PostManagement-DyqdPIW5.js
+│       ├── PostManagement-YZqQ2q3T.css
+│       ├── ProfileSettings-BvpZHnkQ.js
+│       ├── ProfileSettings-BwClXwu9.css
+│       ├── Settings-BN1BqPfY.css
+│       ├── Settings-G4BGZzq7.js
+│       ├── SystemDefaultSettings-BHfiqbMO.js
+│       ├── SystemDefaultSettings-wbqcD36A.css
+│       ├── index.html
+│       └── vite.svg
+├── node_modules/                     # Node.js 依赖包
 ├── public/                           # 静态资源
+│   ├── live2d-static-api/            # Live2D 静态资源
 │   └── vite.svg                      # Vite 图标
 ├── src/                              # 源代码目录
 │   ├── components/                   # 组件目录
 │   │   ├── blogHome/                 # 博客首页组件
+│   │   │   ├── About/                # 关于页面组件
+│   │   │   │   └── AboutContent.vue
 │   │   │   ├── Columns/              # 专栏相关组件
-│   │   │   │   ├── ColumnsContent.vue
-│   │   │   │   └── ColumnsHeader.vue
+│   │   │   │   ├── ColumnDetail.vue
+│   │   │   │   └── ColumnsContent.vue
 │   │   │   ├── Header/               # 头部组件
-│   │   │   │   ├── Header.vue
-│   │   │   │   └── HeaderMenu.vue
-│   │   │   ├── Hero/                 # 英雄区域组件
-│   │   │   │   ├── Hero.vue
-│   │   │   │   └── HeroContent.vue
+│   │   │   │   └── BlogHeader.vue
+│   │   │   ├── Home/                 # 首页内容组件
+│   │   │   │   └── HomeContent.vue
+│   │   │   ├── ImagePreview/         # 图片预览组件
+│   │   │   │   └── ImagePreviewModal.vue
 │   │   │   ├── Sidebar/              # 侧边栏组件
 │   │   │   │   ├── LeftSidebar.vue
 │   │   │   │   └── RightSidebar.vue
-│   │   │   └── WelcomeModal/         # 欢迎模态框组件
-│   │   │       └── WelcomeModal.vue
-│   │   ├── common/                   # 通用组件
-│   │   │   ├── LoadingSpinner.vue    # 加载动画
-│   │   │   ├── Message.vue           # 消息提示
-│   │   │   └── Modal.vue             # 模态框
-│   │   ├── editor/                   # 编辑器组件
-│   │   │   ├── Editor.vue            # 富文本编辑器
-│   │   │   └── ImageUpload.vue       # 图片上传
-│   │   └── layout/                   # 布局组件
-│   │       ├── AdminLayout.vue       # 管理后台布局
-│   │       ├── BlogLayout.vue        # 博客布局
-│   │       └── MainLayout.vue        # 主布局
+│   │   │   └── README.md             # 组件说明文档
+│   │   ├── GlobalLoading.vue         # 全局加载组件
+│   │   ├── HelloWorld.vue            # 示例组件
+│   │   ├── MarkdownEditor.vue        # Markdown 编辑器
+│   │   ├── MusicPlayer.vue           # 音乐播放器
+│   │   ├── MusicUploadManager.vue    # 音乐上传管理
+│   │   └── WelcomeModal.vue          # 欢迎模态框
+│   ├── data/                         # 静态数据
+│   │   ├── bible-verses.json         # 圣经经文数据
+│   │   └── famous-quotes.json        # 名人名言数据
 │   ├── pages/                        # 页面组件
 │   │   ├── admin/                    # 管理后台页面
+│   │   │   ├── AdminLayout.vue       # 管理后台布局
+│   │   │   ├── AISettings.vue        # AI 设置
 │   │   │   ├── AttachmentManagement.vue    # 附件管理
-│   │   │   ├── AISettings.vue              # AI 设置
 │   │   │   ├── ColumnsManagement.vue       # 专栏管理
+│   │   │   ├── CommentManagement.vue       # 评论管理
+│   │   │   ├── Dashboard.vue               # 仪表板
 │   │   │   ├── HomepageSettings.vue        # 首页设置
+│   │   │   ├── HomepageSettings_README.md  # 首页设置说明
 │   │   │   ├── ImageSearchSettings.vue     # 图片搜索设置
 │   │   │   ├── MomentsManagement.vue       # 动态管理
+│   │   │   ├── MusicManagement.vue         # 音乐管理
 │   │   │   ├── PostEditor.vue              # 文章编辑器
 │   │   │   ├── PostManagement.vue          # 文章管理
 │   │   │   ├── ProfileSettings.vue         # 个人资料设置
-│   │   │   ├── SystemSettings.vue          # 系统设置
+│   │   │   ├── Settings.vue                # 系统设置
+│   │   │   ├── SystemDefaultSettings.vue   # 系统默认设置
+│   │   │   ├── TagCloudManagement.vue      # 标签云管理
 │   │   │   └── UserManagement.vue          # 用户管理
-│   │   ├── ArticleDetail.vue         # 文章详情页
 │   │   ├── ArticleList.vue           # 文章列表页
+│   │   ├── BlogDetail.vue            # 博客详情页
 │   │   ├── BlogHome.vue              # 博客首页
+│   │   ├── CookieTest.vue            # Cookie 测试页
+│   │   ├── FullscreenTest.vue        # 全屏测试页
+│   │   ├── Home.vue                  # 首页
+│   │   ├── LoadingTest.vue           # 加载测试页
 │   │   ├── Login.vue                 # 登录页
-│   │   ├── Moments.vue               # 动态页面
-│   │   └── NotFound.vue              # 404 页面
+│   │   ├── NotFound.vue              # 404 页面
+│   │   ├── NotFoundDemo.vue          # 404 演示页
+│   │   ├── Test404.vue               # 404 测试页
+│   │   └── TestViewUI.vue            # ViewUI 测试页
 │   ├── router/                       # 路由配置
 │   │   └── index.js                  # 路由定义
-│   ├── stores/                       # 状态管理
-│   │   ├── auth.js                   # 认证状态
-│   │   ├── posts.js                  # 文章状态
-│   │   └── system.js                 # 系统状态
-│   ├── styles/                       # 样式文件
-│   │   ├── main.css                  # 主样式
-│   │   ├── variables.css             # CSS 变量
-│   │   └── components/               # 组件样式
-│   │       ├── admin.css             # 管理后台样式
-│   │       ├── blog.css              # 博客样式
-│   │       └── common.css            # 通用样式
-│   ├── utils/                        # 工具函数
-│   │   ├── apiConfig.js              # API 配置
-│   │   ├── apiService.js             # API 服务
-│   │   ├── apiTest.js                # API 测试
-│   │   ├── auth.js                   # 认证工具
-│   │   ├── cookieUtils.js            # Cookie 工具
-│   │   ├── dateUtils.js              # 日期工具
-│   │   ├── httpClient.js             # HTTP 客户端
-│   │   ├── loadingManager.js         # 加载管理
-│   │   ├── musicApi.js               # 音乐 API
-│   │   ├── storage.js                # 存储工具
-│   │   └── validation.js             # 验证工具
 │   ├── App.vue                       # 根组件
-│   └── main.js                       # 应用入口
-├── nginx.conf                        # Nginx 配置
-├── Dockerfile                        # 前端 Docker 配置
+│   ├── main.js                       # 应用入口
+│   └── style.css                     # 全局样式
+├── assets/                           # 静态资源
+│   └── vue.svg                       # Vue 图标
 ├── index.html                        # HTML 模板
 ├── package.json                      # 项目依赖
 ├── package-lock.json                 # 依赖锁定文件
 ├── vite.config.js                    # Vite 配置
-└── eslint.config.js                  # ESLint 配置
+├── eslint.config.js                  # ESLint 配置
+└── README.md                         # 前端说明文档
 ```
 
 ## 🐳 Docker 配置
 
 ```
 nginx/                                # Nginx 配置目录
-└── nginx.conf                        # 反向代理配置
+└── ssl/                              # SSL 证书目录
 
-scripts/                              # 脚本目录
-├── check-env.sh                      # 环境变量检查脚本
-├── deploy.sh                         # 部署脚本
-├── diagnose-build.sh                 # 构建诊断脚本
-├── diagnose-deployment.sh            # 部署诊断脚本
-├── fix-dependencies.sh               # 依赖修复脚本
-├── manual-deploy.sh                  # 手动部署脚本
-├── server-setup.sh                   # 服务器设置脚本
-├── simple-server-setup.sh            # 简化服务器设置脚本
-└── test-deployment.sh                # 部署测试脚本
+uploads/                              # 根目录上传文件
+└── images/                           # 图片文件
+    ├── 20251002_202950_bd8d1fea.jpg
+    └── 20251002_203026_cc050876.jpg
 ```
 
 ## 📋 配置文件说明
@@ -275,13 +294,18 @@ scripts/                              # 脚本目录
 ### 前端配置文件
 - `frontend/package.json` - 项目依赖和脚本
 - `frontend/vite.config.js` - 构建工具配置
-- `frontend/nginx.conf` - 前端 Nginx 配置
-- `frontend/Dockerfile` - 前端容器配置
+- `frontend/eslint.config.js` - ESLint 配置
+- `frontend/README.md` - 前端说明文档
 
 ### 部署配置文件
-- `docker-compose.prod.yml` - 生产环境容器编排
-- `env.example` - 环境变量示例
-- `.github/workflows/deploy.yml` - CI/CD 工作流
+- `docker-compose.yml` - Docker Compose 配置
+- `nginx/` - Nginx 配置目录
+
+### 文档文件
+- `LIVE2D_WIDGET_README.md` - Live2D 看板娘说明
+- `music-player-integration.md` - 音乐播放器集成说明
+- `SCROLLBAR_FIX.md` - 滚动条修复说明
+- `readme.md` - 项目说明文档
 
 ## 🔧 主要功能模块
 
@@ -304,15 +328,18 @@ scripts/                              # 脚本目录
 - **管理后台** - 完整的后台管理系统
 - **用户认证** - 登录、注册、权限控制
 - **响应式设计** - 适配各种设备尺寸
+- **Live2D 看板娘** - 虚拟助手功能
+- **音乐播放器** - 音乐播放和管理
+- **图片预览** - 图片查看和预览功能
 
 ## 🚀 部署架构
 
 ```
-用户请求 → Nginx (前端容器) → 静态文件
+用户请求 → Nginx → 静态文件 (前端)
                     ↓
-                API 请求 → 后端容器 (FastAPI)
+                API 请求 → FastAPI (后端)
                     ↓
-                数据库请求 → MySQL 容器
+                数据库请求 → MySQL
 ```
 
 ## 📊 技术栈
@@ -335,4 +362,25 @@ scripts/                              # 脚本目录
 - **Docker** - 容器化
 - **Docker Compose** - 容器编排
 - **Nginx** - 反向代理
-- **GitHub Actions** - CI/CD
+
+## 📝 特殊功能说明
+
+### Live2D 看板娘
+- 集成在 `frontend/index.html` 中
+- 使用 CDN 方式加载
+- 支持自定义配置和交互
+
+### 音乐播放器
+- 支持本地音乐上传和管理
+- 集成音乐 API 搜索功能
+- 提供音乐播放器组件
+
+### 图片搜索
+- 集成图片搜索 API
+- 支持标签搜索和随机图片
+- 提供图片管理功能
+
+### 数据存储
+- 静态数据存储在 `frontend/src/data/` 目录
+- 包含圣经经文和名人名言数据
+- 支持 JSON 格式的数据文件
