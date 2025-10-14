@@ -44,7 +44,11 @@ git clone https://github.com/yourusername/MikkoBlog.git /opt/mikkoblog
 cd /opt/mikkoblog
 
 # 3. 运行部署脚本
+# 如果是普通用户：
 ./server-deploy.sh
+
+# 如果是root用户：
+./server-deploy-root.sh
 ```
 
 #### 步骤3：配置生产环境

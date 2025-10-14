@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# MikkoBlog 服务器端部署脚本
-# 在服务器上运行此脚本来部署应用
+# MikkoBlog 服务器端部署脚本 (Root版本)
+# 专门为root用户设计的简化版本
 
 set -e
 
@@ -33,22 +33,6 @@ log_error() {
 PROJECT_DIR="/opt/mikkoblog"
 REPO_URL="https://github.com/yourusername/MikkoBlog.git"  # 请修改为您的仓库地址
 BRANCH="main"
-
-# 检查用户权限
-check_user() {
-    if [ "$EUID" -eq 0 ]; then
-        log_warning "检测到root用户，将使用root权限运行"
-        log_warning "建议使用普通用户运行，如果必须使用root，请确保了解风险"
-        read -p "是否继续？(y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_info "已取消部署"
-            exit 0
-        fi
-    else
-        log_info "使用普通用户运行: $(whoami)"
-    fi
-}
 
 # 检查Docker和Docker Compose
 check_requirements() {
@@ -84,16 +68,8 @@ update_code() {
         git clean -fd
     else
         log_info "克隆项目代码..."
-        if [ "$EUID" -eq 0 ]; then
-            # root用户直接创建目录
-            mkdir -p /opt
-            git clone -b $BRANCH $REPO_URL $PROJECT_DIR
-        else
-            # 普通用户需要sudo权限
-            sudo mkdir -p /opt
-            sudo chown $USER:$USER /opt
-            git clone -b $BRANCH $REPO_URL $PROJECT_DIR
-        fi
+        mkdir -p /opt
+        git clone -b $BRANCH $REPO_URL $PROJECT_DIR
         cd "$PROJECT_DIR"
     fi
 
@@ -239,14 +215,13 @@ show_deployment_info() {
     echo "  docker-compose -f docker-compose.prod.yml down"
     echo ""
     echo "更新应用命令："
-    echo "  cd $PROJECT_DIR && ./server-deploy.sh"
+    echo "  cd $PROJECT_DIR && ./server-deploy-root.sh"
 }
 
 # 主函数
 main() {
-    log_info "开始部署 MikkoBlog"
+    log_info "开始部署 MikkoBlog (Root版本)"
 
-    check_user
     check_requirements
     update_code
     create_directories
