@@ -17,8 +17,8 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
 import vueLive2d from 'vue-live2d';
+import { useRoute } from 'vue-router';
 
 const route = useRoute();
 
@@ -28,13 +28,12 @@ const shouldShowLive2D = computed(() => {
   return !route.path.startsWith('/admin');
 });
 
-// 配置参数
-const apiPath =
-  'https://raw.githubusercontent.com/evgo2017/live2d-static-api/refs/heads/main/indexes';
+// 配置参数 - 使用可用的API源
+const apiPath = 'https://cdn.jsdelivr.net/gh/fghrsh/live2d_api@latest/';
 const size = 255;
 const width = 0;
 const height = 0;
-const model = ['Potion-Maker/Pio', 'school-2017-costume-yello'];
+const model = ['Potion-Maker/Pio'];
 const direction = 'right';
 const tipPosition = 'top';
 const homePage = 'https://github.com/yaoqiwood/MikkoBlog';
@@ -45,7 +44,7 @@ const tips = {
   welcome: ['欢迎来到 MikkoBlog！', '今天也要加油哦~', '有什么想了解的吗？'],
   click: ['点击我有什么奖励吗？', '嘿嘿，被你发现了~', '再点一下试试看？'],
   mouseover: ['鼠标滑过我了呢~', '想和我互动吗？', '我在这里等你哦'],
-  timeout: ['你还在吗？', '不要走嘛~', '回来陪我聊天吧']
+  timeout: ['你还在吗？', '不要走嘛~', '回来陪我聊天吧'],
 };
 </script>
 
