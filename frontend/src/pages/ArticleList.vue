@@ -1,5 +1,8 @@
 <template>
   <div class="article-list-page" :style="{ '--bg-image': backgroundImageUrl }">
+    <!-- Live2D 看板娘 -->
+    <Live2DWidget />
+    
     <!-- 头部导航 -->
     <header class="blog-header">
       <div class="header-container">
@@ -171,6 +174,7 @@ import { columnsApi, homepageApi, postApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import Live2DWidget from '@/components/Live2DWidget.vue';
 
 const route = useRoute();
 const router = useRouter();

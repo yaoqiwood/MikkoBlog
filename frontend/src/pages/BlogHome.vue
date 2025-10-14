@@ -1,5 +1,8 @@
 <template>
   <div class="blog-home" :style="{ '--bg-image': backgroundImageUrl }">
+    <!-- Live2D 看板娘 -->
+    <Live2DWidget />
+    
     <!-- 欢迎模态框 -->
     <WelcomeModal
       :show="showWelcomeModal"
@@ -102,6 +105,7 @@ import HomeContent from '@/components/blogHome/Home/HomeContent.vue';
 import ImagePreviewModal from '@/components/blogHome/ImagePreview/ImagePreviewModal.vue';
 import LeftSidebar from '@/components/blogHome/Sidebar/LeftSidebar.vue';
 import RightSidebar from '@/components/blogHome/Sidebar/RightSidebar.vue';
+import Live2DWidget from '@/components/Live2DWidget.vue';
 import WelcomeModal from '@/components/WelcomeModal.vue';
 
 import {
