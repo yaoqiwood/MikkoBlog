@@ -1134,9 +1134,8 @@ const getFullUrl = fileUrl => {
     const fullUrl = `${window.location.origin}${fileUrl}`;
     return fullUrl;
   }
-  // 如果window不可用，使用默认的localhost地址
-  const defaultUrl = `http://localhost:8000${fileUrl}`;
-  return defaultUrl;
+  // 如果window不可用，使用相对路径
+  return fileUrl;
 };
 
 // 复制URL

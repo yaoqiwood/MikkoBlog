@@ -86,7 +86,7 @@ defineEmits(['viewColumnDetail']);
 const getFullImageUrl = url => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `http://localhost:8000${url}`;
+  return url; // 使用相对路径，让Nginx代理处理
 };
 
 // 根据背景色计算合适的文字颜色
