@@ -30,7 +30,7 @@ log_error() {
 
 # 项目配置
 PROJECT_DIR="/opt/mikkoblog"
-REPO_URL="https://github.com/yourusername/MikkoBlog.git"  # 请修改为您的仓库地址
+REPO_URL="https://github.com/yaoqiwood/MikkoBlog.git"
 BRANCH="main"
 
 log_info "开始快速部署 MikkoBlog"
