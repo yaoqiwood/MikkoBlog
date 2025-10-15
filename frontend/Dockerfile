@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 清理npm缓存并安装依赖
-RUN npm cache clean --force && npm ci
+RUN npm cache clean --force && npm install
 
 # 复制源代码
 COPY . .
