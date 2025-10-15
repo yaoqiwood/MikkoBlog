@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mikko_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: mikkoBlog
+      MYSQL_USER: mikko
+      MYSQL_PASSWORD: mikko_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./backend/sql:/docker-entrypoint-initdb.d
+    command:
+      [
+        "--default-authentication-plugin=mysql_native_password",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+      ]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-hdb", "-uroot", "-proot_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: mikko_backend
+    environment:
+      - MIKKO_CONFIG=/app/config/config.docker.yaml
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=mikkoBlog
+      - DB_USER=mikko
+      - DB_PASSWORD=mikko_pass
+      - JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+      - SERVER_ENVIRONMENT=production
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/config:/app/config
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mikko_frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
