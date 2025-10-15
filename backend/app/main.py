@@ -85,7 +85,10 @@ def create_app() -> FastAPI:
     )
 
     # 静态文件服务
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    import os
+    uploads_dir = os.path.join(os.getcwd(), "uploads")
+    if os.path.exists(uploads_dir):
+        app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
     # 启动定时任务
     @app.on_event("startup")
