@@ -72,7 +72,7 @@ defineEmits(['viewColumnDetail']);
 const getFullImageUrl = url => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `getFullUrl("")${url}`;
+  return getFullUrl(url);
 };
 </script>
 

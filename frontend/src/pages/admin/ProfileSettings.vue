@@ -200,9 +200,9 @@
 </template>
 
 <script setup>
-import { getFullUrl, getApiUrl } from '@/utils/urlUtils';
 import { authApi, profileApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
+import { getApiUrl } from '@/utils/urlUtils';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 

@@ -412,9 +412,9 @@
 </template>
 
 <script setup>
-import { getFullUrl } from '@/utils/urlUtils';
 import { attachmentApi } from '@/utils/apiService';
 import httpClient from '@/utils/httpClient';
+import { getFullUrl } from '@/utils/urlUtils';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 
