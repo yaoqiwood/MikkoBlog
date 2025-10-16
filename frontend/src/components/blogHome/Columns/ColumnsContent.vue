@@ -52,6 +52,7 @@
 </template>
 
 <script setup>
+import { getFullUrl } from '@/utils/urlUtils';
 import { Icon } from 'view-ui-plus';
 
 defineProps({
@@ -71,7 +72,7 @@ defineEmits(['viewColumnDetail']);
 const getFullImageUrl = url => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `http://localhost:8000${url}`;
+  return `getFullUrl("")${url}`;
 };
 </script>
 

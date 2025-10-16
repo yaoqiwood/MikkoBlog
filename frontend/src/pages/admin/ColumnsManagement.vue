@@ -591,7 +591,7 @@ export default {
     ];
 
     // 计算属性
-    const uploadUrl = computed(() => 'http://localhost:8000/api/attachments/upload');
+    const uploadUrl = computed(() => 'getFullUrl("")/api/attachments/upload');
     const uploadHeaders = computed(() => ({
       Authorization: `Bearer ${localStorage.getItem('access_token')}`,
     }));
@@ -608,7 +608,7 @@ export default {
     const getFullImageUrl = url => {
       if (!url) return '';
       if (url.startsWith('http')) return url;
-      return `http://localhost:8000${url}`;
+      return `getFullUrl("")${url}`;
     };
 
     const loadColumns = async () => {

@@ -106,6 +106,7 @@ import MarkdownEditor from '@/components/MarkdownEditor.vue';
 import { postApi, uploadApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
+import { getUploadUrl, getFullUrl } from '@/utils/urlUtils';
 import { Message } from 'view-ui-plus';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -122,7 +123,7 @@ const saving = ref(false);
 const error = ref('');
 
 // 图片上传配置
-const uploadAction = 'http://localhost:8000/api/upload/image';
+const uploadAction = getUploadUrl('image');
 const uploadHeaders = {
   Authorization: `Bearer ${authCookie.getAuth().token}`,
 };
@@ -171,7 +172,7 @@ async function handleImageUpload(formData, callback) {
       // 将相对路径转换为完整URL
       const fullUrl = result.url.startsWith('http')
         ? result.url
-        : `http://localhost:8000${result.url}`;
+        : getFullUrl(result.url);
       // 调用回调函数，将图片URL插入到编辑器中
       callback(fullUrl);
       Message.success('图片上传成功');
@@ -192,7 +193,7 @@ function handleImageUploadSuccess(response) {
   if (response.success && response.url) {
     const fullUrl = response.url.startsWith('http')
       ? response.url
-      : `http://localhost:8000${response.url}`;
+      : getFullUrl(response.url);
     postData.value.cover_image_url = fullUrl;
     Message.success('封面图片上传成功');
   } else {

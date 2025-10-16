@@ -200,6 +200,7 @@
 </template>
 
 <script setup>
+import { getFullUrl } from '@/utils/urlUtils';
 import { authApi, profileApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { Message } from 'view-ui-plus';
@@ -215,7 +216,7 @@ const defaultAvatar = ref(
 
 // 上传配置
 const uploadAction = computed(() => {
-  return 'http://localhost:8000/api/upload/avatar';
+  return 'getFullUrl("")/api/upload/avatar';
 });
 
 const uploadHeaders = computed(() => {

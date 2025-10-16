@@ -250,6 +250,7 @@
 </template>
 
 <script setup>
+import { getFullUrl } from '@/utils/urlUtils';
 import { momentsApi } from '@/utils/apiService';
 import { Message, Modal } from 'view-ui-plus';
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
@@ -509,7 +510,7 @@ const getImageGridClass = count => {
 const getFullImageUrl = url => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `http://localhost:8000${url}`;
+  return `getFullUrl("")${url}`;
 };
 
 // 预览图片

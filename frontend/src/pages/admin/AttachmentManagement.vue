@@ -412,6 +412,7 @@
 </template>
 
 <script setup>
+import { getFullUrl } from '@/utils/urlUtils';
 import { attachmentApi } from '@/utils/apiService';
 import httpClient from '@/utils/httpClient';
 import { Message } from 'view-ui-plus';
@@ -1135,7 +1136,7 @@ const getFullUrl = fileUrl => {
     return fullUrl;
   }
   // 如果window不可用，使用默认的localhost地址
-  const defaultUrl = `http://localhost:8000${fileUrl}`;
+  const defaultUrl = `getFullUrl("")${fileUrl}`;
   return defaultUrl;
 };
 

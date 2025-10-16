@@ -246,7 +246,7 @@ export default {
       testing.value = true;
       try {
         // 这里可以调用图片搜索API进行测试
-        const response = await window.fetch('http://localhost:8000/api/image-search/tags');
+        const response = await window.fetch('getFullUrl("")/api/image-search/tags');
         if (response.ok) {
           Message.success('连接测试成功');
         } else {

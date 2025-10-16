@@ -170,6 +170,7 @@
 </template>
 
 <script setup>
+import { getFullUrl } from '@/utils/urlUtils';
 import Live2DWidget from '@/components/Live2DWidget.vue';
 import { columnsApi, homepageApi, postApi } from '@/utils/apiService';
 import { Message } from 'view-ui-plus';
@@ -248,7 +249,7 @@ const backgroundImageUrl = computed(() => {
 const getFullImageUrl = url => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `http://localhost:8000${url}`;
+  return `getFullUrl("")${url}`;
 };
 
 // 获取文章摘要
