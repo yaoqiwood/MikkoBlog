@@ -8,7 +8,18 @@
  * @returns {string} API基础URL
  */
 export function getApiBaseUrl() {
-  return import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+  // 如果设置了环境变量，直接使用
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 生产环境使用当前域名的HTTPS
+  if (import.meta.env.PROD) {
+    return window.location.origin;
+  }
+  
+  // 开发环境使用localhost
+  return 'http://localhost:8000';
 }
 
 /**
