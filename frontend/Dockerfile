@@ -12,6 +12,10 @@ RUN npm cache clean --force && npm install
 # 复制源代码
 COPY . .
 
+# 设置构建参数
+ARG VITE_API_BASE_URL=https://mikkocat.top
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # 构建应用
 RUN npm run build
 
