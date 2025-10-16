@@ -12,12 +12,12 @@ export function getApiBaseUrl() {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  
+
   // 生产环境使用当前域名的HTTPS
   if (import.meta.env.PROD) {
     return window.location.origin;
   }
-  
+
   // 开发环境使用localhost
   return 'http://localhost:8000';
 }
@@ -39,17 +39,17 @@ export function getApiUrl(path) {
  */
 export function getFullUrl(url) {
   if (!url) return '';
-  
+
   // 如果已经是完整URL，直接返回
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  
+
   // 如果是相对路径，添加基础URL
   if (url.startsWith('/')) {
     return `${getApiBaseUrl()}${url}`;
   }
-  
+
   return url;
 }
 
