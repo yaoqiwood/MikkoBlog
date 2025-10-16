@@ -35,21 +35,21 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    log_error "Docker Compose 未安装"
+if ! docker compose version &> /dev/null; then
+    log_error "Docker Compose v2 未安装"
     exit 1
 fi
 
 # 启动数据库
 log_info "启动数据库..."
-docker-compose -f docker-compose.prod.yml up -d db
+docker compose -f docker-compose.prod.yml up -d db
 
 # 等待数据库启动
 log_info "等待数据库启动..."
 sleep 10
 
 # 检查数据库状态
-if docker-compose -f docker-compose.prod.yml ps db | grep -q "Up"; then
+if docker compose -f docker-compose.prod.yml ps db | grep -q "Up"; then
     log_success "数据库启动成功"
 else
     log_error "数据库启动失败"
