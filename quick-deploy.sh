@@ -83,7 +83,7 @@ SERVER_ENVIRONMENT=production
 SERVER_PORT=8000
 CORS_ALLOW_ORIGINS=http://localhost,http://localhost:80
 UNSPLASH_ACCESS_KEY=demo_key
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=https://mikkocat.top
 EOF
 fi
 

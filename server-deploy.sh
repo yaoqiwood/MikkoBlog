@@ -149,7 +149,7 @@ CORS_ALLOW_ORIGINS=http://localhost,http://localhost:80
 UNSPLASH_ACCESS_KEY=demo_key
 
 # 前端配置
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=https://mikkocat.top
 EOF
         log_warning "已创建 .env.production 文件，请编辑其中的配置"
     else

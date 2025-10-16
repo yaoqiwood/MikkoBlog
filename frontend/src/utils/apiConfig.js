@@ -5,8 +5,8 @@
 
 // 基础配置
 const API_CONFIG = {
-  // 基础URL
-  BASE_URL: 'http://localhost:8000',
+  // 基础URL - 使用环境变量，生产环境自动使用当前域名
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000'),
 
   // API版本
   API_VERSION: '/api',
