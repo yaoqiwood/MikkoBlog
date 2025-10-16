@@ -398,6 +398,7 @@
 <script>
 import MarkdownEditor from '@/components/MarkdownEditor.vue';
 import apiService from '@/utils/apiService';
+import { getApiUrl, getFullUrl } from '@/utils/urlUtils';
 import { Modal as IModal, Message } from 'view-ui-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 
@@ -591,7 +592,7 @@ export default {
     ];
 
     // 计算属性
-    const uploadUrl = computed(() => 'getFullUrl("")/api/attachments/upload');
+    const uploadUrl = computed(() => getApiUrl('/api/attachments/upload'));
     const uploadHeaders = computed(() => ({
       Authorization: `Bearer ${localStorage.getItem('access_token')}`,
     }));
@@ -608,7 +609,7 @@ export default {
     const getFullImageUrl = url => {
       if (!url) return '';
       if (url.startsWith('http')) return url;
-      return `getFullUrl("")${url}`;
+      return getFullUrl(url);
     };
 
     const loadColumns = async () => {

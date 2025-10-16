@@ -132,7 +132,7 @@
             <div class="file-preview">
               <img
                 v-if="row.file_category === 'image'"
-                :src="getFullUrl(row.file_url)"
+                :src="getFullFileUrl(row.file_url)"
                 :alt="row.alt_text"
                 class="preview-image"
                 @click="previewImage(row)"
@@ -157,7 +157,7 @@
           <template #file_url="{ row }">
             <div class="file-url" style="display: flex; align-items: center; gap: 8px">
               <Input
-                :model-value="getFullUrl(row.file_url)"
+                :model-value="getFullFileUrl(row.file_url)"
                 readonly
                 size="small"
                 placeholder="URL不可用"
@@ -166,7 +166,7 @@
               <Button
                 type="text"
                 size="small"
-                @click="copyUrl(getFullUrl(row.file_url))"
+                @click="copyUrl(getFullFileUrl(row.file_url))"
                 style="flex-shrink: 0"
               >
                 复制
@@ -967,7 +967,7 @@ const confirmClearRecycleBin = async () => {
 
 // 预览图片
 const previewImage = attachment => {
-  previewImageUrl.value = getFullUrl(attachment.file_url);
+  previewImageUrl.value = getFullFileUrl(attachment.file_url);
   isFullscreen.value = false;
   showPreviewModal.value = true;
 };
@@ -1125,19 +1125,12 @@ const handleUploadError = error => {
   handleApiError(error, '文件上传失败，请重试！');
 };
 
-// 获取完整URL
-const getFullUrl = fileUrl => {
+// 获取完整URL - 使用导入的工具函数
+const getFullFileUrl = fileUrl => {
   if (!fileUrl || fileUrl === '') {
     return '';
   }
-
-  if (typeof window !== 'undefined' && window.location) {
-    const fullUrl = `${window.location.origin}${fileUrl}`;
-    return fullUrl;
-  }
-  // 如果window不可用，使用默认的localhost地址
-  const defaultUrl = `getFullUrl("")${fileUrl}`;
-  return defaultUrl;
+  return getFullUrl(fileUrl);
 };
 
 // 复制URL

@@ -112,6 +112,7 @@
 
 <script>
 import { systemApi } from '@/utils/apiService';
+import { getApiUrl } from '@/utils/urlUtils';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 
@@ -246,7 +247,7 @@ export default {
       testing.value = true;
       try {
         // 这里可以调用图片搜索API进行测试
-        const response = await window.fetch('getFullUrl("")/api/image-search/tags');
+        const response = await window.fetch(getApiUrl('/api/image-search/tags'));
         if (response.ok) {
           Message.success('连接测试成功');
         } else {
