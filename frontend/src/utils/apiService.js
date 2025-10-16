@@ -729,7 +729,7 @@ export const momentsApi = {
    * @returns {Promise} 说说列表
    */
   async getMoments(params = {}) {
-    return get(getApiUrl('/api/moments'), params);
+    return get(getApiUrl('/api/moments/'), params);
   },
 
   /**
@@ -747,7 +747,7 @@ export const momentsApi = {
    * @returns {Promise} 创建结果
    */
   async createMoment(momentData) {
-    return post(getApiUrl('/api/moments'), momentData);
+    return post(getApiUrl('/api/moments/'), momentData);
   },
 
   /**
