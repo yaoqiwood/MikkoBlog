@@ -13,6 +13,8 @@ class LocalMusicApiService {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        // 上传大文件可能耗时较长，单次请求超时提高到 120 秒
+        timeout: 120000,
       });
       return response;
     } catch (error) {
