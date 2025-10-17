@@ -16,8 +16,8 @@ const API_CONFIG = {
   // API版本
   API_VERSION: '/api',
 
-  // 请求超时时间
-  TIMEOUT: 10000,
+  // 请求超时时间（默认 120s，避免大文件上传/慢网超时）
+  TIMEOUT: 120000,
 
   // 接口地址
   ENDPOINTS: {
