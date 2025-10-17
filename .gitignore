@@ -50,3 +50,6 @@ nginx/ssl/*.crt
 *.bak
 backup_*.sql
 uploads_backup_*.tar.gz
+mikkoBlog.sql
+production_essential_data.sql
+.gitignore

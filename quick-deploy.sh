@@ -83,7 +83,7 @@ SERVER_ENVIRONMENT=production
 SERVER_PORT=8000
 CORS_ALLOW_ORIGINS=http://localhost,http://localhost:80
 UNSPLASH_ACCESS_KEY=demo_key
-VITE_API_BASE_URL=https://mikkocat.top
+# VITE_API_BASE_URL 在生产环境中将自动使用当前域名
 EOF
 fi
 
