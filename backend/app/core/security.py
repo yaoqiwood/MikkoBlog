@@ -5,40 +5,23 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 
-# 使用更现代的密码哈希方案，支持更长的密码
+"""Password hashing context.
+
+Prefer bcrypt_sha256 to avoid the 72-byte bcrypt limit while keeping
+backward compatibility with existing bcrypt hashes.
+"""
 pwd_context = CryptContext(
-    schemes=["bcrypt"],
+    schemes=["bcrypt_sha256", "bcrypt"],
     deprecated="auto",
-    bcrypt__default_rounds=12,
-    bcrypt__min_rounds=10,
-    bcrypt__max_rounds=15
 )
 
 
 def hash_password(password: str) -> str:
-    # 检查密码长度，如果超过72字节则使用SHA256预处理
-    password_bytes = password.encode('utf-8')
-    if len(password_bytes) > 72:
-        import hashlib
-        # 使用SHA256预处理长密码
-        password_hash = hashlib.sha256(password_bytes).hexdigest()
-        return pwd_context.hash(password_hash)
-    else:
-        # 短密码直接使用bcrypt
-        return pwd_context.hash(password)
+    return pwd_context.hash(password)
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    # 检查密码长度，如果超过72字节则使用SHA256预处理
-    password_bytes = password.encode('utf-8')
-    if len(password_bytes) > 72:
-        import hashlib
-        # 使用SHA256预处理长密码
-        password_hash = hashlib.sha256(password_bytes).hexdigest()
-        return pwd_context.verify(password_hash, hashed_password)
-    else:
-        # 短密码直接使用bcrypt
-        return pwd_context.verify(password, hashed_password)
+    return pwd_context.verify(password, hashed_password)
 
 
 def create_access_token(*, data: dict[str, Any], secret_key: str, algorithm: str, expires_minutes: int) -> str:
