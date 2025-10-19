@@ -30,7 +30,7 @@ INSERT INTO `users` (
   1,
   1,
   '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4j.8.1Z3.G'  -- 密码: admin123
-) ON DUPLICATE KEY UPDATE 
+) ON DUPLICATE KEY UPDATE
   `email` = VALUES(`email`),
   `full_name` = VALUES(`full_name`),
   `is_active` = VALUES(`is_active`),
@@ -911,4 +911,3 @@ ALTER TABLE home_page_settings ADD COLUMN header_title VARCHAR(255) DEFAULT NULL
 
 -- 可选：为现有记录设置默认值
 -- UPDATE home_page_settings SET header_title = 'MikkoBlog' WHERE header_title IS NULL;
-
