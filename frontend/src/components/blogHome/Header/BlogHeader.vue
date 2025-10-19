@@ -4,32 +4,34 @@
       <div class="blog-title">
         <h1>{{ title }}</h1>
       </div>
-      <nav class="main-nav">
-        <a
-          href="#"
-          class="nav-item"
-          :class="{ active: currentView === 'home' }"
-          @click="$emit('switchView', 'home')"
-          >首页</a
-        >
-        <router-link to="/articles" class="nav-item">文章列表</router-link>
-        <a
-          href="#"
-          class="nav-item"
-          :class="{ active: currentView === 'columns' }"
-          @click="$emit('switchView', 'columns')"
-          >专栏</a
-        >
-        <a
-          href="#"
-          class="nav-item"
-          :class="{ active: currentView === 'about' }"
-          @click="$emit('switchView', 'about')"
-          >关于我</a
-        >
-      </nav>
-      <div class="search-box">
-        <i class="search-icon">🔍</i>
+      <div class="nav-container">
+        <nav class="main-nav">
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'home' }"
+            @click="$emit('switchView', 'home')"
+            >首页</a
+          >
+          <router-link to="/articles" class="nav-item">文章列表</router-link>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'columns' }"
+            @click="$emit('switchView', 'columns')"
+            >专栏</a
+          >
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'about' }"
+            @click="$emit('switchView', 'about')"
+            >关于我</a
+          >
+        </nav>
+        <div class="search-box">
+          <i class="search-icon">🔍</i>
+        </div>
       </div>
     </div>
   </header>
@@ -87,6 +89,12 @@ defineEmits(['switchView']);
   margin: 0;
 }
 
+.nav-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .main-nav {
   display: flex;
   gap: 30px;
@@ -121,13 +129,12 @@ defineEmits(['switchView']);
 }
 
 .search-box {
-  position: absolute;
-  right: 20px;
   padding: 8px 12px;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .search-box:hover {
@@ -147,11 +154,108 @@ defineEmits(['switchView']);
   .header-container {
     flex-direction: column;
     height: auto;
-    padding: 15px 20px;
+    padding: 12px 15px;
+    gap: 12px;
+  }
+
+  .blog-title {
+    position: static;
+    text-align: center;
+    order: 1;
+  }
+
+  .blog-title h1 {
+    font-size: 20px;
+  }
+
+  .nav-container {
+    order: 2;
+    flex-direction: row;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .main-nav {
-    margin: 10px 0;
+    margin: 0;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+
+  .nav-item:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: none;
+  }
+
+  .nav-item::after {
+    display: none;
+  }
+
+  .nav-item.active {
+    background: #2d8cf0;
+    color: white;
+    border-bottom: none;
+  }
+
+  .search-box {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .blog-title h1 {
+    font-size: 18px;
+  }
+
+  .nav-container {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .main-nav {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+
+  .search-box {
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav-container {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .main-nav {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    font-size: 12px;
+    padding: 4px 8px;
   }
 }
 </style>
