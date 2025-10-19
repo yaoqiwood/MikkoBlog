@@ -14,11 +14,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 调试信息 -->
-    <div v-if="globalLoading" class="debug-info">
-      <p>Debug: globalLoading={{ globalLoading }}, loadingCount={{ loadingCount }}</p>
-    </div>
   </div>
 </template>
 
@@ -119,21 +114,6 @@ const showCount = ref(false);
   }
 }
 
-.debug-info {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px;
-  border-radius: 5px;
-  z-index: 10000;
-  font-size: 12px;
-}
-
-.debug-info p {
-  margin: 0;
-}
 @media (max-width: 768px) {
   .global-loading-content {
     margin: 1rem;
