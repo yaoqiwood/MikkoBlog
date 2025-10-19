@@ -9,8 +9,8 @@ services:
       MYSQL_DATABASE: mikkoBlog
       MYSQL_USER: mikko
       MYSQL_PASSWORD: mikko_pass
-    ports:
-      - "3307:3306"
+    # ports:
+    #   - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ./backend/sql:/docker-entrypoint-initdb.d
