@@ -1,0 +1,36 @@
+server:
+  environment: test
+  port: 8000
+
+database:
+  # Docker测试环境中的数据库连接
+  url: mysql+pymysql://mikko_test:mikko_test_pass@db:3306/mikkoBlog_test
+
+cors:
+  allow_origins:
+    - "http://localhost"
+    - "http://localhost:80"
+    - "http://localhost:3000"
+    - "http://localhost:3001"
+    - "http://localhost:5173"
+    - "http://127.0.0.1"
+    - "http://127.0.0.1:80"
+    - "http://127.0.0.1:3000"
+    - "http://127.0.0.1:3001"
+    - "http://127.0.0.1:5173"
+    - "*"
+
+jwt:
+  secret: "test_jwt_secret_key_for_testing_only"
+  algorithm: "HS256"
+  expires_minutes: 1440
+
+admin:
+  email: "admin@mikko.blog"
+  password: "admin123"
+
+image_search:
+  # Unsplash API密钥 (可选，不填写将使用备用图片源)
+  # 获取地址: https://unsplash.com/developers
+  unsplash_access_key: "demo_key"
+

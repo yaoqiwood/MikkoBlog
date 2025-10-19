@@ -50,6 +50,7 @@
 <script setup>
 import freeMusicApi from '@/utils/freeMusicApi';
 import localMusicApi from '@/utils/localMusicApi';
+import logger from '@/utils/logger';
 import { Howl } from 'howler';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
@@ -79,12 +80,12 @@ const initPlayer = () => {
   }
 
   if (currentSong.value && currentSong.value.url) {
-    console.log('初始化播放器，歌曲URL:', currentSong.value.url);
+    logger.music('初始化播放器，歌曲URL:', currentSong.value.url);
 
     // 检查URL是否为网易云音乐格式
     let audioUrl = currentSong.value.url;
     if (audioUrl.includes('music.163.com/song/media/outer/url')) {
-      console.log('检测到网易云音乐URL，使用原始URL');
+      logger.music('检测到网易云音乐URL，使用原始URL');
       // 直接使用原始URL，让浏览器处理
       audioUrl = currentSong.value.url;
     }
@@ -94,34 +95,34 @@ const initPlayer = () => {
       volume: volume.value, // 恢复正常音量
       format: ['mp3', 'ogg', 'wav'], // 指定支持的格式
       onplay: () => {
-        console.log('开始播放');
+        logger.music('开始播放');
         isPlaying.value = true;
         updateTime();
       },
       onpause: () => {
-        console.log('暂停播放');
+        logger.music('暂停播放');
         isPlaying.value = false;
       },
       onend: () => {
-        console.log('播放结束');
+        logger.music('播放结束');
         nextSong();
       },
       onload: () => {
-        console.log('音频加载完成，时长:', sound.duration());
+        logger.music('音频加载完成，时长:', sound.duration());
         duration.value = sound.duration();
         // 移除自动播放逻辑
       },
       onloaderror: (id, error) => {
         console.error('音频加载失败:', error);
-        console.log('音乐加载失败，可能是网络问题或文件不存在');
+        logger.music('音乐加载失败，可能是网络问题或文件不存在');
       },
       onplayerror: (id, error) => {
         console.error('播放失败:', error);
-        console.log('音乐播放失败，可能是网络问题或文件损坏');
+        logger.music('音乐播放失败，可能是网络问题或文件损坏');
       },
     });
   } else {
-    console.warn('无法初始化播放器：缺少歌曲或URL');
+    logger.warn('无法初始化播放器：缺少歌曲或URL');
   }
 };
 
@@ -135,19 +136,19 @@ const updateTime = () => {
 };
 
 const togglePlay = () => {
-  console.log('点击播放按钮，当前状态:', isPlaying.value, 'sound对象:', !!sound);
+  logger.music('点击播放按钮，当前状态:', isPlaying.value, 'sound对象:', !!sound);
 
   if (!sound) {
-    console.warn('sound对象不存在，无法播放');
+    logger.warn('sound对象不存在，无法播放');
     return;
   }
 
   if (isPlaying.value) {
-    console.log('暂停播放');
+    logger.music('暂停播放');
     sound.pause();
     // 注意：Howler.js 的 pause() 会自动保持播放进度
   } else {
-    console.log('继续播放');
+    logger.music('继续播放');
     sound.play();
     // 注意：Howler.js 的 play() 会从暂停的位置继续播放
   }
@@ -168,34 +169,34 @@ const nextSong = () => {
 };
 
 const playSong = async index => {
-  console.log('播放歌曲，索引:', index);
+  logger.music('播放歌曲，索引:', index);
   if (index < 0 || index >= playlist.value.length) return;
 
   // 如果切换了歌曲，才重新初始化播放器
   const isNewSong = currentIndex.value !== index;
   currentIndex.value = index;
   currentSong.value = playlist.value[index];
-  console.log('设置当前歌曲:', currentSong.value);
+  logger.music('设置当前歌曲:', currentSong.value);
 
   // 如果歌曲已经有URL，直接播放
   if (currentSong.value.url) {
-    console.log('歌曲已有URL');
+    logger.music('歌曲已有URL');
     if (isNewSong) {
-      console.log('切换歌曲，重新初始化播放器');
+      logger.music('切换歌曲，重新初始化播放器');
       initPlayer();
     }
     if (sound) {
-      console.log('尝试播放歌曲');
+      logger.music('尝试播放歌曲');
       sound.play();
     }
     return;
   }
 
   // 如果没有URL，直接使用默认URL
-  console.log('使用默认URL');
+  logger.music('使用默认URL');
   currentSong.value.url = `https://music.163.com/song/media/outer/url?id=${currentSong.value.id}`;
   if (isNewSong) {
-    console.log('切换歌曲，重新初始化播放器');
+    logger.music('切换歌曲，重新初始化播放器');
     initPlayer();
   }
   if (sound) {
@@ -218,7 +219,7 @@ const toggleMute = () => {
     sound.mute(isMuted.value);
     // 如果取消静音且正在播放，显示提示
     if (!isMuted.value && isPlaying.value) {
-      console.log('音乐已取消静音，开始播放声音');
+      logger.music('音乐已取消静音，开始播放声音');
     }
   }
 };
@@ -245,22 +246,22 @@ onUnmounted(() => {
 });
 
 const loadDefaultPlaylist = async () => {
-  console.log('开始加载默认播放列表');
+  logger.music('开始加载默认播放列表');
 
   try {
     // 优先从后端获取播放列表
-    console.log('尝试获取播放列表');
+    logger.music('尝试获取播放列表');
     const playlistsResponse = await localMusicApi.getPlaylists();
-    console.log('播放列表响应:', playlistsResponse);
+    logger.music('播放列表响应:', playlistsResponse);
 
     if (playlistsResponse.playlists && playlistsResponse.playlists.length > 0) {
       // 使用第一个播放列表
       const firstPlaylist = playlistsResponse.playlists[0];
-      console.log('使用播放列表:', firstPlaylist.name);
+      logger.music('使用播放列表:', firstPlaylist.name);
 
       // 获取播放列表中的音乐
       const playlistMusics = await localMusicApi.getPlaylistMusics(firstPlaylist.id);
-      console.log('播放列表音乐:', playlistMusics);
+      logger.music('播放列表音乐:', playlistMusics);
 
       if (playlistMusics.musics && playlistMusics.musics.length > 0) {
         // 为音乐添加URL
@@ -284,13 +285,13 @@ const loadDefaultPlaylist = async () => {
         );
 
         playlist.value = musicsWithUrl.filter(music => music.url);
-        console.log('使用播放列表音乐:', playlist.value.length, '首');
+        logger.music('使用播放列表音乐:', playlist.value.length, '首');
       } else {
-        console.log('播放列表为空，尝试获取本地音乐');
+        logger.music('播放列表为空，尝试获取本地音乐');
         await loadLocalMusicAsFallback();
       }
     } else {
-      console.log('没有播放列表，尝试获取本地音乐');
+      logger.music('没有播放列表，尝试获取本地音乐');
       await loadLocalMusicAsFallback();
     }
 
@@ -298,7 +299,7 @@ const loadDefaultPlaylist = async () => {
       // 设置第一首歌为当前播放
       currentSong.value = playlist.value[0];
       currentIndex.value = 0;
-      console.log('设置当前歌曲:', currentSong.value);
+      logger.music('设置当前歌曲:', currentSong.value);
       // 初始化播放器
       initPlayer();
     }
@@ -311,9 +312,9 @@ const loadDefaultPlaylist = async () => {
 // 备用方案：加载本地音乐
 const loadLocalMusicAsFallback = async () => {
   try {
-    console.log('尝试加载本地音乐作为备用');
+    logger.music('尝试加载本地音乐作为备用');
     const localResponse = await localMusicApi.getMusicList({ page_size: 10 });
-    console.log('本地音乐响应:', localResponse);
+    logger.music('本地音乐响应:', localResponse);
 
     if (localResponse.musics && localResponse.musics.length > 0) {
       // 为本地音乐添加URL
@@ -337,12 +338,12 @@ const loadLocalMusicAsFallback = async () => {
       );
 
       playlist.value = localMusics.filter(music => music.url);
-      console.log('使用本地音乐播放列表');
+      logger.music('使用本地音乐播放列表');
     } else {
-      console.log('本地音乐为空，使用免费音乐推荐');
+      logger.music('本地音乐为空，使用免费音乐推荐');
       const freeMusic = await freeMusicApi.getFreeMusicRecommendations();
       playlist.value = freeMusic;
-      console.log('使用免费音乐播放列表');
+      logger.music('使用免费音乐播放列表');
     }
   } catch (error) {
     console.error('加载本地音乐失败:', error);

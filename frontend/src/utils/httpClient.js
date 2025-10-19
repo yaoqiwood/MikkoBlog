@@ -7,6 +7,7 @@ import axios from 'axios';
 import { getApiConfig } from './apiConfig';
 import { authCookie } from './cookieUtils';
 import { startLoading, stopLoading } from './loadingManager';
+import logger from './logger';
 
 // 创建axios实例
 const httpClient = axios.create({
@@ -38,8 +39,8 @@ httpClient.interceptors.request.use(
       startLoading(requestId);
     }
 
-    console.log(`🚀 [${config.method?.toUpperCase()}] ${config.url}`, config.data || config.params);
-    console.log('🔍 [interceptor] Full config:', config);
+    logger.http(config.method?.toUpperCase(), config.url, config.data || config.params);
+    logger.debug('🔍 [interceptor] Full config:', config);
     return config;
   },
   error => {
@@ -58,8 +59,10 @@ httpClient.interceptors.response.use(
       stopLoading(response.config.metadata.requestId);
     }
 
-    console.log(
-      `✅ [${response.config.method?.toUpperCase()}] ${response.config.url} - ${duration}ms`,
+    logger.httpResponse(
+      response.config.method?.toUpperCase(),
+      response.config.url,
+      duration,
       response.data
     );
     return response;
@@ -115,10 +118,10 @@ httpClient.interceptors.response.use(
  */
 async function request(method, url, data = null, config = {}) {
   try {
-    console.log('🔍 [request] Method:', method);
-    console.log('🔍 [request] URL:', url);
-    console.log('🔍 [request] Data:', data);
-    console.log('🔍 [request] Config:', config);
+    logger.debug('🔍 [request] Method:', method);
+    logger.debug('🔍 [request] URL:', url);
+    logger.debug('🔍 [request] Data:', data);
+    logger.debug('🔍 [request] Config:', config);
 
     const response = await httpClient({
       method,
@@ -140,9 +143,9 @@ async function request(method, url, data = null, config = {}) {
  * @returns {Promise} 请求结果
  */
 export async function get(url, params = {}, config = {}) {
-  console.log('🔍 [httpClient.get] URL:', url);
-  console.log('🔍 [httpClient.get] Params:', params);
-  console.log('🔍 [httpClient.get] Config:', config);
+  logger.debug('🔍 [httpClient.get] URL:', url);
+  logger.debug('🔍 [httpClient.get] Params:', params);
+  logger.debug('🔍 [httpClient.get] Config:', config);
   return request('GET', url, null, { ...config, params });
 }
 
