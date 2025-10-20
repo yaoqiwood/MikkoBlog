@@ -337,7 +337,7 @@ async function fetchPosts() {
     console.log('当前token:', authCookie.getAuth().token);
 
     // 使用真实API获取文章列表（全局loading会自动显示）
-    const data = await postApi.getPosts();
+    const data = await postApi.getPosts({ include_unpublished: true });
     console.log('获取到的文章数据:', data);
     console.log('数据类型:', typeof data);
     console.log('数据长度:', data?.length);

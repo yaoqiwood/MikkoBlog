@@ -22,6 +22,7 @@ def list_posts(
     is_visible: Optional[bool] = Query(None, description="是否可见"),
     is_deleted: Optional[bool] = Query(None, description="是否已删除"),
     is_published: Optional[bool] = Query(None, description="是否已发布"),
+    include_unpublished: bool = Query(False, description="是否包含草稿"),
     title: Optional[str] = Query(None, description="标题搜索关键词"),
     column_id: Optional[int] = Query(None, description="专栏ID筛选"),
     start_date: Optional[str] = Query(None, description="开始日期"),
@@ -65,9 +66,12 @@ def list_posts(
     if is_visible is not None:
         statement = statement.where(Post.is_visible == is_visible)
 
-    # 处理发布状态过滤（默认仅显示已发布）
+    # 处理发布状态过滤（公共页面默认仅显示已发布；后台可包含草稿）
     if is_published is not None:
         statement = statement.where(Post.is_published == is_published)
+    elif include_unpublished:
+        # 后台管理传入 include_unpublished=true 时，不进行发布状态过滤
+        pass
     else:
         statement = statement.where(Post.is_published.is_(True))
 

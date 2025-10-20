@@ -387,6 +387,7 @@ const loadPosts = async () => {
       limit: pageSize,
       is_visible: true, // 只获取可见的文章
       is_deleted: false, // 只获取未删除的文章
+      is_published: true, // 主页不显示草稿
     });
 
     if (posts && posts.length > 0) {
@@ -633,6 +634,7 @@ const loadColumnPosts = async columnId => {
       column_id: columnId,
       is_visible: true,
       is_deleted: false,
+      is_published: true, // 专栏页不显示草稿
     });
 
     if (response && response.length > 0) {
@@ -752,6 +754,7 @@ const loadAllContent = async () => {
         limit: Math.ceil(pageSize / 2), // 博客占一半
         is_visible: true,
         is_deleted: false,
+        is_published: true, // 首页合并流不显示草稿
       }),
       momentsApi.getMoments({
         page: currentPage.value,
@@ -922,6 +925,7 @@ const loadUserStats = async () => {
           limit: 1, // 只需要获取总数，不需要具体内容
           is_visible: true,
           is_deleted: false,
+          is_published: true, // 统计估算仅统计已发布
         }),
         momentsApi.getMoments({
           page: 1,
