@@ -6,9 +6,10 @@ from sqlmodel import Session, select
 
 from app.db.session import get_db
 from app.models.post import Post, PostCreate, PostRead, PostUpdate
-from app.models.user import UserProfile
+from app.models.user import UserProfile, UserRead
 from app.models.postStats import PostStats
 from app.models.columns import PostColumns
+from app.api.routers.auth import get_current_user
 
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -20,6 +21,7 @@ def list_posts(
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     is_visible: Optional[bool] = Query(None, description="是否可见"),
     is_deleted: Optional[bool] = Query(None, description="是否已删除"),
+    is_published: Optional[bool] = Query(None, description="是否已发布"),
     title: Optional[str] = Query(None, description="标题搜索关键词"),
     column_id: Optional[int] = Query(None, description="专栏ID筛选"),
     start_date: Optional[str] = Query(None, description="开始日期"),
@@ -62,6 +64,12 @@ def list_posts(
     # 处理可见性过滤
     if is_visible is not None:
         statement = statement.where(Post.is_visible == is_visible)
+
+    # 处理发布状态过滤（默认仅显示已发布）
+    if is_published is not None:
+        statement = statement.where(Post.is_published == is_published)
+    else:
+        statement = statement.where(Post.is_published.is_(True))
 
     # 处理标题搜索
     if title:
@@ -126,9 +134,14 @@ def list_posts(
 
 @router.post("/", response_model=PostRead, status_code=status.HTTP_201_CREATED)
 def create_post(
-    payload: PostCreate, db: Session = Depends(get_db)
+    payload: PostCreate,
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> PostRead:
-    post = Post.model_validate(payload)
+    # 先将 payload 转为字典并注入 user_id，再进行验证
+    data = payload.model_dump()
+    data["user_id"] = current_user.id
+    post = Post.model_validate(data)
     db.add(post)
     db.commit()
     db.refresh(post)
@@ -150,6 +163,7 @@ def get_popular_posts(
         .outerjoin(PostStats, Post.id == PostStats.post_id)
         .where(Post.is_deleted.is_(False))
         .where(Post.is_visible.is_(True))
+        .where(Post.is_published.is_(True))
         .order_by(PostStats.view_count.desc())
         .limit(limit)
     )

@@ -5,7 +5,7 @@ from sqlmodel import Field, SQLModel, Relationship
 
 if TYPE_CHECKING:
     from app.models.comment import Comment
-    from app.models.user import UserProfile
+# 因 UserProfile 未被使用，移除该导入
     from app.models.postStats import PostStats
 
 
@@ -38,7 +38,8 @@ class Post(PostBase, table=True):
 
 
 class PostCreate(PostBase):
-    pass
+    # 覆盖 user_id，使创建时不再强制要求前端传递
+    user_id: Optional[int] = None
 
 
 class PostRead(PostBase):
