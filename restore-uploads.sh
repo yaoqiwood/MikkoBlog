@@ -50,26 +50,26 @@ if [ ! -d "$OLD_PATH/backend/uploads" ]; then
     log_warning "旧路径中没有找到 backend/uploads 目录"
 else
     log_info "从 $OLD_PATH/backend/uploads 复制到 $NEW_PATH/backend/uploads"
-    
+
     # 创建目标目录
     mkdir -p "$NEW_PATH/backend/uploads"
-    
+
     # 复制文件（保留权限和时间戳）
     rsync -av --progress "$OLD_PATH/backend/uploads/" "$NEW_PATH/backend/uploads/"
-    
+
     log_success "backend/uploads 目录恢复完成"
 fi
 
 # 检查是否有顶层 uploads 目录
 if [ -d "$OLD_PATH/uploads" ]; then
     log_info "从 $OLD_PATH/uploads 复制到 $NEW_PATH/uploads"
-    
+
     # 创建目标目录
     mkdir -p "$NEW_PATH/uploads"
-    
+
     # 复制文件（保留权限和时间戳）
     rsync -av --progress "$OLD_PATH/uploads/" "$NEW_PATH/uploads/"
-    
+
     log_success "uploads 目录恢复完成"
 fi
 
@@ -106,4 +106,3 @@ log_info "   docker-compose -f docker-compose.prod.yml restart"
 log_info ""
 log_info "2. 检查文件是否可以访问："
 log_info "   curl -I https://www.mikkocat.top/uploads/images/20251017_140746_99a8c1c3.jpg"
-

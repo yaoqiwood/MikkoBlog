@@ -52,8 +52,7 @@ if [ -d "$PROJECT_DIR" ]; then
     cd "$PROJECT_DIR"
     git fetch origin
     git reset --hard origin/$BRANCH
-    # 清理未跟踪的文件，但保留 uploads 目录
-    git clean -fd -e backend/uploads -e uploads
+    git clean -fd
 else
     log_info "克隆代码..."
     mkdir -p /opt

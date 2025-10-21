@@ -109,8 +109,7 @@ clone_project() {
         cd "$PROJECT_DIR"
         git fetch origin
         git reset --hard origin/$BRANCH
-        # 清理未跟踪的文件，但保留 uploads 目录
-        git clean -fd -e backend/uploads -e uploads
+        git clean -fd
     else
         log_info "克隆项目代码..."
         git clone -b $BRANCH $REPO_URL "$PROJECT_DIR"

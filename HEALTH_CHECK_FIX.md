@@ -136,7 +136,7 @@ fix: 修复健康检查端点路径从 /health 到 /api/healthz
    ```bash
    # 进入容器
    docker exec -it mikko_backend bash
-   
+
    # 测试健康检查
    curl http://localhost:8000/api/healthz
    ```
@@ -150,4 +150,3 @@ fix: 修复健康检查端点路径从 /health 到 /api/healthz
 ## 总结
 
 这是一个简单但关键的修复，确保部署流程能够正确验证服务状态。现在所有的部署脚本都使用正确的健康检查端点 `/api/healthz`。
-
