@@ -28,7 +28,7 @@ After this operation, 356 MB of additional disk space will be used.
 ```
 典型的 Docker 空间占用：
 - 镜像: 5-10 GB
-- 构建缓存: 3-5 GB  
+- 构建缓存: 3-5 GB
 - 悬空镜像: 2-4 GB
 - 容器: 1-2 GB
 - 卷: 1-3 GB
@@ -112,18 +112,18 @@ du -sh /var/lib/docker/*
 ```bash
 start_services() {
     log_info "构建和启动服务..."
-    
+
     # 在构建前清理旧资源
     log_info "清理旧的 Docker 资源..."
     docker image prune -f
     docker builder prune -f
-    
+
     # 构建镜像
     docker compose -f docker-compose.prod.yml build --no-cache
-    
+
     # 启动服务
     docker compose -f docker-compose.prod.yml up -d
-    
+
     log_success "服务启动完成"
 }
 ```
@@ -305,7 +305,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 ```bash
 # 查看所有 Docker 对象
 docker ps -a           # 所有容器
-docker images -a       # 所有镜像  
+docker images -a       # 所有镜像
 docker volume ls       # 所有卷
 docker network ls      # 所有网络
 
@@ -326,12 +326,11 @@ docker system prune -a -f --volumes  # 清理所有未使用的资源
 
 ## 总结
 
-✅ **立即行动**：运行 `cleanup-docker.sh` 清理脚本  
-✅ **预防措施**：修改部署脚本，自动清理旧资源  
-✅ **定期维护**：设置定时清理任务  
-✅ **监控告警**：监控磁盘使用率  
+✅ **立即行动**：运行 `cleanup-docker.sh` 清理脚本
+✅ **预防措施**：修改部署脚本，自动清理旧资源
+✅ **定期维护**：设置定时清理任务
+✅ **监控告警**：监控磁盘使用率
 
 ---
 
 **清理后应该释放 5-15 GB 空间，足够完成部署！**
-

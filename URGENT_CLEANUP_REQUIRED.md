@@ -36,7 +36,7 @@ docker system prune -a -f --volumes
 
 # 清理系统缓存
 sudo apt-get clean
-sudo apt-get autoclean  
+sudo apt-get autoclean
 sudo apt-get autoremove -y
 
 # 清理日志
@@ -65,7 +65,7 @@ sudo ./cleanup-docker.sh
 # 1. 清理停止的容器
 docker container prune -f
 
-# 2. 清理悬空镜像  
+# 2. 清理悬空镜像
 docker image prune -f
 
 # 3. 清理构建缓存（释放最多空间）
@@ -149,7 +149,7 @@ Docker 累积的资源：
 ✅ **自动清理**：修改了 `github-deploy.sh`，现在每次部署前会自动清理：
 ```bash
 - 未使用的镜像
-- 构建缓存  
+- 构建缓存
 - 停止的容器
 ```
 
@@ -232,19 +232,18 @@ docker system prune -a -f --volumes
 
 ### Q: 清理后空间仍然不足怎么办？
 
-**A:** 
+**A:**
 1. 检查是否有其他大文件：`du -sh /* | sort -h`
 2. 清理系统日志：`sudo journalctl --vacuum-size=100M`
 3. 考虑升级服务器磁盘
 
 ## 总结
 
-🚨 **立即行动**：SSH 到服务器，运行清理命令  
-✅ **预计效果**：释放 5-15 GB 空间  
-🔄 **自动化**：未来部署会自动清理，避免再次发生  
-📊 **监控**：建议设置定时清理和监控告警  
+🚨 **立即行动**：SSH 到服务器，运行清理命令
+✅ **预计效果**：释放 5-15 GB 空间
+🔄 **自动化**：未来部署会自动清理，避免再次发生
+📊 **监控**：建议设置定时清理和监控告警
 
 ---
 
 **现在就去服务器执行清理！清理完成后重新部署即可！**
-
