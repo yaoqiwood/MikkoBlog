@@ -65,7 +65,8 @@ update_code() {
         cd "$PROJECT_DIR"
         git fetch origin
         git reset --hard origin/$BRANCH
-        git clean -fd
+        # 清理未跟踪的文件，但保留 uploads 目录
+        git clean -fd -e backend/uploads -e uploads
     else
         log_error "项目目录不存在: $PROJECT_DIR"
         exit 1
