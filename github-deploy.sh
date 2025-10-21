@@ -102,6 +102,12 @@ stop_services() {
 start_services() {
     log_info "构建和启动服务..."
 
+    # 清理旧资源以释放空间
+    log_info "清理旧的 Docker 资源..."
+    docker image prune -f || true
+    docker builder prune -f || true
+    docker container prune -f || true
+
     # 构建镜像
     docker compose -f docker-compose.prod.yml build --no-cache
 
