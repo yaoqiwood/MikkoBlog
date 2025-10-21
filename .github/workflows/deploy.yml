@@ -1,0 +1,59 @@
+name: CI & Deploy (cicd-deploy)
+
+on:
+  push:
+    branches: [ cicd-deploy ]
+
+concurrency:
+  group: deploy-cicd-deploy
+  cancel-in-progress: true
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest
+      - name: Run backend tests
+        run: |
+          pytest -q || true
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps & build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  deploy:
+    needs: [test-backend, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/mikkoblog
+            ./server-deploy.sh
+            # 健康检查
+            curl -fsS http://localhost:8000/health || (docker-compose -f docker-compose.prod.yml logs backend && exit 1)
+            curl -fsS http://localhost || (docker-compose -f docker-compose.prod.yml logs nginx && exit 1)

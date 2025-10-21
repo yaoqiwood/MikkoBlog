@@ -31,8 +31,8 @@ log_error() {
 
 # 项目配置
 PROJECT_DIR="/opt/mikkoblog"
-REPO_URL="https://github.com/yourusername/MikkoBlog.git"  # 请修改为您的仓库地址
-BRANCH="main"
+REPO_URL="https://github.com/yaoqiwood/MikkoBlog.git"  # 请修改为您的仓库地址
+BRANCH="cicd-deploy"
 
 # 检查用户权限
 check_user() {
@@ -199,6 +199,11 @@ wait_for_services() {
 # 初始化数据库
 init_database() {
     log_info "初始化数据库..."
+    # 如果数据库已存在核心表，则跳过初始化
+    if docker exec -i mikko_mysql mysql -N -umikko -pmikko_pass -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='mikkoBlog' AND table_name='system_setting';" | grep -q '^1$'; then
+        log_info "检测到已存在的核心表(system_setting)，跳过数据库初始化脚本"
+        return 0
+    fi
 
     # 等待数据库完全启动
     sleep 10
