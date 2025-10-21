@@ -1,59 +1,95 @@
-name: CI & Deploy (cicd-deploy)
+name: Deploy to Server
 
 on:
   push:
-    branches: [ cicd-deploy ]
-
-concurrency:
-  group: deploy-cicd-deploy
-  cancel-in-progress: true
+    branches:
+      - cicd-deploy
+  workflow_dispatch: # 允许手动触发
 
 jobs:
-  test-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install deps
-        run: |
-          pip install -r backend/requirements.txt
-          pip install pytest
-      - name: Run backend tests
-        run: |
-          pytest -q || true
-
-  build-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      - name: Install deps & build
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
   deploy:
-    needs: [test-backend, build-frontend]
     runs-on: ubuntu-latest
+
     steps:
-      - name: Deploy to server via SSH
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.PORT || 22 }}
-          script: |
-            set -e
-            cd /opt/mikkoblog
-            ./server-deploy.sh
-            # 健康检查
-            curl -fsS http://localhost:8000/health || (docker-compose -f docker-compose.prod.yml logs backend && exit 1)
-            curl -fsS http://localhost || (docker-compose -f docker-compose.prod.yml logs nginx && exit 1)
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+    - name: Test SSH connection
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          echo "🔗 测试SSH连接..."
+          echo "服务器信息: $(uname -a)"
+          echo "Docker版本: $(docker --version)"
+          echo "Docker Compose版本: $(docker-compose --version)"
+          echo "Git版本: $(git --version)"
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          # 进入项目目录
+          cd ${{ secrets.PROJECT_PATH }}
+
+          # 确保部署脚本有执行权限
+          chmod +x github-deploy.sh
+
+          # 执行部署脚本
+          echo "🚀 开始执行部署脚本..."
+          ./github-deploy.sh
+
+    - name: Verify deployment
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          cd ${{ secrets.PROJECT_PATH }}
+
+          echo "🔍 验证部署结果..."
+
+          # 检查Docker容器状态
+          echo "Docker 容器状态："
+          docker-compose -f docker-compose.prod.yml ps
+
+          # 检查服务健康状态
+          echo "检查服务健康状态..."
+          if curl -f http://localhost:8000/health 2>/dev/null; then
+            echo "✅ 后端API健康检查通过"
+          else
+            echo "❌ 后端API健康检查失败"
+            exit 1
+          fi
+
+          if curl -f http://localhost 2>/dev/null; then
+            echo "✅ 前端服务健康检查通过"
+          else
+            echo "❌ 前端服务健康检查失败"
+            exit 1
+          fi
+
+          echo "🎉 部署验证完成！"
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ 部署成功！"
+          echo "🌐 前端地址: http://${{ secrets.SERVER_HOST }}"
+          echo "🔧 后端API: http://${{ secrets.SERVER_HOST }}:8000"
+        else
+          echo "❌ 部署失败！"
+          echo "请检查服务器日志和GitHub Actions日志"
+        fi
