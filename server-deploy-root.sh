@@ -43,7 +43,7 @@ check_requirements() {
         exit 1
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker compose &> /dev/null; then
         log_error "Docker Compose 未安装，请先安装 Docker Compose"
         exit 1
     fi
@@ -138,8 +138,8 @@ EOF
 stop_services() {
     log_info "停止现有服务..."
 
-    if [ -f "docker-compose.prod.yml" ]; then
-        docker-compose -f docker-compose.prod.yml down || true
+    if [ -f "docker compose.prod.yml" ]; then
+        docker compose -f docker compose.prod.yml down || true
     fi
 
     log_success "服务已停止"
@@ -150,10 +150,10 @@ start_services() {
     log_info "构建和启动服务..."
 
     # 构建镜像
-    docker-compose -f docker-compose.prod.yml build --no-cache
+    docker compose -f docker compose.prod.yml build --no-cache
 
     # 启动服务
-    docker-compose -f docker-compose.prod.yml up -d
+    docker compose -f docker compose.prod.yml up -d
 
     log_success "服务启动完成"
 }
@@ -207,13 +207,13 @@ show_deployment_info() {
     echo "  密码: admin123"
     echo ""
     echo "Docker 服务状态："
-    docker-compose -f docker-compose.prod.yml ps
+    docker compose -f docker compose.prod.yml ps
     echo ""
     echo "查看日志命令："
-    echo "  docker-compose -f docker-compose.prod.yml logs -f"
+    echo "  docker compose -f docker compose.prod.yml logs -f"
     echo ""
     echo "停止服务命令："
-    echo "  docker-compose -f docker-compose.prod.yml down"
+    echo "  docker compose -f docker compose.prod.yml down"
     echo ""
     echo "更新应用命令："
     echo "  cd $PROJECT_DIR && ./server-deploy-root.sh"

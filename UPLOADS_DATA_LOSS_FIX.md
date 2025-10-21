@@ -29,7 +29,7 @@ git clean -fd
 Docker Compose 使用了**绑定挂载 (bind mount)**：
 
 ```yaml
-# docker-compose.prod.yml
+# docker compose.prod.yml
 volumes:
   - ./backend/uploads:/app/uploads  # 宿主机目录 -> 容器内目录
 ```
@@ -102,7 +102,7 @@ chmod -R 755 /opt/mikkoblog/backend/uploads
 
 # 4. 重启 Docker 服务
 cd /opt/mikkoblog
-docker-compose -f docker-compose.prod.yml restart
+docker compose -f docker compose.prod.yml restart
 
 # 5. 验证文件可访问
 curl -I https://www.mikkocat.top/uploads/images/20251017_140746_99a8c1c3.jpg
@@ -116,7 +116,7 @@ curl -I https://www.mikkocat.top/uploads/images/20251017_140746_99a8c1c3.jpg
 
 ### 方案 B：使用 Docker Named Volume
 
-修改 `docker-compose.prod.yml`：
+修改 `docker compose.prod.yml`：
 
 ```yaml
 services:
@@ -199,7 +199,7 @@ curl -I https://www.mikkocat.top/uploads/images/20251017_140746_99a8c1c3.jpg
 ┌─────────────────────────────────────────────┐
 │  服务器: /opt/mikkoblog (新部署路径)        │
 │  - git pull 最新代码                        │
-│  - docker-compose up (重新构建和启动)       │
+│  - docker compose up (重新构建和启动)       │
 │  - volumes:                                 │
 │    - ./backend/uploads:/app/uploads         │
 └─────────────────────────────────────────────┘

@@ -75,10 +75,10 @@ install_requirements() {
     fi
 
     # 安装 Docker Compose
-    if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker compose &> /dev/null; then
         log_info "安装 Docker Compose..."
-        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
+        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker compose
+        sudo chmod +x /usr/local/bin/docker compose
         log_success "Docker Compose 安装完成"
     else
         log_info "Docker Compose 已安装"

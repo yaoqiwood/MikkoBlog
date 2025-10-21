@@ -25,7 +25,7 @@ jobs:
           echo "🔗 测试SSH连接..."
           echo "服务器信息: $(uname -a)"
           echo "Docker版本: $(docker --version)"
-          echo "Docker Compose版本: $(docker-compose --version)"
+          echo "Docker Compose版本: $(docker compose --version)"
           echo "Git版本: $(git --version)"
 
     - name: Deploy to server
@@ -60,7 +60,7 @@ jobs:
 
           # 检查Docker容器状态
           echo "Docker 容器状态："
-          docker-compose -f docker-compose.prod.yml ps
+          docker compose -f docker compose.prod.yml ps
 
           # 检查服务健康状态
           echo "检查服务健康状态..."

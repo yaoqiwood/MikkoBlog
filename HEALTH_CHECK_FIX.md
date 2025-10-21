@@ -124,12 +124,12 @@ fix: 修复健康检查端点路径从 /health 到 /api/healthz
 
 1. **检查容器状态**
    ```bash
-   docker-compose -f docker-compose.prod.yml ps
+   docker compose -f docker compose.prod.yml ps
    ```
 
 2. **查看后端日志**
    ```bash
-   docker-compose -f docker-compose.prod.yml logs backend
+   docker compose -f docker compose.prod.yml logs backend
    ```
 
 3. **手动测试端点**

@@ -58,11 +58,11 @@ sudo chown -R $(whoami):$(whoami) /opt/mikkoblog/backend/uploads
 cd /opt/mikkoblog
 
 # 重启 Docker 容器
-docker-compose -f docker-compose.prod.yml restart
+docker compose -f docker compose.prod.yml restart
 
 # 或者完全重启
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker compose.prod.yml down
+docker compose -f docker compose.prod.yml up -d
 ```
 
 ### 步骤 5：验证修复
@@ -126,12 +126,12 @@ sudo tar -czf /backup/mikkoblog/uploads-$(date +%Y%m%d).tar.gz -C /opt/mikkoblog
 
 1. **检查日志**
    ```bash
-   docker-compose -f docker-compose.prod.yml logs backend
+   docker compose -f docker compose.prod.yml logs backend
    ```
 
 2. **检查容器状态**
    ```bash
-   docker-compose -f docker-compose.prod.yml ps
+   docker compose -f docker compose.prod.yml ps
    ```
 
 3. **查看详细文档**

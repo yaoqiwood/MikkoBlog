@@ -31,7 +31,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ### 3. 数据库
 ```bash
 # 使用Docker启动数据库
-docker-compose -f docker-compose.prod.yml up -d db
+docker compose -f docker compose.prod.yml up -d db
 ```
 
 ## 环境变量
@@ -65,10 +65,10 @@ VITE_API_BASE_URL=https://mikkocat.top
 ### 开发环境测试
 ```bash
 # 启动所有服务（Docker Compose v2）
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker compose.prod.yml up -d
 
 # 查看日志
-docker compose -f docker-compose.prod.yml logs -f
+docker compose -f docker compose.prod.yml logs -f
 ```
 
 ### 生产环境部署
@@ -77,10 +77,10 @@ docker compose -f docker-compose.prod.yml logs -f
 git pull origin main
 
 # 重新构建（Docker Compose v2）
-docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker compose.prod.yml build --no-cache
 
 # 启动服务
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker compose.prod.yml up -d
 ```
 
 ## 故障排除
@@ -93,10 +93,10 @@ docker compose -f docker-compose.prod.yml up -d
 ### 调试命令
 ```bash
 # 检查服务状态（Docker Compose v2）
-docker compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 
 # 查看日志
-docker compose -f docker-compose.prod.yml logs [service_name]
+docker compose -f docker compose.prod.yml logs [service_name]
 
 # 进入容器调试
 docker exec -it [container_name] /bin/sh

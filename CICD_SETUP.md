@@ -14,8 +14,8 @@
    sudo usermod -aG docker $USER
 
    # 安装 Docker Compose
-   sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-   sudo chmod +x /usr/local/bin/docker-compose
+   sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker compose
+   sudo chmod +x /usr/local/bin/docker compose
 
    # 安装 Git
    sudo apt update
@@ -119,7 +119,7 @@
 
 3. **服务启动失败**
    - 检查端口是否被占用
-   - 查看 Docker 容器日志：`docker-compose -f docker-compose.prod.yml logs`
+   - 查看 Docker 容器日志：`docker compose -f docker compose.prod.yml logs`
    - 检查环境配置文件是否正确
 
 ### 查看日志
@@ -127,11 +127,11 @@
 ```bash
 # 在服务器上查看部署日志
 cd /opt/mikkoblog
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker compose.prod.yml logs -f
 
 # 查看特定服务日志
-docker-compose -f docker-compose.prod.yml logs -f backend
-docker-compose -f docker-compose.prod.yml logs -f frontend
+docker compose -f docker compose.prod.yml logs -f backend
+docker compose -f docker compose.prod.yml logs -f frontend
 ```
 
 ### 手动部署

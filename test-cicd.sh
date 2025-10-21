@@ -36,7 +36,7 @@ check_files() {
     local files=(
         ".github/workflows/deploy.yml"
         "github-deploy.sh"
-        "docker-compose.prod.yml"
+        "docker compose.prod.yml"
         "CICD_SETUP.md"
         "setup-server.sh"
     )
@@ -67,8 +67,8 @@ check_workflow_syntax() {
 check_docker_compose() {
     log_info "检查 Docker Compose 配置..."
 
-    if command -v docker-compose &> /dev/null; then
-        docker-compose -f docker-compose.prod.yml config > /dev/null
+    if command -v docker compose &> /dev/null; then
+        docker compose -f docker compose.prod.yml config > /dev/null
         log_success "✓ Docker Compose 配置有效"
     else
         log_warning "Docker Compose 未安装，跳过配置检查"
@@ -115,7 +115,7 @@ show_config_summary() {
     echo "  .github/workflows/deploy.yml  - GitHub Actions 工作流"
     echo "  github-deploy.sh              - 服务器部署脚本"
     echo "  setup-server.sh               - 服务器快速设置脚本"
-    echo "  docker-compose.prod.yml       - 生产环境 Docker 配置"
+    echo "  docker compose.prod.yml       - 生产环境 Docker 配置"
     echo "  CICD_SETUP.md                 - 详细配置说明"
     echo ""
     echo "🔧 工作流触发条件："

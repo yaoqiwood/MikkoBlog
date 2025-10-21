@@ -140,7 +140,7 @@ bash server-deploy.sh
 sudo systemctl status docker
 
 # 查看容器日志
-docker-compose -f docker-compose.prod.yml logs
+docker compose -f docker compose.prod.yml logs
 ```
 
 ### 7. 备份策略
@@ -162,21 +162,21 @@ tar -czf uploads_backup_$(date +%Y%m%d_%H%M%S).tar.gz backend/uploads/
 #### 8.1 查看服务状态
 ```bash
 cd /opt/mikkoblog
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 ```
 
 #### 8.2 查看日志
 ```bash
 # 查看所有服务日志
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker compose.prod.yml logs -f
 
 # 查看特定服务日志
-docker-compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker compose.prod.yml logs -f backend
 ```
 
 #### 8.3 重启服务
 ```bash
-docker-compose -f docker-compose.prod.yml restart
+docker compose -f docker compose.prod.yml restart
 ```
 
 ### 9. 自动化部署（可选）

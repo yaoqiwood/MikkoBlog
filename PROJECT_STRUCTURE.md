@@ -8,7 +8,7 @@ MikkoBlog/
 ├── frontend/                         # 前端服务 (Vue 3 + Vite)
 ├── nginx/                           # Nginx 配置文件
 ├── uploads/                         # 上传文件存储
-├── docker-compose.yml               # Docker Compose 配置
+├── docker compose.yml               # Docker Compose 配置
 ├── LIVE2D_WIDGET_README.md          # Live2D 看板娘说明
 ├── music-player-integration.md      # 音乐播放器集成说明
 ├── PROJECT_STRUCTURE.md             # 项目结构文档 (本文件)
@@ -298,7 +298,7 @@ uploads/                              # 根目录上传文件
 - `frontend/README.md` - 前端说明文档
 
 ### 部署配置文件
-- `docker-compose.yml` - Docker Compose 配置
+- `docker compose.yml` - Docker Compose 配置
 - `nginx/` - Nginx 配置目录
 
 ### 文档文件

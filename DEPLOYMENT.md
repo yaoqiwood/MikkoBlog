@@ -29,8 +29,8 @@ sh get-docker.sh
 sudo usermod -aG docker $USER
 
 # 安装Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker compose
+sudo chmod +x /usr/local/bin/docker compose
 ```
 
 #### 3.2 配置环境变量
@@ -51,13 +51,13 @@ nano .env
 #### 3.3 启动服务
 ```bash
 # 构建并启动所有服务
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker compose.prod.yml up -d
 
 # 查看服务状态
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 
 # 查看日志
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker compose.prod.yml logs -f
 ```
 
 ## 🔧 配置说明
@@ -82,7 +82,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 ├── nginx/
 │   ├── nginx.conf        # Nginx配置
 │   └── ssl/              # SSL证书 (可选)
-└── docker-compose.prod.yml
+└── docker compose.prod.yml
 ```
 
 ## 🔒 SSL证书配置
@@ -107,7 +107,7 @@ sudo chown $USER:$USER nginx/ssl/*.pem
 ### 自动续期
 ```bash
 # 添加到crontab
-echo "0 12 * * * /usr/bin/certbot renew --quiet && docker-compose -f /opt/mikkoblog/docker-compose.prod.yml restart nginx" | sudo crontab -
+echo "0 12 * * * /usr/bin/certbot renew --quiet && docker compose -f /opt/mikkoblog/docker compose.prod.yml restart nginx" | sudo crontab -
 ```
 
 ## 📊 监控和维护
@@ -115,13 +115,13 @@ echo "0 12 * * * /usr/bin/certbot renew --quiet && docker-compose -f /opt/mikkob
 ### 查看服务状态
 ```bash
 # 查看所有容器状态
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 
 # 查看资源使用情况
 docker stats
 
 # 查看特定服务日志
-docker-compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker compose.prod.yml logs -f backend
 ```
 
 ### 备份数据
@@ -139,9 +139,9 @@ tar -czf uploads_backup_$(date +%Y%m%d_%H%M%S).tar.gz backend/uploads/
 git pull
 
 # 重新构建并启动
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml build --no-cache
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker compose.prod.yml down
+docker compose -f docker compose.prod.yml build --no-cache
+docker compose -f docker compose.prod.yml up -d
 ```
 
 ## 🛠️ 故障排除
@@ -163,7 +163,7 @@ docker-compose -f docker-compose.prod.yml up -d
    docker exec mikko_nginx nginx -t
 
    # 重启nginx
-   docker-compose -f docker-compose.prod.yml restart nginx
+   docker compose -f docker compose.prod.yml restart nginx
    ```
 
 3. **文件上传失败**
@@ -178,34 +178,34 @@ docker-compose -f docker-compose.prod.yml up -d
 ### 日志查看
 ```bash
 # 查看所有服务日志
-docker-compose -f docker-compose.prod.yml logs
+docker compose -f docker compose.prod.yml logs
 
 # 查看特定服务日志
-docker-compose -f docker-compose.prod.yml logs backend
-docker-compose -f docker-compose.prod.yml logs frontend
-docker-compose -f docker-compose.prod.yml logs nginx
+docker compose -f docker compose.prod.yml logs backend
+docker compose -f docker compose.prod.yml logs frontend
+docker compose -f docker compose.prod.yml logs nginx
 ```
 
 ## 🔄 服务管理
 
 ### 启动服务
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker compose.prod.yml up -d
 ```
 
 ### 停止服务
 ```bash
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker compose.prod.yml down
 ```
 
 ### 重启服务
 ```bash
-docker-compose -f docker-compose.prod.yml restart
+docker compose -f docker compose.prod.yml restart
 ```
 
 ### 查看服务状态
 ```bash
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 ```
 
 ## 📝 默认账号信息

@@ -41,7 +41,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     log_error "Docker Compose 未安装"
     exit 1
 fi
@@ -89,7 +89,7 @@ fi
 
 # 停止现有服务
 log_info "停止现有服务..."
-docker-compose -f docker-compose.prod.yml down || true
+docker compose -f docker compose.prod.yml down || true
 
 # 清理Docker缓存
 log_info "清理Docker缓存..."
@@ -97,8 +97,8 @@ docker system prune -f
 
 # 构建并启动服务
 log_info "构建和启动服务..."
-docker-compose -f docker-compose.prod.yml build --no-cache
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker compose.prod.yml build --no-cache
+docker compose -f docker compose.prod.yml up -d
 
 # 等待服务启动
 log_info "等待服务启动..."
@@ -108,7 +108,7 @@ sleep 30
 log_success "部署完成！"
 echo ""
 echo "服务状态："
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 echo ""
 echo "访问地址："
 echo "  前端: http://$(hostname -I | awk '{print $1}')"
@@ -119,4 +119,4 @@ echo "  邮箱: admin@example.com"
 echo "  密码: admin123"
 echo ""
 echo "查看日志："
-echo "  docker-compose -f docker-compose.prod.yml logs -f"
+echo "  docker compose -f docker compose.prod.yml logs -f"
