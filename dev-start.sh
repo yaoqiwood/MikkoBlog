@@ -42,14 +42,14 @@ fi
 
 # 启动数据库
 log_info "启动数据库..."
-docker compose -f docker compose.prod.yml up -d db
+docker compose -f docker-compose.prod.yml up -d db
 
 # 等待数据库启动
 log_info "等待数据库启动..."
 sleep 10
 
 # 检查数据库状态
-if docker compose -f docker compose.prod.yml ps db | grep -q "Up"; then
+if docker compose -f docker-compose.prod.yml ps db | grep -q "Up"; then
     log_success "数据库启动成功"
 else
     log_error "数据库启动失败"

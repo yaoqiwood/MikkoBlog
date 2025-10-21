@@ -101,7 +101,7 @@ git pull origin cicd-deploy
 ```bash
 # 1. 检查容器状态
 cd /var/www/mikkoblog
-docker compose -f docker compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 # 2. 检查 uploads 目录
 ls -lah /var/www/mikkoblog/backend/uploads/images/
@@ -128,7 +128,7 @@ curl -I https://www.mikkocat.top/uploads/images/20251017_140755_203a84df.jpeg
 ```bash
 # 停止并删除容器（如果还在运行）
 cd /opt/mikkoblog
-docker compose -f docker compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 
 # 备份（以防万一）
 sudo tar -czf /backup/opt-mikkoblog-$(date +%Y%m%d).tar.gz /opt/mikkoblog
@@ -148,7 +148,7 @@ sudo rm -rf /opt/mikkoblog
 ### Docker 卷映射
 
 ```yaml
-# docker compose.prod.yml
+# docker-compose.prod.yml
 volumes:
   - ./backend/uploads:/app/uploads  # 绑定挂载
 ```
@@ -193,7 +193,7 @@ volumes:
 4. **容器是否重启**
    ```bash
    cd /var/www/mikkoblog
-   docker compose -f docker compose.prod.yml restart
+   docker compose -f docker-compose.prod.yml restart
    ```
 
 ## 总结

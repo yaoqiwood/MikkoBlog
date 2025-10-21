@@ -73,7 +73,7 @@ generate_jwt_secret() {
 stop_services() {
     log_info "停止现有服务..."
 
-    docker compose -f docker compose.prod.yml down || true
+    docker compose -f docker-compose.prod.yml down || true
 
     log_success "服务已停止"
 }
@@ -83,10 +83,10 @@ start_services() {
     log_info "构建和启动服务..."
 
     # 构建镜像
-    docker compose -f docker compose.prod.yml build --no-cache
+    docker compose -f docker-compose.prod.yml build --no-cache
 
     # 启动服务
-    docker compose -f docker compose.prod.yml up -d
+    docker compose -f docker-compose.prod.yml up -d
 
     log_success "服务启动完成"
 }
@@ -140,13 +140,13 @@ show_deployment_info() {
     echo "  密码: admin123"
     echo ""
     echo "Docker 服务状态："
-    docker compose -f docker compose.prod.yml ps
+    docker compose -f docker-compose.prod.yml ps
     echo ""
     echo "查看日志命令："
-    echo "  docker compose -f docker compose.prod.yml logs -f"
+    echo "  docker compose -f docker-compose.prod.yml logs -f"
     echo ""
     echo "停止服务命令："
-    echo "  docker compose -f docker compose.prod.yml down"
+    echo "  docker compose -f docker-compose.prod.yml down"
 }
 
 # 主函数

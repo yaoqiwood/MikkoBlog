@@ -68,7 +68,7 @@ git push origin cicd-deploy
 ```bash
 # 查看部署日志
 cd /opt/mikkoblog
-docker compose -f docker compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # 手动部署
 cd /opt/mikkoblog
@@ -76,11 +76,11 @@ cd /opt/mikkoblog
 
 # 停止服务
 cd /opt/mikkoblog
-docker compose -f docker compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 
 # 重启服务
 cd /opt/mikkoblog
-docker compose -f docker compose.prod.yml restart
+docker compose -f docker-compose.prod.yml restart
 ```
 
 ## ❓ 遇到问题？

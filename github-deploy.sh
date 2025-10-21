@@ -91,8 +91,8 @@ create_directories() {
 stop_services() {
     log_info "停止现有服务..."
 
-    if [ -f "docker compose.prod.yml" ]; then
-        docker compose -f docker compose.prod.yml down || true
+    if [ -f "docker-compose.prod.yml" ]; then
+        docker compose -f docker-compose.prod.yml down || true
     fi
 
     log_success "服务已停止"
@@ -103,10 +103,10 @@ start_services() {
     log_info "构建和启动服务..."
 
     # 构建镜像
-    docker compose -f docker compose.prod.yml build --no-cache
+    docker compose -f docker-compose.prod.yml build --no-cache
 
     # 启动服务
-    docker compose -f docker compose.prod.yml up -d
+    docker compose -f docker-compose.prod.yml up -d
 
     log_success "服务启动完成"
 }
@@ -136,7 +136,7 @@ health_check() {
 
     # 检查Docker容器状态
     log_info "Docker 容器状态："
-    docker compose -f docker compose.prod.yml ps
+    docker compose -f docker-compose.prod.yml ps
 
     # 检查后端API
     if curl -f http://localhost:8000/api/healthz 2>/dev/null; then
@@ -162,10 +162,10 @@ show_deployment_info() {
     echo "  后端API: http://$(hostname -I | awk '{print $1}'):8000"
     echo ""
     echo "Docker 服务状态："
-    docker compose -f docker compose.prod.yml ps
+    docker compose -f docker-compose.prod.yml ps
     echo ""
     echo "查看日志命令："
-    echo "  cd $PROJECT_DIR && docker compose -f docker compose.prod.yml logs -f"
+    echo "  cd $PROJECT_DIR && docker compose -f docker-compose.prod.yml logs -f"
 }
 
 # 主函数
