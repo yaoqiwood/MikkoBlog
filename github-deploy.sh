@@ -122,7 +122,7 @@ wait_for_services() {
 
     # 等待后端
     log_info "等待后端服务启动..."
-    timeout 60 bash -c 'until curl -f http://localhost:8000/health 2>/dev/null; do sleep 2; done' || {
+    timeout 60 bash -c 'until curl -f http://localhost:8000/api/healthz 2>/dev/null; do sleep 2; done' || {
         log_warning "后端服务健康检查超时，但服务可能已启动"
     }
 
@@ -138,7 +138,7 @@ health_check() {
     docker-compose -f docker-compose.prod.yml ps
 
     # 检查后端API
-    if curl -f http://localhost:8000/health 2>/dev/null; then
+    if curl -f http://localhost:8000/api/healthz 2>/dev/null; then
         log_success "后端API健康检查通过"
     else
         log_warning "后端API健康检查失败"

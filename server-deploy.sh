@@ -191,7 +191,7 @@ wait_for_services() {
 
     # 等待后端
     log_info "等待后端服务启动..."
-    timeout 60 bash -c 'until curl -f http://localhost:8000/health 2>/dev/null; do sleep 2; done'
+    timeout 60 bash -c 'until curl -f http://localhost:8000/api/healthz 2>/dev/null; do sleep 2; done'
 
     log_success "所有服务已就绪"
 }
