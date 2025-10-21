@@ -30,7 +30,7 @@ log_error() {
 }
 
 # 项目配置
-PROJECT_DIR="/opt/mikkoblog"
+PROJECT_DIR="/var/www/mikkoblog"
 REPO_URL="https://github.com/yaoqiwood/MikkoBlog.git"  # 请修改为您的仓库地址
 BRANCH="cicd-deploy"
 

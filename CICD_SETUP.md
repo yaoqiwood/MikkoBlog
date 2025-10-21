@@ -69,7 +69,7 @@
    | `SERVER_USER` | SSH 用户名 | `ubuntu` 或 `root` |
    | `SERVER_PORT` | SSH 端口 | `22` |
    | `SERVER_SSH_KEY` | SSH 私钥内容 | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-   | `PROJECT_PATH` | 项目在服务器上的路径 | `/opt/mikkoblog` |
+   | `PROJECT_PATH` | 项目在服务器上的路径 | `/var/www/mikkoblog` |
 
 2. **验证配置**
 
