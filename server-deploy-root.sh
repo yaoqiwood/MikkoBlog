@@ -65,7 +65,7 @@ update_code() {
         cd "$PROJECT_DIR"
         git fetch origin
         git reset --hard origin/$BRANCH
-        # 清理未跟踪的文件，但保留 uploads 目录
+        # 清理未跟踪的文件，但保留 uploads 目录（用户上传的数据）
         git clean -fd -e backend/uploads -e uploads
     else
         log_info "克隆项目代码..."
