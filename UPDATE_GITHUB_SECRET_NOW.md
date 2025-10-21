@@ -36,7 +36,7 @@ cd ${{ secrets.PROJECT_PATH }}  # ← 这里决定了实际部署路径！
 Name                    Updated
 ────────────────────────────────────
 SERVER_HOST             1 day ago
-SERVER_USER             1 day ago  
+SERVER_USER             1 day ago
 SERVER_PORT             1 day ago
 SERVER_SSH_KEY          1 day ago
 PROJECT_PATH            1 day ago  ← 找到这个！
@@ -181,4 +181,3 @@ ls -lh /var/www/mikkoblog/backend/uploads/images/ | wc -l
 ---
 
 **现在就去修改 GitHub Secret！这是解决问题的关键！** 🔑
-
