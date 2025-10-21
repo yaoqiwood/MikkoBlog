@@ -525,7 +525,7 @@ async function handleSearch() {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     applySearchFilter();
-    Message.info(`搜索完成，找到 ${filteredPosts.value.length} 篇文章`);
+    // Message.info(`搜索完成，找到 ${filteredPosts.value.length} 篇文章`);
   } catch (error) {
     console.error('搜索失败:', error);
     Message.error('搜索失败，请稍后重试');
