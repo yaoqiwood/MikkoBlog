@@ -31,7 +31,7 @@
             <label class="editor-label">Markdown 内容</label>
             <MarkdownEditor
               v-model="postData.content"
-              height="calc(100vh - 465px)"
+              height="calc(100vh - 500px)"
               placeholder="请输入文章内容..."
               @upload-image="handleImageUpload"
             />
