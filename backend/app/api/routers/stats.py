@@ -21,8 +21,15 @@ def get_stats_summary(
         # 用户总数
         users_count = session.exec(select(func.count(User.id))).first() or 0
 
-        # 文章总数
-        posts_count = session.exec(select(func.count(Post.id))).first() or 0
+        # 文章总数（只统计可见的、已发布的、未删除的文章）
+        posts_count = session.exec(
+            select(func.count(Post.id))
+            .where(
+                Post.is_visible.is_(True),
+                Post.is_deleted.is_(False),
+                Post.is_published.is_(True)
+            )
+        ).first() or 0
 
         # 总浏览量（从PostStats表统计）
         total_views = session.exec(
