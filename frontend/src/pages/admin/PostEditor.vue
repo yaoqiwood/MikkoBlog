@@ -98,7 +98,7 @@
           <label class="editor-label">Markdown 内容</label>
           <MarkdownEditor
             v-model="postData.content"
-            height="calc(100vh - 150px)"
+            height="100%"
             placeholder="请输入文章内容..."
             @upload-image="handleImageUpload"
           />
@@ -505,7 +505,8 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .basic-info-section {
@@ -594,7 +595,9 @@ onUnmounted(() => {
 .editor-container {
   display: flex;
   flex-direction: column;
-  /* 高度由MarkdownEditor组件的height属性控制 */
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
 }
 
 .editor-label {
