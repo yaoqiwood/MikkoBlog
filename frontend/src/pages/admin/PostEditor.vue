@@ -598,7 +598,9 @@ onUnmounted(() => {
 .editor-container {
   display: flex;
   flex-direction: column;
-  /* 高度由MarkdownEditor组件的height属性控制 */
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .editor-label {

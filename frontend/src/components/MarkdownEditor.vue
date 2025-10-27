@@ -207,6 +207,9 @@ watch(
   border: 1px solid #d9d9d9;
   border-radius: 6px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .editor-toolbar {
@@ -216,6 +219,7 @@ watch(
   padding: 8px 12px;
   background: #f8f9fa;
   border-bottom: 1px solid #d9d9d9;
+  flex-shrink: 0;
 }
 
 .toolbar-left {
@@ -226,6 +230,12 @@ watch(
 .toolbar-right {
   font-size: 12px;
   color: #666;
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .editor-content {
