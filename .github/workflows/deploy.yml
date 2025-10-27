@@ -65,18 +65,48 @@ jobs:
           echo "Docker 容器状态："
           docker compose -f docker-compose.prod.yml ps
 
-          # 检查服务健康状态
+          # 等待服务启动
+          echo "等待服务启动..."
+          sleep 30
+
+          # 检查服务健康状态（重试机制）
           echo "检查服务健康状态..."
-          if curl -f http://localhost:8000/api/healthz 2>/dev/null; then
-            echo "✅ 后端API健康检查通过"
-          else
+          RETRY_COUNT=0
+          MAX_RETRIES=6
+
+          # 检查后端API
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f http://localhost:8000/api/healthz 2>/dev/null; then
+              echo "✅ 后端API健康检查通过"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "⏳ 重试后端健康检查 ($RETRY_COUNT/$MAX_RETRIES)..."
+              sleep 10
+            fi
+          done
+
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
             echo "❌ 后端API健康检查失败"
+            echo "查看后端日志："
+            docker compose -f docker-compose.prod.yml logs --tail=50 backend
             exit 1
           fi
 
-          if curl -f http://localhost 2>/dev/null; then
-            echo "✅ 前端服务健康检查通过"
-          else
+          # 检查前端
+          RETRY_COUNT=0
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f http://localhost 2>/dev/null; then
+              echo "✅ 前端服务健康检查通过"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "⏳ 重试前端健康检查 ($RETRY_COUNT/$MAX_RETRIES)..."
+              sleep 10
+            fi
+          done
+
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
             echo "❌ 前端服务健康检查失败"
             exit 1
           fi
