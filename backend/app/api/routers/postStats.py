@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlmodel import Session, select
 
 from app.db.session import get_session
@@ -11,8 +11,22 @@ from app.models.postStats import (
     PostStatsIncrement
 )
 from app.models.post import Post
+from app.models.postLikeTracking import PostLikeTracking
 
 router = APIRouter()
+
+
+def get_client_ip(request: Request) -> str:
+    """获取客户端IP地址"""
+    # 尝试从请求头获取真实IP
+    if request.headers.get("X-Forwarded-For"):
+        # 如果通过代理，取第一个IP
+        ip = request.headers.get("X-Forwarded-For").split(",")[0].strip()
+    elif request.headers.get("X-Real-IP"):
+        ip = request.headers.get("X-Real-IP")
+    else:
+        ip = request.client.host if request.client else "unknown"
+    return ip
 
 
 @router.post("/post-stats", response_model=PostStatsRead)
@@ -157,14 +171,108 @@ def increment_view_count(
 @router.post("/post-stats/{post_id}/like", response_model=PostStatsRead)
 def increment_like_count(
     *,
+    request: Request,
     session: Session = Depends(get_session),
     post_id: int
 ):
-    """增加文章点赞次数"""
+    """增加文章点赞次数（带IP检测防止重复点赞）"""
+    # 获取客户端IP
+    user_ip = get_client_ip(request)
+
+    # 检查是否已经点赞过
+    existing_like = session.exec(
+        select(PostLikeTracking).where(
+            PostLikeTracking.post_id == post_id,
+            PostLikeTracking.user_ip == user_ip
+        )
+    ).first()
+
+    if existing_like:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="您已经点赞过这篇文章了"
+        )
+
+    # 增加点赞次数
     increment_data = PostStatsIncrement(like_count=1)
-    return increment_post_stats(
+    result = increment_post_stats(
         session=session, post_id=post_id, increment_data=increment_data
     )
+
+    # 记录点赞追踪
+    like_tracking = PostLikeTracking(
+        post_id=post_id,
+        user_ip=user_ip
+    )
+    session.add(like_tracking)
+    session.commit()
+
+    return result
+
+
+@router.get("/post-stats/{post_id}/check-like")
+def check_user_like_status(
+    *,
+    request: Request,
+    session: Session = Depends(get_session),
+    post_id: int
+):
+    """检查用户是否已经点赞过这篇文章"""
+    user_ip = get_client_ip(request)
+
+    existing_like = session.exec(
+        select(PostLikeTracking).where(
+            PostLikeTracking.post_id == post_id,
+            PostLikeTracking.user_ip == user_ip
+        )
+    ).first()
+
+    return {
+        "is_liked": existing_like is not None,
+        "user_ip": user_ip
+    }
+
+
+@router.delete("/post-stats/{post_id}/like")
+def decrement_like_count(
+    *,
+    request: Request,
+    session: Session = Depends(get_session),
+    post_id: int
+):
+    """取消点赞（删除点赞记录并减少点赞数）"""
+    user_ip = get_client_ip(request)
+
+    # 查找点赞记录
+    existing_like = session.exec(
+        select(PostLikeTracking).where(
+            PostLikeTracking.post_id == post_id,
+            PostLikeTracking.user_ip == user_ip
+        )
+    ).first()
+
+    if not existing_like:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="未找到点赞记录"
+        )
+
+    # 删除点赞记录
+    session.delete(existing_like)
+    session.commit()
+
+    # 减少点赞数（确保不会小于0）
+    post_stats = session.exec(
+        select(PostStats).where(PostStats.post_id == post_id)
+    ).first()
+
+    if post_stats:
+        post_stats.like_count = max(0, post_stats.like_count - 1)
+        session.add(post_stats)
+        session.commit()
+        session.refresh(post_stats)
+
+    return post_stats
 
 
 @router.post("/post-stats/{post_id}/share", response_model=PostStatsRead)

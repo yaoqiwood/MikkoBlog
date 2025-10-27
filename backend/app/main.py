@@ -26,6 +26,9 @@ from app.scheduler.tag_cloud_scheduler import (
     stop_tag_cloud_scheduler
 )
 
+# 导入模型以确保SQLModel能够识别并创建表
+from app.models.postLikeTracking import PostLikeTracking  # noqa: F401
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="MikkoBlog API", version="0.1.0")
@@ -88,7 +91,9 @@ def create_app() -> FastAPI:
     import os
     uploads_dir = os.path.join(os.getcwd(), "uploads")
     if os.path.exists(uploads_dir):
-        app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+        app.mount(
+            "/uploads", StaticFiles(directory=uploads_dir), name="uploads"
+        )
 
     # 启动定时任务
     @app.on_event("startup")

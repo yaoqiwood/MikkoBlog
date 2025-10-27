@@ -2,7 +2,7 @@
   <div class="blog-detail-page" :style="{ '--bg-image': backgroundImageUrl }">
     <!-- Live2D 看板娘 -->
     <Live2DWidget />
-    
+
     <!-- 头部导航 - 与首页保持一致 -->
     <header class="blog-header">
       <div class="header-container">
@@ -176,12 +176,12 @@
 </template>
 
 <script setup>
+import Live2DWidget from '@/components/Live2DWidget.vue';
 import { authApi, homepageApi, postApi, postStatsApi } from '@/utils/apiService';
 import { marked } from 'marked';
 import { Message } from 'view-ui-plus';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import Live2DWidget from '@/components/Live2DWidget.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -307,6 +307,44 @@ const formatTime = dateString => {
   return `${Math.ceil(diffDays / 365)}年前`;
 };
 
+// 检查是否已点赞（从后端API获取）
+const checkLikeStatus = async () => {
+  const blogId = route.params.id;
+  if (!blogId) return;
+
+  try {
+    const response = await postStatsApi.getLikeStatus(blogId);
+    isLiked.value = response.is_liked || false;
+  } catch (err) {
+    console.warn('检查点赞状态失败:', err);
+    // 如果API失败，使用localStorage作为备份
+    const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '[]');
+    isLiked.value = likedPosts.includes(Number(blogId));
+  }
+};
+
+// 保存点赞状态到localStorage
+const saveLikeStatus = () => {
+  const blogId = route.params.id;
+  if (!blogId) return;
+
+  const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '[]');
+  if (isLiked.value) {
+    // 添加点赞记录
+    if (!likedPosts.includes(Number(blogId))) {
+      likedPosts.push(Number(blogId));
+      localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+    }
+  } else {
+    // 移除点赞记录
+    const index = likedPosts.indexOf(Number(blogId));
+    if (index > -1) {
+      likedPosts.splice(index, 1);
+      localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+    }
+  }
+};
+
 // 加载博文详情
 const loadBlogDetail = async () => {
   const blogId = route.params.id;
@@ -321,6 +359,22 @@ const loadBlogDetail = async () => {
   try {
     const post = await postApi.getPostById(blogId);
     blogDetail.value = post;
+
+    // 加载统计数据（点赞、分享等）
+    try {
+      const stats = await postStatsApi.getPostStats(blogId);
+      if (stats) {
+        // 更新博客详情的统计数据
+        blogDetail.value.like_count = stats.like_count || 0;
+        blogDetail.value.share_count = stats.share_count || 0;
+        blogDetail.value.comment_count = stats.comment_count || 0;
+      }
+    } catch (statsErr) {
+      console.warn('加载统计数据失败:', statsErr);
+    }
+
+    // 检查本地点赞状态（异步）
+    await checkLikeStatus();
 
     // 生成目录
     generateTableOfContents();
@@ -427,15 +481,37 @@ const loadHomepageSettings = async () => {
   }
 };
 
-// 博文操作
-const likeBlog = () => {
-  isLiked.value = !isLiked.value;
-  if (isLiked.value) {
-    blogDetail.value.like_count = (blogDetail.value.like_count || 0) + 1;
-    Message.success('点赞成功');
-  } else {
-    blogDetail.value.like_count = Math.max((blogDetail.value.like_count || 0) - 1, 0);
-    Message.info('取消点赞');
+// 博文操作 - 点赞功能
+const likeBlog = async () => {
+  const blogId = blogDetail.value.id;
+  if (!blogId) return;
+
+  try {
+    if (isLiked.value) {
+      // 取消点赞（调用后端API删除记录）
+      await postStatsApi.decrementLikeCount(blogId);
+      blogDetail.value.like_count = Math.max((blogDetail.value.like_count || 0) - 1, 0);
+      isLiked.value = false;
+      saveLikeStatus(); // 保存点赞状态
+      Message.info('取消点赞');
+    } else {
+      // 点赞（调用后端API）
+      await postStatsApi.incrementLikeCount(blogId);
+      blogDetail.value.like_count = (blogDetail.value.like_count || 0) + 1;
+      isLiked.value = true;
+      saveLikeStatus(); // 保存点赞状态
+      Message.success('点赞成功');
+    }
+  } catch (err) {
+    console.error('点赞操作失败:', err);
+    // 如果后端已经点赞/取消点赞，显示特定错误
+    if (err.response?.status === 400) {
+      Message.warning(err.response.data.detail || '操作失败');
+    } else if (err.response?.status === 404 && isLiked.value) {
+      Message.warning('未找到点赞记录');
+    } else {
+      Message.error('点赞操作失败，请稍后重试');
+    }
   }
 };
 
@@ -455,8 +531,7 @@ const shareBlog = () => {
 };
 
 const collectBlog = () => {
-  isCollected.value = !isCollected.value;
-  Message.success(isCollected.value ? '收藏成功' : '取消收藏');
+  Message.warning('收藏功能正在开发中，敬请期待！');
 };
 
 // 返回上一页
@@ -540,7 +615,7 @@ onMounted(() => {
   min-height: 100vh;
   font-family: 'Microsoft YaHei', sans-serif;
   position: relative;
-  background-size: contain;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;

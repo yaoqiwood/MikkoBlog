@@ -1093,6 +1093,15 @@ export const postStatsApi = {
   },
 
   /**
+   * 取消点赞（删除点赞记录并减少点赞数）
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 更新后的统计数据
+   */
+  async decrementLikeCount(postId) {
+    return del(`/api/post-stats/${postId}/like`);
+  },
+
+  /**
    * 增加文章分享数
    * @param {number} postId - 文章ID
    * @returns {Promise} 更新后的统计数据
@@ -1118,6 +1127,24 @@ export const postStatsApi = {
    */
   async incrementStats(postId, incrementData) {
     return patch(`/api/post-stats/${postId}/increment`, incrementData);
+  },
+
+  /**
+   * 获取文章统计数据
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 统计数据
+   */
+  async getPostStats(postId) {
+    return get(`/api/post-stats/${postId}`);
+  },
+
+  /**
+   * 检查用户是否已经点赞过这篇文章
+   * @param {number} postId - 文章ID
+   * @returns {Promise} 点赞状态
+   */
+  async getLikeStatus(postId) {
+    return get(`/api/post-stats/${postId}/check-like`);
   },
 };
 

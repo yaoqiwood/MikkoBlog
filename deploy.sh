@@ -113,16 +113,24 @@ init_database() {
     # 等待数据库完全启动
     sleep 10
 
-    # 运行数据库初始化脚本
+    # 运行数据库初始化脚本（排除已执行的）
     if [ -d "backend/sql" ]; then
         log_info "执行数据库初始化脚本..."
         for sql_file in backend/sql/*.sql; do
             if [ -f "$sql_file" ]; then
+                # 跳过测试数据和实现文档
+                if [[ "$sql_file" == *"test_init.sql" ]] || [[ "$sql_file" == *".md" ]]; then
+                    log_info "跳过: $(basename "$sql_file")"
+                    continue
+                fi
                 log_info "执行: $(basename "$sql_file")"
-                docker exec -i mikko_mysql mysql -umikko -pmikko_pass mikkoBlog < "$sql_file"
+                docker exec -i mikko_mysql mysql -umikko -pmikko_pass mikkoBlog < "$sql_file" 2>/dev/null || true
             fi
         done
     fi
+
+    log_info "SQLModel将自动创建表结构..."
+    log_info "新表将由initialize_database()自动创建"
 
     log_success "数据库初始化完成"
 }
