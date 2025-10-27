@@ -489,6 +489,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .editor-card :deep(.ivu-card-head) {
@@ -499,6 +500,8 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .content-section {
@@ -595,9 +598,7 @@ onUnmounted(() => {
 .editor-container {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
+  /* 高度由MarkdownEditor组件的height属性控制 */
 }
 
 .editor-label {
@@ -605,6 +606,7 @@ onUnmounted(() => {
   color: #515a6e;
   margin-bottom: 8px;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 /* 响应式设计 */
