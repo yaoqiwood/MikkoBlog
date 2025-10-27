@@ -4,7 +4,7 @@
       <h1 class="page-title">{{ isEdit ? '编辑文章' : '添加文章' }}</h1>
       <div class="page-actions">
         <Button @click="goBack">返回列表</Button>
-        <Button type="primary" @click="savePost" :loading="saving">
+        <Button type="primary" @click="handleSaveClick" :loading="saving">
           {{ isEdit ? '更新文章' : '发布文章' }}
         </Button>
       </div>
@@ -14,6 +14,16 @@
     <Alert v-if="error" type="error" show-icon class="error-alert">
       {{ error }}
     </Alert>
+
+    <!-- 保存确认对话框 -->
+    <Modal
+      v-model="showSaveModal"
+      title="确认操作"
+      @on-ok="confirmSaveAndNavigate"
+      @on-cancel="cancelSave"
+    >
+      <p>文章已保存成功！是否返回文章列表？</p>
+    </Modal>
 
     <!-- 文章编辑表单 -->
     <Card class="editor-card">
@@ -100,8 +110,8 @@ import { postApi, uploadApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
 import { getFullUrl, getUploadUrl } from '@/utils/urlUtils';
-import { Message } from 'view-ui-plus';
-import { onMounted, ref } from 'vue';
+import { Message, Modal } from 'view-ui-plus';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -114,6 +124,7 @@ const postForm = ref(null);
 const isEdit = ref(false);
 const saving = ref(false);
 const error = ref('');
+const showSaveModal = ref(false);
 
 // 图片上传配置
 const uploadAction = getUploadUrl('image');
@@ -196,19 +207,29 @@ function handleImageUploadError(error) {
   Message.error('封面图片上传失败，请稍后重试');
 }
 
-// 保存文章
-async function savePost() {
-  try {
-    // 先进行表单验证
-    const valid = await postForm.value.validate();
-    if (!valid) {
-      Message.error('请检查表单填写是否正确');
-      return;
-    }
+// 验证表单和标题
+async function validateForm() {
+  // 先进行表单验证
+  const valid = await postForm.value.validate();
+  if (!valid) {
+    Message.error('请检查表单填写是否正确');
+    return false;
+  }
 
-    // 额外检查标题是否为空
-    if (!postData.value.title || postData.value.title.trim() === '') {
-      Message.error('必须填入文章标题才能发布或更新文章');
+  // 额外检查标题是否为空
+  if (!postData.value.title || postData.value.title.trim() === '') {
+    Message.error('必须填入文章标题才能发布或更新文章');
+    return false;
+  }
+
+  return true;
+}
+
+// 保存文章的核心逻辑（不跳转，只显示提示）
+async function savePostWithoutNavigation() {
+  try {
+    // 表单验证
+    if (!(await validateForm())) {
       return;
     }
 
@@ -225,20 +246,41 @@ async function savePost() {
 
     console.log('保存文章数据:', data);
 
+    // 格式化时间（只显示时分秒，格式：xx时xx分xx秒）
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const timeStr = `${hours}时${minutes}分${seconds}秒`;
+
     if (isEdit.value) {
       // 更新文章
       const result = await postApi.updatePost(postData.value.id, data);
       console.log('文章更新成功:', result);
-      Message.success('文章更新成功');
+
+      Message.success({
+        content: `保存时间：${timeStr} &nbsp; 文章更新成功`,
+        duration: 3,
+        render: h => {
+          return h('div', {});
+        },
+      });
     } else {
       // 创建文章
       const result = await postApi.createPost(data);
       console.log('文章创建成功:', result);
-      Message.success('文章创建成功');
-    }
 
-    // 返回文章列表
-    goBack();
+      Message.success({
+        content: `文章创建成功<br/>保存时间：${timeStr}`,
+        duration: 3,
+        render: h => {
+          return h('div', {});
+        },
+      });
+      // 如果是创建新文章，将页面切换为编辑模式
+      isEdit.value = true;
+      postData.value.id = result.id;
+    }
   } catch (error) {
     console.error('保存文章失败:', error);
     console.error('错误详情:', error.response?.data);
@@ -265,9 +307,86 @@ async function savePost() {
   }
 }
 
+// 按钮点击处理（保存后显示确认对话框）
+async function handleSaveClick() {
+  try {
+    // 表单验证
+    if (!(await validateForm())) {
+      return;
+    }
+
+    saving.value = true;
+    error.value = '';
+
+    const data = {
+      title: postData.value.title.trim(),
+      content: postData.value.content,
+      cover_image_url: postData.value.cover_image_url,
+      summary: postData.value.summary,
+      is_published: postData.value.is_published,
+    };
+
+    console.log('保存文章数据:', data);
+
+    if (isEdit.value) {
+      // 更新文章
+      const result = await postApi.updatePost(postData.value.id, data);
+      console.log('文章更新成功:', result);
+    } else {
+      // 创建文章
+      const result = await postApi.createPost(data);
+      console.log('文章创建成功:', result);
+      // 如果是创建新文章，将页面切换为编辑模式
+      isEdit.value = true;
+      postData.value.id = result.id;
+    }
+
+    // 显示确认对话框
+    Message.success('文章保存成功！');
+    showSaveModal.value = true;
+  } catch (error) {
+    console.error('保存文章失败:', error);
+    console.error('错误详情:', error.response?.data);
+    console.error('错误状态码:', error.response?.status);
+
+    // 根据错误类型显示不同的提示
+    if (error.response?.status === 400) {
+      error.value = error.response.data.detail || '保存失败';
+      Message.error(error.value);
+    } else if (error.response?.status === 401) {
+      error.value = '权限不足，请重新登录';
+      Message.error(error.value);
+      authCookie.clearAuth();
+      routerUtils.navigateTo(router, ROUTES.LOGIN);
+    } else if (error.response?.status === 404) {
+      error.value = '文章不存在';
+      Message.error(error.value);
+    } else {
+      error.value = '保存失败，请稍后重试';
+      Message.error(error.value);
+    }
+  } finally {
+    saving.value = false;
+  }
+}
+
+// 确认保存并跳转
+function confirmSaveAndNavigate() {
+  console.log('用户确认返回列表');
+  goBack();
+}
+
+// 取消保存确认
+function cancelSave() {
+  console.log('用户取消返回，停留在编辑页面');
+  showSaveModal.value = false;
+}
+
 // 返回文章列表
 function goBack() {
+  console.log('goBack() 被调用，准备跳转到:', ROUTES.ADMIN_POSTS);
   routerUtils.navigateTo(router, ROUTES.ADMIN_POSTS);
+  console.log('跳转已执行');
 }
 
 // 加载文章数据（编辑模式）
@@ -292,6 +411,29 @@ async function loadPost(postId) {
   }
 }
 
+// 处理键盘快捷键保存
+function handleKeyDown(event) {
+  // macOS使用cmd+s，其他系统使用ctrl+s
+  const isMac = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
+  const modKey = isMac ? event.metaKey : event.ctrlKey;
+
+  if (modKey && event.key === 's') {
+    // 阻止所有默认行为和冒泡
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    // 检查是否填写了标题
+    if (!postData.value.title || postData.value.title.trim() === '') {
+      Message.warning('请先填写文章标题');
+      return;
+    }
+
+    // 如果有标题，则保存（不跳转）
+    savePostWithoutNavigation();
+  }
+}
+
 onMounted(() => {
   // 检查是否是编辑模式
   const postId = route.params.id;
@@ -299,6 +441,14 @@ onMounted(() => {
     isEdit.value = true;
     loadPost(postId);
   }
+
+  // 添加键盘事件监听（使用捕获阶段，确保优先触发）
+  document.addEventListener('keydown', handleKeyDown, true);
+});
+
+onUnmounted(() => {
+  // 移除键盘事件监听
+  document.removeEventListener('keydown', handleKeyDown, true);
 });
 </script>
 
