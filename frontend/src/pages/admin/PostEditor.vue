@@ -15,6 +15,72 @@
       {{ error }}
     </Alert>
 
+    <!-- 基本信息配置Modal -->
+    <Modal
+      v-model="showBasicInfoModal"
+      title="文章基本信息"
+      :width="800"
+      @on-ok="handleBasicInfoConfirm"
+      @on-cancel="cancelBasicInfoModal"
+    >
+      <Form ref="basicInfoForm" :model="postData" :rules="postRules" label-position="top">
+        <Row :gutter="16">
+          <Col :span="24">
+            <FormItem label="文章标题" prop="title">
+              <Input v-model="postData.title" placeholder="请输入文章标题" size="large" />
+            </FormItem>
+          </Col>
+        </Row>
+        <Row :gutter="16">
+          <Col :span="24">
+            <FormItem label="文章摘要">
+              <Input
+                v-model="postData.summary"
+                type="textarea"
+                :rows="4"
+                placeholder="请输入文章摘要（可选）"
+              />
+            </FormItem>
+          </Col>
+        </Row>
+        <Row :gutter="16">
+          <Col :span="24">
+            <FormItem label="封面图片">
+              <div class="image-upload-container">
+                <Input
+                  v-model="postData.cover_image_url"
+                  placeholder="图片URL"
+                  size="large"
+                  style="margin-bottom: 8px"
+                />
+                <Upload
+                  :action="uploadAction"
+                  :headers="uploadHeaders"
+                  :on-success="handleImageUploadSuccess"
+                  :on-error="handleImageUploadError"
+                  :show-upload-list="false"
+                  accept="image/*"
+                >
+                  <Button size="large" icon="ios-cloud-upload" type="dashed">上传图片</Button>
+                </Upload>
+              </div>
+            </FormItem>
+          </Col>
+        </Row>
+        <Row :gutter="16">
+          <Col :span="24">
+            <div class="publish-status-container">
+              <div class="publish-status">
+                <span class="status-label">发布状态</span>
+                <Switch v-model="postData.is_published" size="large" />
+                <span class="switch-label">{{ postData.is_published ? '已发布' : '草稿' }}</span>
+              </div>
+            </div>
+          </Col>
+        </Row>
+      </Form>
+    </Modal>
+
     <!-- 保存确认对话框 -->
     <Modal
       v-model="showSaveModal"
@@ -27,79 +93,17 @@
 
     <!-- 文章编辑表单 -->
     <Card class="editor-card">
-      <Form ref="postForm" :model="postData" :rules="postRules" label-position="top">
-        <!-- 文章内容区域 -->
-        <div class="content-section">
-          <div class="editor-container">
-            <label class="editor-label">Markdown 内容</label>
-            <MarkdownEditor
-              v-model="postData.content"
-              height="calc(100vh - 305px)"
-              placeholder="请输入文章内容..."
-              @upload-image="handleImageUpload"
-            />
-          </div>
+      <div class="content-section">
+        <div class="editor-container">
+          <label class="editor-label">Markdown 内容</label>
+          <MarkdownEditor
+            v-model="postData.content"
+            height="calc(100vh - 150px)"
+            placeholder="请输入文章内容..."
+            @upload-image="handleImageUpload"
+          />
         </div>
-
-        <!-- 分隔线 -->
-        <Divider />
-
-        <!-- 基本信息区域 -->
-        <div class="basic-info-section">
-          <Row :gutter="20">
-            <Col :span="8">
-              <FormItem label="文章标题" prop="title" class="form-item-equal-height">
-                <Input v-model="postData.title" placeholder="请输入文章标题" size="large" />
-              </FormItem>
-            </Col>
-            <Col :span="8">
-              <FormItem label="文章摘要" class="form-item-equal-height">
-                <Input
-                  v-model="postData.summary"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="请输入文章摘要（可选）"
-                  size="large"
-                />
-              </FormItem>
-            </Col>
-            <Col :span="8">
-              <FormItem label="封面图片" class="form-item-equal-height">
-                <div class="image-upload-container">
-                  <Input
-                    v-model="postData.cover_image_url"
-                    placeholder="图片URL"
-                    size="large"
-                    style="margin-bottom: 8px"
-                  />
-                  <Upload
-                    :action="uploadAction"
-                    :headers="uploadHeaders"
-                    :on-success="handleImageUploadSuccess"
-                    :on-error="handleImageUploadError"
-                    :show-upload-list="false"
-                    accept="image/*"
-                  >
-                    <Button size="large" icon="ios-cloud-upload" type="dashed">上传图片</Button>
-                  </Upload>
-                </div>
-              </FormItem>
-            </Col>
-          </Row>
-
-          <Row :gutter="20">
-            <Col :span="24">
-              <div class="publish-status-container">
-                <div class="publish-status">
-                  <span class="status-label">发布状态</span>
-                  <Switch v-model="postData.is_published" size="large" />
-                  <span class="switch-label">{{ postData.is_published ? '已发布' : '草稿' }}</span>
-                </div>
-              </div>
-            </Col>
-          </Row>
-        </div>
-      </Form>
+      </div>
     </Card>
   </div>
 </template>
@@ -118,13 +122,15 @@ const router = useRouter();
 const route = useRoute();
 
 // 表单引用
-const postForm = ref(null);
+const basicInfoForm = ref(null);
 
 // 页面状态
 const isEdit = ref(false);
 const saving = ref(false);
 const error = ref('');
 const showSaveModal = ref(false);
+const showBasicInfoModal = ref(false);
+const pendingSaveAction = ref(null); // 记录待执行的保存操作类型
 
 // 图片上传配置
 const uploadAction = getUploadUrl('image');
@@ -207,114 +213,43 @@ function handleImageUploadError(error) {
   Message.error('封面图片上传失败，请稍后重试');
 }
 
-// 验证表单和标题
-async function validateForm() {
-  // 先进行表单验证
-  const valid = await postForm.value.validate();
-  if (!valid) {
-    Message.error('请检查表单填写是否正确');
-    return false;
-  }
-
-  // 额外检查标题是否为空
-  if (!postData.value.title || postData.value.title.trim() === '') {
-    Message.error('必须填入文章标题才能发布或更新文章');
-    return false;
-  }
-
-  return true;
-}
-
-// 保存文章的核心逻辑（不跳转，只显示提示）
-async function savePostWithoutNavigation() {
-  try {
-    // 表单验证
-    if (!(await validateForm())) {
-      return;
-    }
-
-    saving.value = true;
-    error.value = '';
-
-    const data = {
-      title: postData.value.title.trim(),
-      content: postData.value.content,
-      cover_image_url: postData.value.cover_image_url,
-      summary: postData.value.summary,
-      is_published: postData.value.is_published,
-    };
-
-    console.log('保存文章数据:', data);
-
-    // 格式化时间（只显示时分秒，格式：xx时xx分xx秒）
-    const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    const timeStr = `${hours}时${minutes}分${seconds}秒`;
-
-    if (isEdit.value) {
-      // 更新文章
-      const result = await postApi.updatePost(postData.value.id, data);
-      console.log('文章更新成功:', result);
-
-      Message.success({
-        content: `保存时间：${timeStr} &nbsp; 文章更新成功`,
-        duration: 3,
-        render: h => {
-          return h('div', {});
-        },
-      });
-    } else {
-      // 创建文章
-      const result = await postApi.createPost(data);
-      console.log('文章创建成功:', result);
-
-      Message.success({
-        content: `文章创建成功<br/>保存时间：${timeStr}`,
-        duration: 3,
-        render: h => {
-          return h('div', {});
-        },
-      });
-      // 如果是创建新文章，将页面切换为编辑模式
-      isEdit.value = true;
-      postData.value.id = result.id;
-    }
-  } catch (error) {
-    console.error('保存文章失败:', error);
-    console.error('错误详情:', error.response?.data);
-    console.error('错误状态码:', error.response?.status);
-
-    // 根据错误类型显示不同的提示
-    if (error.response?.status === 400) {
-      error.value = error.response.data.detail || '保存失败';
-      Message.error(error.value);
-    } else if (error.response?.status === 401) {
-      error.value = '权限不足，请重新登录';
-      Message.error(error.value);
-      authCookie.clearAuth();
-      routerUtils.navigateTo(router, ROUTES.LOGIN);
-    } else if (error.response?.status === 404) {
-      error.value = '文章不存在';
-      Message.error(error.value);
-    } else {
-      error.value = '保存失败，请稍后重试';
-      Message.error(error.value);
-    }
-  } finally {
-    saving.value = false;
-  }
-}
-
-// 按钮点击处理（保存后显示确认对话框）
+// 按钮点击处理（弹出基本信息Modal）
 async function handleSaveClick() {
-  try {
-    // 表单验证
-    if (!(await validateForm())) {
-      return;
-    }
+  pendingSaveAction.value = 'button'; // 标记为按钮触发的保存
+  showBasicInfoModal.value = true;
+}
 
+// 处理基本信息Modal确认
+async function handleBasicInfoConfirm() {
+  // 验证标题
+  if (!postData.value.title || postData.value.title.trim() === '') {
+    Message.error('请填写文章标题');
+    return;
+  }
+
+  showBasicInfoModal.value = false;
+
+  // 根据pendingSaveAction执行相应的保存操作
+  if (pendingSaveAction.value === 'button') {
+    // 按钮触发的保存，执行保存并显示跳转确认
+    await performSaveAndShowNavigationModal();
+  } else if (pendingSaveAction.value === 'shortcut') {
+    // 快捷键触发的保存，直接保存不跳转
+    await performSaveWithoutNavigation();
+  }
+
+  pendingSaveAction.value = null;
+}
+
+// 取消基本信息Modal
+function cancelBasicInfoModal() {
+  showBasicInfoModal.value = false;
+  pendingSaveAction.value = null;
+}
+
+// 执行保存并显示跳转确认对话框
+async function performSaveAndShowNavigationModal() {
+  try {
     saving.value = true;
     error.value = '';
 
@@ -344,6 +279,69 @@ async function handleSaveClick() {
     // 显示确认对话框
     Message.success('文章保存成功！');
     showSaveModal.value = true;
+  } catch (error) {
+    console.error('保存文章失败:', error);
+    console.error('错误详情:', error.response?.data);
+    console.error('错误状态码:', error.response?.status);
+
+    // 根据错误类型显示不同的提示
+    if (error.response?.status === 400) {
+      error.value = error.response.data.detail || '保存失败';
+      Message.error(error.value);
+    } else if (error.response?.status === 401) {
+      error.value = '权限不足，请重新登录';
+      Message.error(error.value);
+      authCookie.clearAuth();
+      routerUtils.navigateTo(router, ROUTES.LOGIN);
+    } else if (error.response?.status === 404) {
+      error.value = '文章不存在';
+      Message.error(error.value);
+    } else {
+      error.value = '保存失败，请稍后重试';
+      Message.error(error.value);
+    }
+  } finally {
+    saving.value = false;
+  }
+}
+
+// 执行保存不跳转（用于快捷键）
+async function performSaveWithoutNavigation() {
+  try {
+    saving.value = true;
+    error.value = '';
+
+    const data = {
+      title: postData.value.title.trim(),
+      content: postData.value.content,
+      cover_image_url: postData.value.cover_image_url,
+      summary: postData.value.summary,
+      is_published: postData.value.is_published,
+    };
+
+    console.log('保存文章数据:', data);
+
+    // 格式化时间（只显示时分秒，格式：xx时xx分xx秒）
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const timeStr = `${hours}时${minutes}分${seconds}秒`;
+
+    if (isEdit.value) {
+      // 更新文章
+      const result = await postApi.updatePost(postData.value.id, data);
+      console.log('文章更新成功:', result);
+      Message.success(`文章已更新！保存时间：${timeStr}`);
+    } else {
+      // 创建文章
+      const result = await postApi.createPost(data);
+      console.log('文章创建成功:', result);
+      // 如果是创建新文章，将页面切换为编辑模式
+      isEdit.value = true;
+      postData.value.id = result.id;
+      Message.success(`文章已保存！保存时间：${timeStr}`);
+    }
   } catch (error) {
     console.error('保存文章失败:', error);
     console.error('错误详情:', error.response?.data);
@@ -425,12 +423,14 @@ function handleKeyDown(event) {
 
     // 检查是否填写了标题
     if (!postData.value.title || postData.value.title.trim() === '') {
-      Message.warning('请先填写文章标题');
+      // 弹出基本信息Modal
+      pendingSaveAction.value = 'shortcut';
+      showBasicInfoModal.value = true;
       return;
     }
 
-    // 如果有标题，则保存（不跳转）
-    savePostWithoutNavigation();
+    // 如果有标题，则直接保存（不跳转）
+    performSaveWithoutNavigation();
   }
 }
 
