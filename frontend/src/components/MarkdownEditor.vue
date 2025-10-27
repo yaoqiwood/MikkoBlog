@@ -228,10 +228,6 @@ watch(
   color: #666;
 }
 
-.editor-container {
-  height: 400px;
-}
-
 .editor-content {
   height: 100%;
 }

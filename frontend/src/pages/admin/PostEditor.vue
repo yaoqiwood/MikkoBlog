@@ -17,13 +17,6 @@
 
     <!-- 文章编辑表单 -->
     <Card class="editor-card">
-      <template #title>
-        <div class="card-title">
-          <Icon type="ios-document" />
-          文章编辑
-        </div>
-      </template>
-
       <Form ref="postForm" :model="postData" :rules="postRules" label-position="top">
         <!-- 文章内容区域 -->
         <div class="content-section">
@@ -31,7 +24,7 @@
             <label class="editor-label">Markdown 内容</label>
             <MarkdownEditor
               v-model="postData.content"
-              height="calc(100vh - 500px)"
+              height="calc(100vh - 305px)"
               placeholder="请输入文章内容..."
               @upload-image="handleImageUpload"
             />
@@ -348,6 +341,10 @@ onMounted(() => {
   flex-direction: column;
 }
 
+.editor-card :deep(.ivu-card-head) {
+  display: none;
+}
+
 .editor-card :deep(.ivu-card-body) {
   flex: 1;
   display: flex;
@@ -447,7 +444,7 @@ onMounted(() => {
 .editor-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* 高度由MarkdownEditor组件的height属性控制 */
 }
 
 .editor-label {
