@@ -73,7 +73,7 @@ jobs:
           echo "检查服务健康状态..."
           RETRY_COUNT=0
           MAX_RETRIES=6
-          
+
           # 检查后端API
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             if curl -f http://localhost:8000/api/healthz 2>/dev/null; then
@@ -85,7 +85,7 @@ jobs:
               sleep 10
             fi
           done
-          
+
           if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
             echo "❌ 后端API健康检查失败"
             echo "查看后端日志："
