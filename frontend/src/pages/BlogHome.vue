@@ -761,7 +761,21 @@ const switchContentType = type => {
 
 // 加载所有内容（博客+说说）- 分页加载
 const loadAllContent = async () => {
-  if (loading.value || (!blogHasMore.value && !momentsHasMore.value)) return;
+  console.log('loadAllContent 被调用:', {
+    loading: loading.value,
+    blogHasMore: blogHasMore.value,
+    momentsHasMore: momentsHasMore.value,
+    blogCurrentPage: blogCurrentPage.value,
+    momentsCurrentPage: momentsCurrentPage.value,
+  });
+
+  if (loading.value || (!blogHasMore.value && !momentsHasMore.value)) {
+    console.log('loadAllContent 提前返回:', {
+      loading: loading.value,
+      bothNoMore: !blogHasMore.value && !momentsHasMore.value,
+    });
+    return;
+  }
 
   loading.value = true;
   error.value = '';
@@ -771,6 +785,7 @@ const loadAllContent = async () => {
 
     // 如果博客还有更多数据，加载下一批博客
     if (blogHasMore.value) {
+      console.log('加载博客第', blogCurrentPage.value, '页');
       promises.push(
         postApi.getPosts({
           page: blogCurrentPage.value,
@@ -786,6 +801,7 @@ const loadAllContent = async () => {
 
     // 如果说说还有更多数据，加载下一批说说
     if (momentsHasMore.value) {
+      console.log('加载说说第', momentsCurrentPage.value, '页');
       promises.push(
         momentsApi.getMoments({
           page: momentsCurrentPage.value,
@@ -799,6 +815,21 @@ const loadAllContent = async () => {
 
     // 并行加载博客和说说
     const [postsResponse, momentsResponse] = await Promise.all(promises);
+
+    console.log('API 响应:', {
+      postsResponse: postsResponse
+        ? {
+            itemsCount: postsResponse.items?.length || 0,
+            hasMore: postsResponse.has_more,
+          }
+        : null,
+      momentsResponse: momentsResponse
+        ? {
+            itemsCount: momentsResponse.items?.length || 0,
+            hasMore: momentsResponse.has_more,
+          }
+        : null,
+    });
 
     // 处理博客文章
     if (postsResponse && postsResponse.items && postsResponse.items.length > 0) {
@@ -827,6 +858,11 @@ const loadAllContent = async () => {
       blogPosts.value.push(...formattedPosts);
       blogCurrentPage.value++;
       blogHasMore.value = postsResponse.has_more;
+      console.log('博客加载完成:', {
+        newCount: formattedPosts.length,
+        totalCount: blogPosts.value.length,
+        hasMore: blogHasMore.value,
+      });
     }
 
     // 处理说说
@@ -855,10 +891,20 @@ const loadAllContent = async () => {
       moments.value.push(...formattedMoments);
       momentsCurrentPage.value++;
       momentsHasMore.value = momentsResponse.has_more;
+      console.log('说说加载完成:', {
+        newCount: formattedMoments.length,
+        totalCount: moments.value.length,
+        hasMore: momentsHasMore.value,
+      });
     }
 
     // 更新总的hasMore状态
     hasMore.value = blogHasMore.value || momentsHasMore.value;
+    console.log('loadAllContent 完成:', {
+      hasMore: hasMore.value,
+      blogHasMore: blogHasMore.value,
+      momentsHasMore: momentsHasMore.value,
+    });
   } catch (err) {
     console.error('加载内容失败:', err);
 
@@ -881,7 +927,21 @@ const handleScroll = event => {
   const { scrollTop, scrollHeight, clientHeight } = event.target;
   const threshold = 100; // 距离底部100px时开始加载
 
+  console.log('滚动事件触发:', {
+    scrollTop,
+    scrollHeight,
+    clientHeight,
+    distanceToBottom: scrollHeight - scrollTop - clientHeight,
+    threshold,
+    hasMore: hasMore.value,
+    loading: loading.value,
+    activeContentType: activeContentType.value,
+    blogHasMore: blogHasMore.value,
+    momentsHasMore: momentsHasMore.value,
+  });
+
   if (scrollHeight - scrollTop - clientHeight < threshold && hasMore.value && !loading.value) {
+    console.log('触发加载更多...');
     if (activeContentType.value === 'all') {
       loadAllContent();
     } else if (activeContentType.value === 'blog') {

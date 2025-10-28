@@ -125,9 +125,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { Modal, Input, Button, Message } from 'view-ui-plus';
 import MusicPlayer from '@/components/MusicPlayer.vue';
+import { Button, Input, Message, Modal } from 'view-ui-plus';
+import { computed, ref } from 'vue';
 
 defineProps({
   userProfile: {
@@ -339,6 +339,7 @@ const shareToFacebook = () => {
   border-radius: 15px;
   padding: 20px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  height: 328px;
 }
 
 .popular-posts h3 {

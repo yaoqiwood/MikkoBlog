@@ -234,6 +234,7 @@ const handleScroll = event => {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #ff6b6b #f0f0f0;
+  max-height: 101vh; /* 设置最大高度，确保有滚动条 */
 }
 
 .posts-container::-webkit-scrollbar {
