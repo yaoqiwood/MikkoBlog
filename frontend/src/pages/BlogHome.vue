@@ -712,8 +712,12 @@ const displayedContent = computed(() => {
     allContent = [...moments.value];
   }
 
-  // 按创建时间倒序排序
-  return allContent.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // 按更新时间倒序排序，如果没有更新时间则按创建时间排序
+  return allContent.sort((a, b) => {
+    const aTime = a.updated_at ? new Date(a.updated_at) : new Date(a.created_at);
+    const bTime = b.updated_at ? new Date(b.updated_at) : new Date(b.created_at);
+    return bTime - aTime;
+  });
 });
 
 // 内容类型切换
