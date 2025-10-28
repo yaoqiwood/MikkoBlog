@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING, Generic, TypeVar
 
 from sqlmodel import Field, SQLModel, Relationship
 
@@ -7,6 +7,8 @@ if TYPE_CHECKING:
     from app.models.comment import Comment
 # 因 UserProfile 未被使用，移除该导入
     from app.models.postStats import PostStats
+
+T = TypeVar('T')
 
 
 class PostBase(SQLModel):
@@ -33,7 +35,8 @@ class Post(PostBase, table=True):
 
     # 关联关系
     comments: List["Comment"] = Relationship(back_populates="post")
-    # author: Optional["UserProfile"] = Relationship(back_populates="posts")  # 暂时注释掉以避免循环导入
+    # author: Optional["UserProfile"] = Relationship(back_populates="posts")
+    # 暂时注释掉以避免循环导入
     stats: Optional["PostStats"] = Relationship(back_populates="post")
 
 
@@ -64,3 +67,11 @@ class PostUpdate(SQLModel):
     is_published: Optional[bool] = None
     is_deleted: Optional[bool] = None
     is_visible: Optional[bool] = None
+
+
+class PostListResponse(SQLModel, Generic[T]):
+    items: List[T]
+    total: int
+    page: int
+    limit: int
+    has_more: bool

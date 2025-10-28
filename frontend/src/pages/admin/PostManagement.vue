@@ -143,7 +143,6 @@ import { Message, Modal, Tag } from 'view-ui-plus';
 import { nextTick, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-/* global setTimeout */
 
 const router = useRouter();
 
@@ -336,17 +335,37 @@ async function fetchPosts() {
     console.log('当前认证状态:', authCookie.isAuthenticated());
     console.log('当前token:', authCookie.getAuth().token);
 
+    // 构建查询参数
+    const params = {
+      include_unpublished: true,
+      page: currentPage.value,
+      limit: pageSize.value,
+    };
+
+    // 添加搜索条件
+    if (searchForm.value.title) {
+      params.title = searchForm.value.title;
+    }
+    if (searchForm.value.is_published !== null && searchForm.value.is_published !== '') {
+      params.is_published = searchForm.value.is_published === 'true';
+    }
+    if (searchForm.value.start_date) {
+      params.start_date = searchForm.value.start_date;
+    }
+    if (searchForm.value.end_date) {
+      params.end_date = searchForm.value.end_date;
+    }
+
     // 使用真实API获取文章列表（全局loading会自动显示）
-    const data = await postApi.getPosts({ include_unpublished: true });
-    console.log('获取到的文章数据:', data);
-    console.log('数据类型:', typeof data);
-    console.log('数据长度:', data?.length);
+    const response = await postApi.getPosts(params);
+    console.log('获取到的文章数据:', response);
+    console.log('数据类型:', typeof response);
+    console.log('数据长度:', response?.items?.length);
 
-    // 先设置数据
-    posts.value = data;
-
-    // 应用搜索过滤
-    applySearchFilter();
+    // 设置数据和分页信息
+    posts.value = response.items || [];
+    total.value = response.total || 0;
+    filteredPosts.value = [...posts.value];
 
     // 等待DOM更新
     await nextTick();
@@ -356,8 +375,9 @@ async function fetchPosts() {
 
     console.log('posts.value 设置后:', posts.value);
     console.log('filteredPosts.value 设置后:', filteredPosts.value);
+    console.log('total.value 设置后:', total.value);
 
-    // Message.success(`成功获取 ${data.length} 篇文章`); // 注释掉测试提示
+    // Message.success(`成功获取 ${response.items?.length || 0} 篇文章`); // 注释掉测试提示
   } catch (err) {
     console.error('获取文章列表失败:', err);
     console.error('错误详情:', err.response?.data);
@@ -458,62 +478,6 @@ async function toggleVisibility(post) {
   }
 }
 
-// 重置新文章表单
-
-// 应用搜索过滤
-function applySearchFilter() {
-  let filtered = [...posts.value];
-
-  // 标题搜索（模糊匹配）
-  if (searchForm.value.title) {
-    filtered = filtered.filter(post =>
-      post.title.toLowerCase().includes(searchForm.value.title.toLowerCase())
-    );
-  }
-
-  // 内容搜索（模糊匹配）
-  if (searchForm.value.content) {
-    filtered = filtered.filter(
-      post =>
-        post.content && post.content.toLowerCase().includes(searchForm.value.content.toLowerCase())
-    );
-  }
-
-  // 发布状态过滤
-  if (searchForm.value.is_published !== null && searchForm.value.is_published !== '') {
-    const isPublishedValue = searchForm.value.is_published === 'true';
-    filtered = filtered.filter(post => post.is_published === isPublishedValue);
-  }
-
-  // 创建时间范围过滤
-  if (searchForm.value.start_date || searchForm.value.end_date) {
-    filtered = filtered.filter(post => {
-      const postDate = new Date(post.created_at);
-      const startDate = searchForm.value.start_date ? new Date(searchForm.value.start_date) : null;
-      const endDate = searchForm.value.end_date ? new Date(searchForm.value.end_date) : null;
-
-      if (startDate && endDate) {
-        // 两个日期都有，检查是否在范围内
-        return postDate >= startDate && postDate <= endDate;
-      } else if (startDate) {
-        // 只有开始日期
-        return postDate >= startDate;
-      } else if (endDate) {
-        // 只有结束日期
-        return postDate <= endDate;
-      }
-      return true;
-    });
-  }
-
-  filteredPosts.value = filtered;
-  console.log(`搜索过滤完成，从 ${posts.value.length} 篇文章中筛选出 ${filtered.length} 篇`);
-
-  // 重置到第一页并应用分页
-  currentPage.value = 1;
-  applyPagination();
-}
-
 // 处理搜索
 async function handleSearch() {
   try {
@@ -521,10 +485,10 @@ async function handleSearch() {
     startLoading(); // 启动全局loading
     console.log('执行搜索，搜索条件:', searchForm.value);
 
-    // 模拟搜索延迟，让用户看到loading效果
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 重置到第一页并重新获取数据
+    currentPage.value = 1;
+    await fetchPosts();
 
-    applySearchFilter();
     // Message.info(`搜索完成，找到 ${filteredPosts.value.length} 篇文章`);
   } catch (error) {
     console.error('搜索失败:', error);
@@ -541,9 +505,7 @@ async function handleReset() {
     searching.value = true;
     startLoading(); // 启动全局loading
 
-    // 模拟重置延迟
-    await new Promise(resolve => setTimeout(resolve, 300));
-
+    // 重置搜索条件
     searchForm.value = {
       title: '',
       content: '',
@@ -551,8 +513,11 @@ async function handleReset() {
       start_date: null,
       end_date: null,
     };
+
+    // 重置到第一页并重新获取数据
     currentPage.value = 1;
-    applySearchFilter();
+    await fetchPosts();
+
     Message.info('搜索条件已重置');
   } catch (error) {
     console.error('重置失败:', error);
@@ -579,24 +544,16 @@ function validateDateRange() {
 // 处理分页变化
 function handlePageChange(page) {
   currentPage.value = page;
-  applyPagination();
+  fetchPosts(); // 重新获取数据
 }
 
 // 处理每页大小变化
-function handlePageSizeChange(pageSize) {
+function handlePageSizeChange(newPageSize) {
   currentPage.value = 1;
-  pageSize.value = pageSize;
-  applyPagination();
+  pageSize.value = newPageSize;
+  fetchPosts(); // 重新获取数据
 }
 
-// 应用分页
-function applyPagination() {
-  // 这里应该根据实际需求处理分页逻辑
-  // 目前是前端分页，实际项目中应该是后端分页
-  total.value = filteredPosts.value.length;
-
-  console.log(`分页: 第${currentPage.value}页，每页${pageSize.value}条，共${total.value}条`);
-}
 
 function formatDate(dateString) {
   if (!dateString) return '-';

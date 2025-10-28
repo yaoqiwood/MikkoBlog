@@ -2,10 +2,12 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 
 from app.db.session import get_db
-from app.models.post import Post, PostCreate, PostRead, PostUpdate
+from app.models.post import (
+    Post, PostCreate, PostRead, PostUpdate, PostListResponse
+)
 from app.models.user import UserProfile, UserRead
 from app.models.postStats import PostStats
 from app.models.columns import PostColumns
@@ -15,7 +17,7 @@ from app.api.routers.auth import get_current_user
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
-@router.get("/", response_model=List[PostRead])
+@router.get("/", response_model=PostListResponse[PostRead])
 def list_posts(
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
@@ -28,7 +30,7 @@ def list_posts(
     start_date: Optional[str] = Query(None, description="开始日期"),
     end_date: Optional[str] = Query(None, description="结束日期"),
     db: Session = Depends(get_db)
-) -> List[PostRead]:
+) -> PostListResponse[PostRead]:
     """
     获取文章列表接口
 
@@ -92,6 +94,39 @@ def list_posts(
     if end_date:
         statement = statement.where(Post.created_at <= end_date)
 
+    # 先获取总数
+    count_statement = select(func.count(Post.id))
+    # 应用相同的过滤条件
+    if is_deleted is not None:
+        count_statement = count_statement.where(Post.is_deleted == is_deleted)
+    else:
+        count_statement = count_statement.where(Post.is_deleted.is_(False))
+
+    if is_visible is not None:
+        count_statement = count_statement.where(Post.is_visible == is_visible)
+
+    if is_published is not None:
+        count_statement = count_statement.where(Post.is_published == is_published)
+    elif include_unpublished:
+        pass
+    else:
+        count_statement = count_statement.where(Post.is_published.is_(True))
+
+    if title:
+        count_statement = count_statement.where(Post.title.contains(title))
+
+    if column_id:
+        count_statement = count_statement.join(
+            PostColumns, Post.id == PostColumns.post_id
+        ).where(PostColumns.column_id == column_id)
+
+    if start_date:
+        count_statement = count_statement.where(Post.created_at >= start_date)
+    if end_date:
+        count_statement = count_statement.where(Post.created_at <= end_date)
+
+    total = db.exec(count_statement).one()
+
     # 按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
     statement = statement.order_by(
         Post.updated_at.desc(),
@@ -103,7 +138,7 @@ def list_posts(
     results = db.exec(statement).all()
 
     # 构建响应数据列表
-    result = []
+    items = []
     for post, user_profile, post_stats in results:
         # 组装包含文章、作者信息和统计数据的字典
         post_dict = {
@@ -129,14 +164,21 @@ def list_posts(
 
         # 校验并转换为响应模型
         post_data = PostRead.model_validate(post_dict)
-        result.append(post_data)
+        items.append(post_data)
 
         # 打印调试信息
         print(f"Post {post.id}: user_nickname={user_profile.nickname}, "
               f"user_avatar={user_profile.avatar}, "
               f"stats={post_stats.view_count if post_stats else 0} views")
 
-    return result
+    # 返回分页响应
+    return PostListResponse(
+        items=items,
+        total=total,
+        page=page,
+        limit=limit,
+        has_more=(page * limit) < total
+    )
 
 
 @router.post("/", response_model=PostRead, status_code=status.HTTP_201_CREATED)
