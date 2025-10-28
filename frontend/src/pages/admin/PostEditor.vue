@@ -112,9 +112,9 @@
 import MarkdownEditor from '@/components/MarkdownEditor.vue';
 import { postApi, uploadApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
+import { startLoading, stopLoading } from '@/utils/loadingManager';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
 import { getFullUrl, getUploadUrl } from '@/utils/urlUtils';
-import { startLoading, stopLoading } from '@/utils/loadingManager';
 import { Message, Modal } from 'view-ui-plus';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -250,7 +250,9 @@ function cancelBasicInfoModal() {
 
 // 执行保存并显示跳转确认对话框
 async function performSaveAndShowNavigationModal() {
+  const requestId = 'save-post-button';
   try {
+    startLoading(requestId, '正在保存中...');
     saving.value = true;
     error.value = '';
 
@@ -302,6 +304,7 @@ async function performSaveAndShowNavigationModal() {
       Message.error(error.value);
     }
   } finally {
+    stopLoading(requestId);
     saving.value = false;
   }
 }
