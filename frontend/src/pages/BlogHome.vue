@@ -390,9 +390,9 @@ const loadPosts = async () => {
       is_published: true, // 主页不显示草稿
     });
 
-    if (posts && posts.length > 0) {
+    if (posts && posts.items && posts.items.length > 0) {
       // 转换数据格式以适配前端显示
-      const formattedPosts = posts.map(post => ({
+      const formattedPosts = posts.items.map(post => ({
         id: post.id,
         type: 'blog',
         title: post.title,
@@ -418,8 +418,8 @@ const loadPosts = async () => {
       blogPosts.value.push(...formattedPosts);
       currentPage.value++;
 
-      // 如果返回的文章数量少于页面大小，说明没有更多数据了
-      if (posts.length < pageSize) {
+      // 如果后端返回 has_more 为 false，说明没有更多数据了
+      if (!posts.has_more) {
         hasMore.value = false;
       }
     } else {
@@ -637,9 +637,9 @@ const loadColumnPosts = async columnId => {
       is_published: true, // 专栏页不显示草稿
     });
 
-    if (response && response.length > 0) {
+    if (response && response.items && response.items.length > 0) {
       // 转换数据格式以适配前端显示
-      const formattedPosts = response.map(post => ({
+      const formattedPosts = response.items.map(post => ({
         id: post.id,
         title: post.title,
         content: post.summary || post.content.substring(0, 200) + '...',
@@ -704,17 +704,19 @@ const displayedContent = computed(() => {
   let allContent = [];
 
   if (activeContentType.value === 'all') {
-    // 合并博客和说说，按更新时间排序
+    // 合并博客和说说，后端已按更新时间排序，需要重新合并排序
     allContent = [...blogPosts.value, ...moments.value];
     // 按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
     allContent.sort((a, b) => {
       const aTime = a.updated_at ? new Date(a.updated_at) : new Date(a.created_at);
       const bTime = b.updated_at ? new Date(b.updated_at) : new Date(b.created_at);
-      return bTime - aTime;
+      return bTime - aTime; // 倒序：最新的在前
     });
   } else if (activeContentType.value === 'blog') {
+    // 博客单独显示，后端已排序，直接使用
     allContent = [...blogPosts.value];
   } else if (activeContentType.value === 'moments') {
+    // 说说单独显示，后端已排序，直接使用
     allContent = [...moments.value];
   }
 
@@ -772,8 +774,8 @@ const loadAllContent = async () => {
     let hasMoreMoments = false;
 
     // 处理博客文章
-    if (postsResponse && postsResponse.length > 0) {
-      const formattedPosts = postsResponse.map(post => ({
+    if (postsResponse && postsResponse.items && postsResponse.items.length > 0) {
+      const formattedPosts = postsResponse.items.map(post => ({
         id: post.id,
         type: 'blog',
         title: post.title,
@@ -795,7 +797,7 @@ const loadAllContent = async () => {
           'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
       blogPosts.value.push(...formattedPosts);
-      hasMorePosts = postsResponse.length >= Math.ceil(pageSize / 2);
+      hasMorePosts = postsResponse.has_more;
     }
 
     // 处理说说
