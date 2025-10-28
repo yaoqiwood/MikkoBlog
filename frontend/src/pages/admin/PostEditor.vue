@@ -114,6 +114,7 @@ import { postApi, uploadApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { routerUtils, ROUTES } from '@/utils/routeManager';
 import { getFullUrl, getUploadUrl } from '@/utils/urlUtils';
+import { startLoading, stopLoading } from '@/utils/loadingManager';
 import { Message, Modal } from 'view-ui-plus';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -307,16 +308,11 @@ async function performSaveAndShowNavigationModal() {
 
 // 执行保存不跳转（用于快捷键）
 async function performSaveWithoutNavigation() {
-  let loadingInstance = null;
+  const requestId = 'save-post-shortcut';
   try {
+    startLoading(requestId, '正在保存中...');
     saving.value = true;
     error.value = '';
-
-    // 显示全局loading
-    loadingInstance = Message.loading({
-      content: '正在保存中...',
-      duration: 0, // 不自动关闭
-    });
 
     const data = {
       title: postData.value.title.trim(),
@@ -339,9 +335,6 @@ async function performSaveWithoutNavigation() {
       // 更新文章
       const result = await postApi.updatePost(postData.value.id, data);
       console.log('文章更新成功:', result);
-
-      // 关闭loading并显示成功消息
-      loadingInstance.close();
       Message.success(`文章已更新！保存时间：${timeStr}`);
     } else {
       // 创建文章
@@ -350,20 +343,12 @@ async function performSaveWithoutNavigation() {
       // 如果是创建新文章，将页面切换为编辑模式
       isEdit.value = true;
       postData.value.id = result.id;
-
-      // 关闭loading并显示成功消息
-      loadingInstance.close();
       Message.success(`文章已保存！保存时间：${timeStr}`);
     }
   } catch (error) {
     console.error('保存文章失败:', error);
     console.error('错误详情:', error.response?.data);
     console.error('错误状态码:', error.response?.status);
-
-    // 关闭loading
-    if (loadingInstance) {
-      loadingInstance.close();
-    }
 
     // 根据错误类型显示不同的提示
     if (error.response?.status === 400) {
@@ -382,6 +367,7 @@ async function performSaveWithoutNavigation() {
       Message.error(error.value);
     }
   } finally {
+    stopLoading(requestId);
     saving.value = false;
   }
 }

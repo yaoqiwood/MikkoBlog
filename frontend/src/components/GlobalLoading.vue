@@ -6,7 +6,7 @@
           <div class="spinner"></div>
         </div>
         <div class="loading-text">
-          <p>正在加载数据...</p>
+          <p>{{ loadingText }}</p>
           <p class="loading-count" v-if="showCount">请求数量: {{ loadingCount }}</p>
         </div>
         <div class="loading-progress">
@@ -18,7 +18,7 @@
 </template>
 
 <script setup>
-import { globalLoading, loadingCount } from '@/utils/loadingManager';
+import { globalLoading, loadingCount, loadingText } from '@/utils/loadingManager';
 import { ref } from 'vue';
 
 // 是否显示请求计数（可选）

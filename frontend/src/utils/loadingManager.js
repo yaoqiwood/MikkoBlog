@@ -10,6 +10,7 @@ import { reactive, ref } from 'vue';
 // 全局loading状态
 const globalLoading = ref(false);
 const loadingCount = ref(0);
+const loadingText = ref('正在加载数据...');
 const loadingRequests = reactive(new Set());
 
 // 最小显示时间（毫秒）
@@ -19,10 +20,12 @@ const loadingStartTime = ref(null);
 /**
  * 开始loading
  * @param {string} requestId - 请求唯一标识
+ * @param {string} text - 自定义loading文字
  */
-export function startLoading(requestId = null) {
+export function startLoading(requestId = null, text = '正在加载数据...') {
   loadingCount.value++;
   globalLoading.value = true;
+  loadingText.value = text;
 
   if (requestId) {
     loadingRequests.add(requestId);
@@ -33,7 +36,7 @@ export function startLoading(requestId = null) {
     loadingStartTime.value = Date.now();
   }
 
-  console.log(`🔄 Loading started. Count: ${loadingCount.value}`);
+  console.log(`🔄 Loading started. Count: ${loadingCount.value}, Text: ${text}`);
 }
 
 /**
@@ -106,4 +109,4 @@ export function clearAllLoading() {
 }
 
 // 导出响应式状态供组件使用
-export { globalLoading, loadingCount, loadingRequests };
+export { globalLoading, loadingCount, loadingText, loadingRequests };
