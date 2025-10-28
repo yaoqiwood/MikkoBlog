@@ -134,6 +134,14 @@ const currentPage = ref(1);
 const pageSize = 10;
 const error = ref('');
 
+// 分页状态（用于"全部"标签的分页加载）
+const blogCurrentPage = ref(1);
+const momentsCurrentPage = ref(1);
+const blogHasMore = ref(true);
+const momentsHasMore = ref(true);
+const blogPageSize = 5; // 博客每次加载5条
+const momentsPageSize = 5; // 说说每次加载5条
+
 // 内容类型切换
 const activeContentType = ref('all'); // 'all', 'blog', 'moments'
 
@@ -734,8 +742,13 @@ const switchContentType = type => {
 
   // 清空对应的数据并重新加载
   if (type === 'all') {
+    // 重置"全部"标签的分页状态
     blogPosts.value = [];
     moments.value = [];
+    blogCurrentPage.value = 1;
+    momentsCurrentPage.value = 1;
+    blogHasMore.value = true;
+    momentsHasMore.value = true;
     loadAllContent();
   } else if (type === 'blog') {
     blogPosts.value = [];
@@ -746,32 +759,46 @@ const switchContentType = type => {
   }
 };
 
-// 加载所有内容（博客+说说）
+// 加载所有内容（博客+说说）- 分页加载
 const loadAllContent = async () => {
-  if (loading.value || !hasMore.value) return;
+  if (loading.value || (!blogHasMore.value && !momentsHasMore.value)) return;
 
   loading.value = true;
   error.value = '';
 
   try {
-    // 并行加载博客和说说
-    const [postsResponse, momentsResponse] = await Promise.all([
-      postApi.getPosts({
-        page: currentPage.value,
-        limit: Math.ceil(pageSize / 2), // 博客占一半
-        is_visible: true,
-        is_deleted: false,
-        is_published: true, // 首页合并流不显示草稿
-      }),
-      momentsApi.getMoments({
-        page: currentPage.value,
-        limit: Math.ceil(pageSize / 2), // 说说占一半
-        is_visible: true,
-      }),
-    ]);
+    const promises = [];
 
-    let hasMorePosts = false;
-    let hasMoreMoments = false;
+    // 如果博客还有更多数据，加载下一批博客
+    if (blogHasMore.value) {
+      promises.push(
+        postApi.getPosts({
+          page: blogCurrentPage.value,
+          limit: blogPageSize,
+          is_visible: true,
+          is_deleted: false,
+          is_published: true, // 首页合并流不显示草稿
+        })
+      );
+    } else {
+      promises.push(Promise.resolve(null));
+    }
+
+    // 如果说说还有更多数据，加载下一批说说
+    if (momentsHasMore.value) {
+      promises.push(
+        momentsApi.getMoments({
+          page: momentsCurrentPage.value,
+          limit: momentsPageSize,
+          is_visible: true,
+        })
+      );
+    } else {
+      promises.push(Promise.resolve(null));
+    }
+
+    // 并行加载博客和说说
+    const [postsResponse, momentsResponse] = await Promise.all(promises);
 
     // 处理博客文章
     if (postsResponse && postsResponse.items && postsResponse.items.length > 0) {
@@ -796,8 +823,10 @@ const loadAllContent = async () => {
           userProfile.value.avatar ||
           'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
+
       blogPosts.value.push(...formattedPosts);
-      hasMorePosts = postsResponse.has_more;
+      blogCurrentPage.value++;
+      blogHasMore.value = postsResponse.has_more;
     }
 
     // 处理说说
@@ -822,16 +851,14 @@ const loadAllContent = async () => {
           userProfile.value.avatar ||
           'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
+
       moments.value.push(...formattedMoments);
-      hasMoreMoments = momentsResponse.has_more;
+      momentsCurrentPage.value++;
+      momentsHasMore.value = momentsResponse.has_more;
     }
 
-    currentPage.value++;
-
-    // 如果博客和说说都没有更多数据，则停止加载
-    if (!hasMorePosts && !hasMoreMoments) {
-      hasMore.value = false;
-    }
+    // 更新总的hasMore状态
+    hasMore.value = blogHasMore.value || momentsHasMore.value;
   } catch (err) {
     console.error('加载内容失败:', err);
 
@@ -982,6 +1009,12 @@ const reloadPosts = async () => {
   moments.value = [];
   currentPage.value = 1;
   hasMore.value = true;
+
+  // 重置"全部"标签的分页状态
+  blogCurrentPage.value = 1;
+  momentsCurrentPage.value = 1;
+  blogHasMore.value = true;
+  momentsHasMore.value = true;
 
   if (activeContentType.value === 'all') {
     await loadAllContent();
