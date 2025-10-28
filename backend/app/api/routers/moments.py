@@ -89,8 +89,11 @@ def list_moments(
 
         total = session.exec(count_statement).one()
 
-        # 分页查询
-        statement = statement.order_by(Moments.created_at.desc())
+        # 按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
+        statement = statement.order_by(
+            Moments.updated_at.desc().nullslast(),
+            Moments.created_at.desc()
+        )
         statement = statement.offset((page - 1) * limit).limit(limit)
 
         moments = session.exec(statement).all()

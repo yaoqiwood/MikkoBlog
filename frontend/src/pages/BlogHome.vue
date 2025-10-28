@@ -704,20 +704,21 @@ const displayedContent = computed(() => {
   let allContent = [];
 
   if (activeContentType.value === 'all') {
-    // 合并博客和说说，按时间排序
+    // 合并博客和说说，按更新时间排序
     allContent = [...blogPosts.value, ...moments.value];
+    // 按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
+    allContent.sort((a, b) => {
+      const aTime = a.updated_at ? new Date(a.updated_at) : new Date(a.created_at);
+      const bTime = b.updated_at ? new Date(b.updated_at) : new Date(b.created_at);
+      return bTime - aTime;
+    });
   } else if (activeContentType.value === 'blog') {
     allContent = [...blogPosts.value];
   } else if (activeContentType.value === 'moments') {
     allContent = [...moments.value];
   }
 
-  // 按更新时间倒序排序，如果没有更新时间则按创建时间排序
-  return allContent.sort((a, b) => {
-    const aTime = a.updated_at ? new Date(a.updated_at) : new Date(a.created_at);
-    const bTime = b.updated_at ? new Date(b.updated_at) : new Date(b.created_at);
-    return bTime - aTime;
-  });
+  return allContent;
 });
 
 // 内容类型切换
