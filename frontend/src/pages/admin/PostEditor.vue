@@ -311,6 +311,13 @@ async function performSaveWithoutNavigation() {
     saving.value = true;
     error.value = '';
 
+    // 显示正在保存的提示
+    Message.loading({
+      content: '正在保存中...',
+      duration: 0, // 不自动关闭
+      key: 'saving',
+    });
+
     const data = {
       title: postData.value.title.trim(),
       content: postData.value.content,
@@ -365,6 +372,8 @@ async function performSaveWithoutNavigation() {
     }
   } finally {
     saving.value = false;
+    // 关闭loading提示
+    Message.destroy('saving');
   }
 }
 
