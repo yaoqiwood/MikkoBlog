@@ -25,7 +25,11 @@ const loadingStartTime = ref(null);
 export function startLoading(requestId = null, text = '正在加载数据...') {
   loadingCount.value++;
   globalLoading.value = true;
-  loadingText.value = text;
+  
+  // 只有在没有自定义文字时才更新文字，或者当前文字是默认文字时才更新
+  if (loadingCount.value === 1 || loadingText.value === '正在加载数据...') {
+    loadingText.value = text;
+  }
 
   if (requestId) {
     loadingRequests.add(requestId);
@@ -36,7 +40,7 @@ export function startLoading(requestId = null, text = '正在加载数据...') {
     loadingStartTime.value = Date.now();
   }
 
-  console.log(`🔄 Loading started. Count: ${loadingCount.value}, Text: ${text}`);
+  console.log(`🔄 Loading started. Count: ${loadingCount.value}, Text: ${loadingText.value}`);
 }
 
 /**
@@ -60,12 +64,14 @@ export function stopLoading(requestId = null) {
       setTimeout(() => {
         globalLoading.value = false;
         loadingStartTime.value = null;
+        loadingText.value = '正在加载数据...'; // 重置文字
         console.log(`✅ Loading stopped with delay. Count: ${loadingCount.value}`);
       }, remainingTime);
     } else {
       // 立即关闭loading
       globalLoading.value = false;
       loadingStartTime.value = null;
+      loadingText.value = '正在加载数据...'; // 重置文字
       console.log(`✅ Loading stopped immediately. Count: ${loadingCount.value}`);
     }
   }
