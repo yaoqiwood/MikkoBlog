@@ -28,6 +28,7 @@ from app.scheduler.tag_cloud_scheduler import (
 
 # 导入模型以确保SQLModel能够识别并创建表
 from app.models.postLikeTracking import PostLikeTracking  # noqa: F401
+from app.models.comment import Comment  # noqa: F401
 
 
 def create_app() -> FastAPI:

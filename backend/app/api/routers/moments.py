@@ -91,7 +91,7 @@ def list_moments(
 
         # 按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
         statement = statement.order_by(
-            Moments.updated_at.desc().nullslast(),
+            Moments.updated_at.desc(),
             Moments.created_at.desc()
         )
         statement = statement.offset((page - 1) * limit).limit(limit)

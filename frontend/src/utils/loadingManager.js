@@ -25,7 +25,7 @@ const loadingStartTime = ref(null);
 export function startLoading(requestId = null, text = '正在加载数据...') {
   loadingCount.value++;
   globalLoading.value = true;
-  
+
   // 只有在没有自定义文字时才更新文字，或者当前文字是默认文字时才更新
   if (loadingCount.value === 1 || loadingText.value === '正在加载数据...') {
     loadingText.value = text;
@@ -115,4 +115,4 @@ export function clearAllLoading() {
 }
 
 // 导出响应式状态供组件使用
-export { globalLoading, loadingCount, loadingText, loadingRequests };
+export { globalLoading, loadingCount, loadingRequests, loadingText };
