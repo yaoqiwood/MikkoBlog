@@ -339,7 +339,7 @@ const shareToFacebook = () => {
   border-radius: 15px;
   padding: 20px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  height: 328px;
+  /* height: 328px; */
 }
 
 .popular-posts h3 {
