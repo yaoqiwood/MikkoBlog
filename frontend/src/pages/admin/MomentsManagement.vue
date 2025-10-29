@@ -250,8 +250,8 @@
 </template>
 
 <script setup>
-import { getFullUrl } from '@/utils/urlUtils';
 import { momentsApi } from '@/utils/apiService';
+import { getFullUrl } from '@/utils/urlUtils';
 import { Message, Modal } from 'view-ui-plus';
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
 
@@ -301,6 +301,7 @@ const loadMoments = async () => {
     const params = {
       page: currentPage.value,
       limit: pageSize.value,
+      order_by: 'created_at', // 管理页面按创建时间倒序排序
     };
 
     if (filters.is_visible !== '') {
@@ -359,9 +360,14 @@ const editMoment = moment => {
 // 切换可见性
 const toggleVisibility = async moment => {
   try {
-    await momentsApi.toggleMomentVisibility(moment.id);
+    const updatedMoment = await momentsApi.toggleMomentVisibility(moment.id);
     Message.success('更新成功');
-    loadMoments();
+
+    // 只更新当前项，不重新加载整个列表
+    const index = moments.value.findIndex(m => m.id === moment.id);
+    if (index !== -1) {
+      moments.value[index] = updatedMoment;
+    }
   } catch (error) {
     console.error('更新失败:', error);
     Message.error('更新失败');
@@ -409,16 +415,26 @@ const saveMoment = async () => {
     };
 
     if (editingMoment.value) {
-      await momentsApi.updateMoment(editingMoment.value.id, data);
+      // 编辑模式：只更新当前项
+      const updatedMoment = await momentsApi.updateMoment(editingMoment.value.id, data);
       Message.success('更新成功');
+
+      // 只更新当前项，不重新加载整个列表
+      const index = moments.value.findIndex(m => m.id === editingMoment.value.id);
+      if (index !== -1) {
+        moments.value[index] = updatedMoment;
+      }
     } else {
+      // 新建模式：重新加载列表（因为需要显示在第一条）
       await momentsApi.createMoment(data);
       Message.success('发布成功');
+      // 重置到第一页并加载
+      currentPage.value = 1;
+      await loadMoments();
     }
 
     showCreateModal.value = false;
     resetForm();
-    loadMoments();
   } catch (error) {
     console.error('操作失败:', error);
     const errorMsg = error.response?.data?.detail || error.message || '操作失败';

@@ -339,6 +339,7 @@ async function fetchPosts() {
       include_unpublished: true,
       page: currentPage.value,
       limit: pageSize.value,
+      order_by: 'created_at', // 管理后台按创建时间排序
     };
 
     // 添加搜索条件

@@ -873,70 +873,82 @@ const loadAllContent = async () => {
     });
 
     // 处理博客文章
-    if (postsResponse && postsResponse.items && postsResponse.items.length > 0) {
-      const formattedPosts = postsResponse.items.map(post => ({
-        id: post.id,
-        type: 'blog',
-        title: post.title,
-        content: post.summary || post.content.substring(0, 200) + '...',
-        time: formatTime(post.created_at),
-        display_time: formatTime(post.updated_at || post.created_at),
-        create_or_update_time: formatCreateOrUpdateTime(post.created_at, post.updated_at),
-        views: post.view_count || 0,
-        comments: post.comment_count || 0,
-        likes: post.like_count || 0,
-        shares: post.share_count || 0,
-        image: post.cover_image_url,
-        created_at: post.created_at,
-        updated_at: post.updated_at,
-        author_name: post.user_nickname || userProfile.value.nickname || '',
-        author_avatar:
-          post.user_avatar ||
-          userProfile.value.avatar ||
-          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
-      }));
-
-      blogPosts.value.push(...formattedPosts);
-      blogCurrentPage.value++;
+    if (postsResponse && postsResponse.items) {
+      // 无论是否有数据，都更新 hasMore 状态
       blogHasMore.value = postsResponse.has_more;
-      console.log('博客加载完成:', {
-        newCount: formattedPosts.length,
-        totalCount: blogPosts.value.length,
-        hasMore: blogHasMore.value,
-      });
+
+      if (postsResponse.items.length > 0) {
+        const formattedPosts = postsResponse.items.map(post => ({
+          id: post.id,
+          type: 'blog',
+          title: post.title,
+          content: post.summary || post.content.substring(0, 200) + '...',
+          time: formatTime(post.created_at),
+          display_time: formatTime(post.updated_at || post.created_at),
+          create_or_update_time: formatCreateOrUpdateTime(post.created_at, post.updated_at),
+          views: post.view_count || 0,
+          comments: post.comment_count || 0,
+          likes: post.like_count || 0,
+          shares: post.share_count || 0,
+          image: post.cover_image_url,
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+          author_name: post.user_nickname || userProfile.value.nickname || '',
+          author_avatar:
+            post.user_avatar ||
+            userProfile.value.avatar ||
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
+        }));
+
+        blogPosts.value.push(...formattedPosts);
+        blogCurrentPage.value++;
+        console.log('博客加载完成:', {
+          newCount: formattedPosts.length,
+          totalCount: blogPosts.value.length,
+          hasMore: blogHasMore.value,
+        });
+      } else {
+        console.log('博客返回空数据，设置 hasMore 为:', blogHasMore.value);
+      }
     }
 
     // 处理说说
-    if (momentsResponse && momentsResponse.items && momentsResponse.items.length > 0) {
-      const formattedMoments = momentsResponse.items.map(moment => ({
-        id: moment.id,
-        type: 'moment',
-        content: moment.content,
-        time: formatTime(moment.created_at),
-        display_time: formatTime(moment.updated_at || moment.created_at),
-        create_or_update_time: formatCreateOrUpdateTime(moment.created_at, moment.updated_at),
-        views: 0,
-        comments: 0,
-        likes: 0,
-        shares: 0,
-        images: moment.images || [],
-        created_at: moment.created_at,
-        updated_at: moment.updated_at,
-        author_name: moment.user_nickname || userProfile.value.nickname || '',
-        author_avatar:
-          moment.user_avatar ||
-          userProfile.value.avatar ||
-          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
-      }));
-
-      moments.value.push(...formattedMoments);
-      momentsCurrentPage.value++;
+    if (momentsResponse && momentsResponse.items) {
+      // 无论是否有数据，都更新 hasMore 状态
       momentsHasMore.value = momentsResponse.has_more;
-      console.log('说说加载完成:', {
-        newCount: formattedMoments.length,
-        totalCount: moments.value.length,
-        hasMore: momentsHasMore.value,
-      });
+
+      if (momentsResponse.items.length > 0) {
+        const formattedMoments = momentsResponse.items.map(moment => ({
+          id: moment.id,
+          type: 'moment',
+          content: moment.content,
+          time: formatTime(moment.created_at),
+          display_time: formatTime(moment.updated_at || moment.created_at),
+          create_or_update_time: formatCreateOrUpdateTime(moment.created_at, moment.updated_at),
+          views: 0,
+          comments: 0,
+          likes: 0,
+          shares: 0,
+          images: moment.images || [],
+          created_at: moment.created_at,
+          updated_at: moment.updated_at,
+          author_name: moment.user_nickname || userProfile.value.nickname || '',
+          author_avatar:
+            moment.user_avatar ||
+            userProfile.value.avatar ||
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
+        }));
+
+        moments.value.push(...formattedMoments);
+        momentsCurrentPage.value++;
+        console.log('说说加载完成:', {
+          newCount: formattedMoments.length,
+          totalCount: moments.value.length,
+          hasMore: momentsHasMore.value,
+        });
+      } else {
+        console.log('说说返回空数据，设置 hasMore 为:', momentsHasMore.value);
+      }
     }
 
     // 更新总的hasMore状态

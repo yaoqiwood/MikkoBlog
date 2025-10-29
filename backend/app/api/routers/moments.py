@@ -63,9 +63,19 @@ def list_moments(
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     is_visible: Optional[bool] = Query(None, description="是否可见"),
-    user_id: Optional[int] = Query(None, description="用户ID筛选")
+    user_id: Optional[int] = Query(None, description="用户ID筛选"),
+    order_by: str = Query(
+        "updated_at",
+        description="排序字段: created_at 或 updated_at"
+    )
 ):
-    """获取说说列表"""
+    """获取说说列表
+
+    order_by 参数说明:
+    - "created_at": 按创建时间倒序排序（管理页面使用）
+    - "updated_at": 按更新时间倒序，更新时间为空时按创建时间
+      （首页使用，默认值）
+    """
     try:
         # 构建查询
         statement = select(Moments).where(Moments.is_deleted == 0)
@@ -89,11 +99,18 @@ def list_moments(
 
         total = session.exec(count_statement).one()
 
-        # 按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
-        statement = statement.order_by(
-            Moments.updated_at.desc(),
-            Moments.created_at.desc()
-        )
+        # 根据参数选择排序方式
+        if order_by == "created_at":
+            # 管理页面：按创建时间倒序排序
+            statement = statement.order_by(Moments.created_at.desc())
+        else:
+            # 首页（默认）：按更新时间倒序排序
+            # 如果更新时间为空则按创建时间倒序排序
+            statement = statement.order_by(
+                Moments.updated_at.desc(),
+                Moments.created_at.desc()
+            )
+
         statement = statement.offset((page - 1) * limit).limit(limit)
 
         moments = session.exec(statement).all()
@@ -164,8 +181,6 @@ def update_moment(
     for field, value in update_data.items():
         setattr(moment, field, value)
 
-    moment.updated_at = datetime.utcnow()
-
     # 更新图片关联
     if moment_update.image_ids is not None:
         # 删除现有图片关联
@@ -188,6 +203,8 @@ def update_moment(
                 )
                 session.add(moment_image)
 
+    # 在所有更新完成后，显式设置更新时间
+    moment.updated_at = datetime.now()
     session.add(moment)
     session.commit()
     session.refresh(moment)
@@ -211,9 +228,33 @@ def delete_moment(
         )
 
     moment.is_deleted = True
-    moment.updated_at = datetime.utcnow()
+    moment.updated_at = datetime.now()
     session.add(moment)
     session.commit()
+
+
+@router.patch("/{moment_id}/toggle-visibility", response_model=MomentsRead)
+def toggle_moment_visibility(
+    *,
+    session: Session = Depends(get_session),
+    moment_id: int,
+    current_user=Depends(get_current_admin)
+):
+    """切换说说可见性"""
+    moment = session.get(Moments, moment_id)
+    if not moment or moment.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="说说不存在"
+        )
+
+    # 切换可见性（不更新 updated_at）
+    moment.is_visible = not moment.is_visible
+    session.add(moment)
+    session.commit()
+    session.refresh(moment)
+
+    return get_moment_with_details(session, moment_id)
 
 
 def get_moment_with_details(session: Session, moment_id: int) -> MomentsRead:

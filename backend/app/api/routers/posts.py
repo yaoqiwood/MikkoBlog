@@ -29,6 +29,10 @@ def list_posts(
     column_id: Optional[int] = Query(None, description="专栏ID筛选"),
     start_date: Optional[str] = Query(None, description="开始日期"),
     end_date: Optional[str] = Query(None, description="结束日期"),
+    order_by: Optional[str] = Query(
+        "updated_at",
+        description="排序字段：created_at(创建时间) 或 updated_at(更新时间)"
+    ),
     db: Session = Depends(get_db)
 ) -> PostListResponse[PostRead]:
     """
@@ -106,7 +110,9 @@ def list_posts(
         count_statement = count_statement.where(Post.is_visible == is_visible)
 
     if is_published is not None:
-        count_statement = count_statement.where(Post.is_published == is_published)
+        count_statement = count_statement.where(
+            Post.is_published == is_published
+        )
     elif include_unpublished:
         pass
     else:
@@ -127,11 +133,16 @@ def list_posts(
 
     total = db.exec(count_statement).one()
 
-    # 按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
-    statement = statement.order_by(
-        Post.updated_at.desc(),
-        Post.created_at.desc()
-    )
+    # 根据 order_by 参数决定排序方式
+    if order_by == "created_at":
+        # 按创建时间倒序排序
+        statement = statement.order_by(Post.created_at.desc())
+    else:
+        # 默认按更新时间倒序排序，如果更新时间为空则按创建时间倒序排序
+        statement = statement.order_by(
+            Post.updated_at.desc(),
+            Post.created_at.desc()
+        )
     statement = statement.offset((page - 1) * limit).limit(limit)
 
     # 执行查询
