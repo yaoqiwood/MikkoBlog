@@ -58,7 +58,9 @@
             :current-column="currentColumn"
             :column-posts-list="columnPostsList"
             :column-posts-loading="columnPostsLoading"
-            @back-to-columns="currentView = 'columns'"
+            :has-more="columnPostsHasMore"
+            @back-to-columns="handleBackToColumns"
+            @load-more="loadMoreColumnPosts"
             @view-blog-detail="viewBlogDetail"
           />
 
@@ -156,6 +158,9 @@ const columnsLoading = ref(false);
 const columnPostsList = ref([]);
 const columnPostsLoading = ref(false);
 const currentColumn = ref(null);
+const columnPostsCurrentPage = ref(1);
+const columnPostsHasMore = ref(true);
+const columnPostsPageSize = 5; // 专栏文章每次加载5条
 
 // 右侧边栏专栏数据
 const sidebarColumnsList = ref([]);
@@ -350,13 +355,22 @@ const formatTime = dateString => {
   const date = new Date(dateString);
   const now = new Date();
   const diffTime = Math.abs(now - date);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+  const diffMinutes = Math.floor(diffTime / (1000 * 60));
+  const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
+
+  if (diffMinutes < 1) return '刚刚';
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
   if (diffDays === 1) return '1天前';
   if (diffDays < 7) return `${diffDays}天前`;
-  if (diffDays < 30) return `${Math.ceil(diffDays / 7)}周前`;
-  if (diffDays < 365) return `${Math.ceil(diffDays / 30)}个月前`;
-  return `${Math.ceil(diffDays / 365)}年前`;
+  if (diffWeeks < 4) return `${diffWeeks}周前`;
+  if (diffMonths < 12) return `${diffMonths}个月前`;
+  return `${diffYears}年前`;
 };
 
 // 格式化创建/修改时间显示
@@ -632,13 +646,15 @@ const switchView = view => {
   }
 };
 
-// 加载专栏文章
+// 加载专栏文章（支持分页）
 const loadColumnPosts = async columnId => {
+  if (columnPostsLoading.value || !columnPostsHasMore.value) return;
+
   columnPostsLoading.value = true;
   try {
     const response = await postApi.getPosts({
-      page: 1,
-      limit: 50,
+      page: columnPostsCurrentPage.value,
+      limit: columnPostsPageSize,
       column_id: columnId,
       is_visible: true,
       is_deleted: false,
@@ -668,14 +684,20 @@ const loadColumnPosts = async columnId => {
           'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjODdjZWViIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+Cg==',
       }));
 
-      columnPostsList.value = formattedPosts;
+      columnPostsList.value.push(...formattedPosts);
+      columnPostsCurrentPage.value++;
+
+      // 检查是否还有更多数据
+      if (!response.has_more) {
+        columnPostsHasMore.value = false;
+      }
     } else {
-      columnPostsList.value = [];
+      columnPostsHasMore.value = false;
     }
   } catch (err) {
     console.error('加载专栏文章失败:', err);
     Message.error('加载专栏文章失败，请稍后重试');
-    columnPostsList.value = [];
+    columnPostsHasMore.value = false;
   } finally {
     columnPostsLoading.value = false;
   }
@@ -685,7 +707,26 @@ const loadColumnPosts = async columnId => {
 const viewColumnDetail = column => {
   currentColumn.value = column;
   currentView.value = 'column-detail';
+  // 重置分页状态
+  columnPostsList.value = [];
+  columnPostsCurrentPage.value = 1;
+  columnPostsHasMore.value = true;
+  // 加载第一页文章
   loadColumnPosts(column.id);
+};
+
+// 返回专栏列表时重新加载专栏
+const handleBackToColumns = () => {
+  currentView.value = 'columns';
+  // 重新加载专栏列表
+  loadColumns();
+};
+
+// 加载更多专栏文章
+const loadMoreColumnPosts = () => {
+  if (currentColumn.value) {
+    loadColumnPosts(currentColumn.value.id);
+  }
 };
 
 // 查看博文详情

@@ -22,12 +22,12 @@
         </div>
       </div>
 
-      <div v-if="columnPostsLoading" class="loading-indicator">
+      <div v-if="columnPostsLoading && columnPostsList.length === 0" class="loading-indicator">
         <div class="loading-spinner"></div>
         <span>加载中...</span>
       </div>
 
-      <div v-else class="column-posts-section">
+      <div v-else class="column-posts-section" ref="scrollContainer" @scroll="handleScroll">
         <div class="posts-card-header">
           <h3>📚 专栏文章</h3>
           <span class="posts-count">{{ columnPostsList.length }} 篇文章</span>
@@ -87,6 +87,17 @@
           </div>
         </div>
 
+        <!-- 加载更多状态 -->
+        <div v-if="loadingMore" class="loading-more">
+          <div class="loading-spinner"></div>
+          <span>加载更多...</span>
+        </div>
+
+        <!-- 没有更多数据提示 -->
+        <div v-else-if="!hasMore && columnPostsList.length > 0" class="no-more">
+          <span>已经到底了 ~</span>
+        </div>
+
         <div v-else class="empty-state">
           <div class="empty-content">
             <i class="empty-icon">📝</i>
@@ -101,8 +112,9 @@
 
 <script setup>
 import { Icon } from 'view-ui-plus';
+import { onMounted, onUnmounted, ref } from 'vue';
 
-defineProps({
+const props = defineProps({
   currentColumn: {
     type: Object,
     default: null,
@@ -115,9 +127,44 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  hasMore: {
+    type: Boolean,
+    default: true,
+  },
 });
 
-defineEmits(['backToColumns', 'viewBlogDetail']);
+const emit = defineEmits(['backToColumns', 'viewBlogDetail', 'loadMore']);
+
+const scrollContainer = ref(null);
+const loadingMore = ref(false);
+
+// 滚动处理函数
+const handleScroll = () => {
+  if (!scrollContainer.value || loadingMore.value) return;
+
+  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
+
+  // 距离底部还有 100px 时开始加载
+  const threshold = 100;
+  const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold;
+
+  if (isNearBottom && !loadingMore.value) {
+    loadMore();
+  }
+};
+
+// 加载更多数据
+const loadMore = () => {
+  if (!props.hasMore || loadingMore.value || props.columnPostsLoading) return;
+
+  loadingMore.value = true;
+  emit('loadMore');
+
+  // 延迟重置状态，确保有足够的时间显示加载状态
+  globalThis.setTimeout(() => {
+    loadingMore.value = false;
+  }, 500);
+};
 
 // 将相对路径转换为完整URL
 const getFullUrl = url => {
@@ -130,6 +177,14 @@ const getFullUrl = url => {
 
   return url;
 };
+
+onMounted(() => {
+  // 可以在这里添加其他初始化逻辑
+});
+
+onUnmounted(() => {
+  // 清理工作
+});
 </script>
 
 <style scoped>
@@ -211,6 +266,10 @@ const getFullUrl = url => {
 /* 专栏文章卡片样式 */
 .column-posts-section {
   margin-top: 20px;
+  max-height: calc(100vh - 350px); /* 减去头部和专栏信息的空间 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
 }
 
 .posts-card-header {
@@ -450,8 +509,34 @@ const getFullUrl = url => {
   }
 }
 
+/* 加载更多状态 */
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 30px 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* 没有更多数据 */
+.no-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  color: #999;
+  font-size: 14px;
+  font-style: italic;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .column-posts-section {
+    max-height: calc(100vh - 300px); /* 移动端减少头部空间 */
+  }
+
   .posts-card-header {
     padding: 16px 16px 0 16px;
     margin-bottom: 16px;
@@ -485,6 +570,10 @@ const getFullUrl = url => {
 }
 
 @media (max-width: 480px) {
+  .column-posts-section {
+    max-height: calc(100vh - 280px); /* 小屏幕进一步减少 */
+  }
+
   .posts-card-header {
     padding: 12px 12px 0 12px;
     margin-bottom: 12px;
