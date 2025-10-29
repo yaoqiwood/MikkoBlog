@@ -768,7 +768,7 @@ export default {
       try {
         // 获取所有文章
         const response = await apiService.post.getPosts({ limit: 100 });
-        const allPosts = response || [];
+        const allPosts = response?.items || [];
 
         // 过滤掉已经在专栏中的文章
         const columnPostIds = columnPosts.value.map(post => post.id);
