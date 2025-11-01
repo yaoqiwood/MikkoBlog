@@ -9,13 +9,16 @@
         <div class="blog-title">
           <h1>{{ homepageSettings.header_title || userProfile.blog_title || 'MikkoBlog' }}</h1>
         </div>
-        <nav class="main-nav">
-          <router-link to="/" class="nav-item">首页</router-link>
-          <router-link to="/columns" class="nav-item">专栏</router-link>
-          <a href="#" class="nav-item">关于我</a>
-        </nav>
-        <div class="search-box">
-          <i class="search-icon">🔍</i>
+        <div class="nav-container">
+          <nav class="main-nav">
+            <router-link to="/" class="nav-item">首页</router-link>
+            <router-link to="/articles" class="nav-item">文章列表</router-link>
+            <router-link to="/columns" class="nav-item">专栏</router-link>
+            <a href="#" class="nav-item">关于我</a>
+          </nav>
+          <div class="search-box">
+            <i class="search-icon">🔍</i>
+          </div>
         </div>
       </div>
     </header>
@@ -659,6 +662,12 @@ onMounted(() => {
   margin: 0;
 }
 
+.nav-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .main-nav {
   display: flex;
   gap: 30px;
@@ -693,13 +702,12 @@ onMounted(() => {
 }
 
 .search-box {
-  position: absolute;
-  right: 20px;
   padding: 8px 12px;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .search-box:hover {
@@ -726,6 +734,7 @@ onMounted(() => {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  min-width: 0; /* 防止 flex 子元素溢出 */
 }
 
 /* 返回按钮 */
@@ -859,12 +868,19 @@ onMounted(() => {
 /* 文章正文 */
 .article-body {
   padding: 24px;
+  overflow-x: hidden; /* 防止水平溢出 */
+  word-wrap: break-word; /* 长单词换行 */
+  word-break: break-word; /* 中文换行 */
 }
 
 .article-text {
   line-height: 1.6;
   color: #24292e;
   font-size: 16px;
+  max-width: 100%; /* 防止内容溢出 */
+  overflow-wrap: break-word; /* 长单词自动换行 */
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Markdown 内容样式 */
@@ -905,10 +921,13 @@ onMounted(() => {
 
 .article-text :deep(img) {
   max-width: 100%;
+  width: 100%;
   height: auto;
   border-radius: 6px;
   margin: 16px 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: block;
+  object-fit: contain; /* 保持图片比例 */
 }
 
 .article-text :deep(blockquote) {
@@ -936,6 +955,8 @@ onMounted(() => {
   overflow-x: auto;
   margin: 16px 0;
   border: 1px solid #e1e4e8;
+  max-width: 100%; /* 防止代码块溢出 */
+  -webkit-overflow-scrolling: touch; /* 移动端平滑滚动 */
 }
 
 .article-text :deep(pre code) {
@@ -958,6 +979,19 @@ onMounted(() => {
   width: 100%;
   border-collapse: collapse;
   margin: 16px 0;
+  overflow-x: auto;
+  display: block;
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-text :deep(table thead),
+.article-text :deep(table tbody) {
+  display: table;
+  width: 100%;
+}
+
+.article-text :deep(table tr) {
+  display: table-row;
 }
 
 .article-text :deep(th),
@@ -965,6 +999,7 @@ onMounted(() => {
   border: 1px solid #e1e4e8;
   padding: 8px 12px;
   text-align: left;
+  word-break: break-word;
 }
 
 .article-text :deep(th) {
@@ -1036,6 +1071,32 @@ onMounted(() => {
   width: 300px;
   max-height: calc(100vh - 84px - 48px); /* 视口高度 - 顶部 - 底部padding */
   overflow-y: auto;
+}
+
+/* 移动端：侧边栏改为静态定位，放在内容下方 */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    order: 2; /* 放在内容下方 */
+  }
+
+  .sidebar-content {
+    position: static;
+    width: 100%;
+    max-height: none;
+    right: auto;
+    top: auto;
+    margin-top: 16px;
+  }
+
+  .content-layout {
+    flex-direction: column;
+  }
+
+  .content-wrapper {
+    order: 1; /* 文章内容在上方 */
+    width: 100%;
+  }
 }
 
 .sidebar-title {
@@ -1169,51 +1230,228 @@ onMounted(() => {
   .sidebar {
     width: 280px;
   }
+
+  .sidebar-content {
+    right: 50px;
+  }
 }
 
 @media (max-width: 768px) {
+  /* 头部导航栏移动端适配 */
+  .header-container {
+    flex-direction: column;
+    height: auto;
+    padding: 12px 15px;
+    gap: 12px;
+  }
+
+  .blog-title {
+    position: static;
+    text-align: center;
+    order: 1;
+  }
+
+  .blog-title h1 {
+    font-size: 20px;
+  }
+
+  .nav-container {
+    order: 2;
+    flex-direction: row;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    position: static;
+  }
+
+  .main-nav {
+    margin: 0;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+
+  .nav-item:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: none;
+  }
+
+  .nav-item::after {
+    display: none;
+  }
+
+  .search-box {
+    margin-top: 0;
+  }
+
+  /* 内容布局 */
+  .main-content {
+    padding: 16px;
+  }
+
   .content-layout {
     flex-direction: column;
     gap: 12px;
   }
 
+  .content-wrapper {
+    order: 1;
+    width: 100%;
+    margin-bottom: 0;
+  }
+
   .sidebar {
     width: 100%;
-    order: -1; /* 在移动端将侧边栏放在顶部 */
+    order: 2; /* 在移动端将侧边栏放在底部 */
   }
 
   .sidebar-content {
     position: static;
     padding: 16px;
-    width: auto;
+    width: 100%;
     max-height: none;
     right: auto;
     top: auto;
+    margin-top: 16px;
   }
 
-  .main-content {
-    padding: 16px;
-  }
-
+  /* 文章内容移动端优化 */
   .article-header {
-    padding: 24px 16px 16px;
+    padding: 20px 16px 16px;
   }
 
   .article-title {
-    font-size: 24px;
+    font-size: 22px;
+    word-wrap: break-word;
+    word-break: break-word;
   }
 
   .article-meta {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+  }
+
+  .article-cover {
+    margin: 0;
+  }
+
+  .article-cover img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
   }
 
   .article-body {
     padding: 16px;
+    overflow-x: hidden;
   }
 
   .article-text {
     font-size: 15px;
+    line-height: 1.7;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Markdown 内容移动端优化 */
+  .article-text :deep(h1) {
+    font-size: 22px;
+    word-wrap: break-word;
+  }
+  .article-text :deep(h2) {
+    font-size: 20px;
+    word-wrap: break-word;
+  }
+  .article-text :deep(h3) {
+    font-size: 18px;
+    word-wrap: break-word;
+  }
+  .article-text :deep(h4) {
+    font-size: 16px;
+    word-wrap: break-word;
+  }
+  .article-text :deep(h5) {
+    font-size: 15px;
+    word-wrap: break-word;
+  }
+  .article-text :deep(h6) {
+    font-size: 14px;
+    word-wrap: break-word;
+  }
+
+  .article-text :deep(p) {
+    margin: 14px 0;
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .article-text :deep(img) {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 14px 0;
+  }
+
+  .article-text :deep(blockquote) {
+    margin: 14px 0;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .article-text :deep(code) {
+    font-size: 13px;
+    word-break: break-all;
+    white-space: pre-wrap; /* 代码自动换行 */
+  }
+
+  .article-text :deep(pre) {
+    padding: 12px;
+    margin: 14px 0;
+    font-size: 13px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .article-text :deep(ul),
+  .article-text :deep(ol) {
+    margin: 14px 0;
+    padding-left: 20px;
+  }
+
+  .article-text :deep(table) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 14px 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .article-text :deep(table thead),
+  .article-text :deep(table tbody),
+  .article-text :deep(table tr) {
+    display: table;
+    width: 100%;
+  }
+
+  .article-text :deep(table th),
+  .article-text :deep(table td) {
+    display: table-cell;
+    min-width: 100px;
+    padding: 6px 8px;
+    font-size: 14px;
+    word-break: break-word;
   }
 
   .article-tags {
@@ -1226,22 +1464,63 @@ onMounted(() => {
 
   .footer-actions {
     flex-direction: column;
+    gap: 10px;
+  }
+
+  .footer-actions .ivu-btn {
+    width: 100%;
   }
 
   .related-posts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 12px;
   }
 
   .related-post-item {
     margin-bottom: 0;
   }
+
+  .back-section {
+    padding: 12px 16px;
+  }
 }
 
 @media (max-width: 480px) {
+  .header-container {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .blog-title h1 {
+    font-size: 18px;
+  }
+
+  .nav-container {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .main-nav {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+
+  .search-box {
+    padding: 6px 10px;
+  }
+
   .main-content {
     padding: 12px;
+  }
+
+  .article-header {
+    padding: 16px 12px 12px;
   }
 
   .article-title {
@@ -1254,6 +1533,50 @@ onMounted(() => {
 
   .article-text {
     font-size: 14px;
+  }
+
+  .article-text :deep(h1) {
+    font-size: 20px;
+  }
+  .article-text :deep(h2) {
+    font-size: 18px;
+  }
+  .article-text :deep(h3) {
+    font-size: 16px;
+  }
+  .article-text :deep(h4) {
+    font-size: 15px;
+  }
+  .article-text :deep(h5) {
+    font-size: 14px;
+  }
+  .article-text :deep(h6) {
+    font-size: 13px;
+  }
+
+  .sidebar-content {
+    padding: 12px;
+  }
+
+  .back-section {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav-container {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .main-nav {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    font-size: 12px;
+    padding: 4px 8px;
   }
 }
 </style>
