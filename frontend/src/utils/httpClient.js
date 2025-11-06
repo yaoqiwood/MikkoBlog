@@ -98,7 +98,11 @@ httpClient.interceptors.response.use(
         path => currentPath === path || currentPath.startsWith(path + '/')
       );
 
-      if (!isPublicPage) {
+      // 避免在登录页或登录请求失败时刷新当前页，影响体验
+      const isLoginPage = currentPath === '/login';
+      const isAuthTokenRequest = (error.config?.url || '').includes('/auth/token');
+
+      if (!isPublicPage && !isLoginPage && !isAuthTokenRequest) {
         // 只有在非公开页面才自动跳转到登录页
         window.location.href = '/login';
       }
@@ -234,11 +238,15 @@ export async function postForm(url, data = {}, config = {}) {
     formData.append(key, data[key]);
   });
 
+  // 合并 headers，确保不会被外部 headers 覆盖掉 Content-Type
+  const mergedHeaders = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    ...(config.headers || {}),
+  };
+
   return request('POST', url, formData, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
     ...config,
+    headers: mergedHeaders,
   });
 }
 

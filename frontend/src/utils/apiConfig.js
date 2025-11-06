@@ -24,6 +24,7 @@ const API_CONFIG = {
     // 认证相关
     AUTH: {
       LOGIN: '/auth/token',
+      CAPTCHA: '/auth/captcha',
       REFRESH: '/auth/refresh',
       LOGOUT: '/auth/logout',
       PROFILE: '/auth/profile',

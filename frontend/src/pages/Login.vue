@@ -50,23 +50,14 @@
               </div>
 
               <Form :model="loginModel" :rules="loginRules" @submit.prevent="login">
-                <!-- Email or Username Field -->
-                <FormItem v-if="loginType === 'email'" label="邮箱地址" prop="email">
+                <!-- Email Field -->
+                <FormItem label="邮箱地址" prop="email">
                   <Input
                     v-model="loginModel.email"
                     type="email"
                     size="large"
                     placeholder="请输入邮箱地址"
                     prefix="ios-mail"
-                  />
-                </FormItem>
-                <FormItem v-else label="用户名" prop="username">
-                  <Input
-                    v-model="loginModel.username"
-                    type="text"
-                    size="large"
-                    placeholder="请输入用户名"
-                    prefix="ios-person"
                   />
                 </FormItem>
 
@@ -79,6 +70,26 @@
                     placeholder="请输入密码"
                     prefix="ios-lock"
                   />
+                </FormItem>
+
+                <!-- Captcha Field (show when required) -->
+                <FormItem v-if="captchaRequired" label="" prop="captcha">
+                  <div class="captcha-row">
+                    <Input
+                      v-model="captchaCode"
+                      type="text"
+                      size="large"
+                      placeholder="请输入右侧4位验证码"
+                      maxlength="4"
+                      style="flex: 1"
+                    />
+                    <img
+                      :src="captchaImageSrc"
+                      class="captcha-image"
+                      @click="refreshCaptcha"
+                      alt="captcha"
+                    />
+                  </div>
                 </FormItem>
 
                 <!-- Error Message -->
@@ -107,13 +118,6 @@
                   </Button>
                 </FormItem>
               </Form>
-              <!-- 切换登录方式 -->
-              <div class="login-type-switch" style="text-align: center; margin-bottom: 12px">
-                <Button type="text" size="small" @click="toggleLoginType">
-                  切换为{{ loginType === 'email' ? '用户名' : '邮箱' }}登录
-                </Button>
-              </div>
-
               <!-- Footer -->
               <div class="form-footer">
                 <router-link :to="homePath" class="back-link"> ← 返回首页 </router-link>
@@ -121,7 +125,7 @@
 
               <!-- Additional Info -->
               <div class="form-info">
-                <p class="info-text">默认管理员账号：admin@example.com / admin123</p>
+                <p class="info-text">请妥善保管您的账户信息</p>
               </div>
             </div>
           </div>
@@ -131,24 +135,31 @@
   </div>
 </template>
 <script setup>
+import { getAuthUrl } from '@/utils/apiConfig';
 import { authApi } from '@/utils/apiService';
 import { authCookie } from '@/utils/cookieUtils';
 import { getRoutePath, routerUtils, ROUTES } from '@/utils/routeManager';
 import { Message } from 'view-ui-plus';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const loginType = ref('email'); // 'email' or 'username'
 const loginModel = ref({
   email: '',
-  username: '',
   password: '',
 });
 const error = ref('');
 const loading = ref(false);
 const checkingAuth = ref(false);
 const saveCredentials = ref(false);
+
+// 验证码控制
+const captchaRequired = ref(false);
+const captchaCode = ref('');
+const captchaRefreshKey = ref(0);
+const captchaImageSrc = computed(
+  () => `${getAuthUrl('CAPTCHA')}?t=${Date.now()}&k=${captchaRefreshKey.value}`
+);
 
 // 路由路径常量
 const homePath = getRoutePath(ROUTES.HOME);
@@ -158,18 +169,14 @@ const loginRules = {
     { required: true, message: '请输入邮箱地址', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
   ],
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, message: '用户名长度不能少于3位', trigger: 'blur' },
-  ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
   ],
 };
 
-function toggleLoginType() {
-  loginType.value = loginType.value === 'email' ? 'username' : 'email';
+function refreshCaptcha() {
+  captchaRefreshKey.value++;
 }
 
 // 检查登录状态
@@ -219,8 +226,6 @@ function loadSavedCredentials() {
     if (savedCredentials) {
       const credentials = JSON.parse(savedCredentials);
       loginModel.value.email = credentials.email || '';
-      loginModel.value.username = credentials.username || '';
-      loginType.value = credentials.loginType || 'email';
       saveCredentials.value = true; // 如果有保存的账号密码，默认勾选保存选项
     }
   } catch (error) {
@@ -241,12 +246,14 @@ async function login() {
     loading.value = true;
     error.value = '';
 
-    // 根据登录类型使用不同的用户名字段
-    const username =
-      loginType.value === 'email' ? loginModel.value.email : loginModel.value.username;
+    const username = loginModel.value.email;
 
     // 使用新的API工具进行登录
-    const data = await authApi.login(username, loginModel.value.password);
+    const data = await authApi.login(
+      username,
+      loginModel.value.password,
+      captchaRequired.value ? captchaCode.value : null
+    );
 
     // 将token保存到cookie
     authCookie.setAuth(data.access_token, {
@@ -258,8 +265,6 @@ async function login() {
     if (saveCredentials.value) {
       const credentials = {
         email: loginModel.value.email,
-        username: loginModel.value.username,
-        loginType: loginType.value,
       };
       localStorage.setItem('savedCredentials', JSON.stringify(credentials));
     } else {
@@ -274,15 +279,49 @@ async function login() {
     if (err.type === 'NETWORK_ERROR') {
       error.value = '服务器无法连接，请联系管理员';
       Message.error('服务器无法连接，请联系管理员');
+    } else if (err.response?.status === 403) {
+      // 处理验证码相关的错误
+      const detail = err.response?.data?.detail;
+      if (detail === 'CAPTCHA_INCORRECT') {
+        // 验证码输入错误
+        captchaRequired.value = true;
+        error.value = '验证码输入错误，请检查';
+        Message.error('验证码输入错误，请检查');
+        refreshCaptcha();
+      } else if (detail === 'CAPTCHA_REQUIRED') {
+        // 未提供验证码或首次显示验证码
+        captchaRequired.value = true;
+        // 检查是否已经输入了验证码（但可能为空）
+        if (!captchaCode.value || !captchaCode.value.trim()) {
+          error.value = '请输入验证码';
+          Message.warning('请输入验证码');
+        } else {
+          error.value = '需要输入验证码后再尝试登录';
+          Message.warning('需要输入验证码后再尝试登录');
+        }
+        refreshCaptcha();
+      }
     } else if (err.response?.status === 401) {
       error.value = '用户名或密码错误';
       Message.error('用户名或密码错误');
+      // 如果验证码已经显示，每次登录失败时都要刷新验证码
+      if (captchaRequired.value) {
+        refreshCaptcha();
+      }
     } else if (err.response?.status === 422) {
       error.value = '输入格式不正确，请检查用户名/邮箱和密码';
       Message.error('输入格式不正确，请检查用户名/邮箱和密码');
+      // 如果验证码已经显示，每次登录失败时都要刷新验证码
+      if (captchaRequired.value) {
+        refreshCaptcha();
+      }
     } else {
       error.value = '登录失败，请稍后重试';
       Message.error('登录失败，请稍后重试');
+      // 如果验证码已经显示，每次登录失败时都要刷新验证码
+      if (captchaRequired.value) {
+        refreshCaptcha();
+      }
     }
   } finally {
     loading.value = false;
@@ -482,6 +521,19 @@ async function login() {
 .info-text {
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.captcha-image {
+  height: 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 /* 保存账号密码样式 */

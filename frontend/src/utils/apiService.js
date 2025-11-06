@@ -30,12 +30,20 @@ export const authApi = {
    * @param {string} password - 密码
    * @returns {Promise} 登录结果
    */
-  async login(username, password) {
-    return postForm(getAuthUrl('LOGIN'), {
-      username,
-      password,
-      grant_type: 'password',
-    });
+  async login(username, password, captchaCode = null) {
+    const headers = {};
+    if (captchaCode) {
+      headers['X-Captcha-Code'] = captchaCode;
+    }
+    return postForm(
+      getAuthUrl('LOGIN'),
+      {
+        username,
+        password,
+        grant_type: 'password',
+      },
+      { headers }
+    );
   },
 
   /**
